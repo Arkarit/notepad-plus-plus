@@ -208,6 +208,7 @@ void ProjectPanel::initMenus()
 	generic_string edit_addfolder = pNativeSpeaker->getProjectPanelLangMenuStr("ProjectMenu", IDM_PROJECT_NEWFOLDER, PM_EDITNEWFOLDER);
 	generic_string edit_addfiles = pNativeSpeaker->getProjectPanelLangMenuStr("ProjectMenu", IDM_PROJECT_ADDFILES, PM_EDITADDFILES);
 	generic_string edit_addfilesRecursive = pNativeSpeaker->getProjectPanelLangMenuStr("ProjectMenu", IDM_PROJECT_ADDFILESRECUSIVELY, PM_EDITADDFILESRECUSIVELY);
+	generic_string edit_addfolderMonitor = pNativeSpeaker->getProjectPanelLangMenuStr("ProjectMenu", IDM_PROJECT_EDITADDFOLDERMONITOR, PM_EDITADDFOLDERMONITOR);
 	generic_string edit_remove = pNativeSpeaker->getProjectPanelLangMenuStr("ProjectMenu", IDM_PROJECT_DELETEFOLDER, PM_EDITREMOVE);
 
 	_hProjectMenu = ::CreatePopupMenu();
@@ -218,6 +219,7 @@ void ProjectPanel::initMenus()
 	::InsertMenu(_hProjectMenu, 0, MF_BYCOMMAND, IDM_PROJECT_NEWFOLDER, edit_addfolder.c_str());
 	::InsertMenu(_hProjectMenu, 0, MF_BYCOMMAND, IDM_PROJECT_ADDFILES, edit_addfiles.c_str());
 	::InsertMenu(_hProjectMenu, 0, MF_BYCOMMAND, IDM_PROJECT_ADDFILESRECUSIVELY, edit_addfilesRecursive.c_str());
+	::InsertMenu(_hProjectMenu, 0, MF_BYCOMMAND, IDM_PROJECT_EDITADDFOLDERMONITOR, edit_addfolderMonitor.c_str());
 	::InsertMenu(_hProjectMenu, 0, MF_BYCOMMAND, IDM_PROJECT_DELETEFOLDER, edit_remove.c_str());
 
 	edit_moveup = pNativeSpeaker->getProjectPanelLangMenuStr("FolderMenu", IDM_PROJECT_MOVEUP, PM_MOVEUPENTRY);
@@ -226,6 +228,7 @@ void ProjectPanel::initMenus()
 	edit_addfolder = pNativeSpeaker->getProjectPanelLangMenuStr("FolderMenu", IDM_PROJECT_NEWFOLDER, PM_EDITNEWFOLDER);
 	edit_addfiles = pNativeSpeaker->getProjectPanelLangMenuStr("FolderMenu", IDM_PROJECT_ADDFILES, PM_EDITADDFILES);
 	edit_addfilesRecursive = pNativeSpeaker->getProjectPanelLangMenuStr("FolderMenu", IDM_PROJECT_ADDFILESRECUSIVELY, PM_EDITADDFILESRECUSIVELY);
+	edit_addfolderMonitor = pNativeSpeaker->getProjectPanelLangMenuStr("FolderMenu", IDM_PROJECT_EDITADDFOLDERMONITOR, PM_EDITADDFOLDERMONITOR);
 	edit_remove = pNativeSpeaker->getProjectPanelLangMenuStr("FolderMenu", IDM_PROJECT_DELETEFOLDER, PM_EDITREMOVE);
 
 	_hFolderMenu = ::CreatePopupMenu();
@@ -236,7 +239,8 @@ void ProjectPanel::initMenus()
 	::InsertMenu(_hFolderMenu, 0, MF_BYCOMMAND, IDM_PROJECT_NEWFOLDER,     edit_addfolder.c_str());
 	::InsertMenu(_hFolderMenu, 0, MF_BYCOMMAND, IDM_PROJECT_ADDFILES,      edit_addfiles.c_str());
 	::InsertMenu(_hFolderMenu, 0, MF_BYCOMMAND, IDM_PROJECT_ADDFILESRECUSIVELY, edit_addfilesRecursive.c_str());
-	::InsertMenu(_hFolderMenu, 0, MF_BYCOMMAND, IDM_PROJECT_DELETEFOLDER,  edit_remove.c_str());
+	::InsertMenu(_hFolderMenu, 0, MF_BYCOMMAND, IDM_PROJECT_EDITADDFOLDERMONITOR, edit_addfolderMonitor.c_str());
+	::InsertMenu(_hFolderMenu, 0, MF_BYCOMMAND, IDM_PROJECT_DELETEFOLDER, edit_remove.c_str());
 
 	edit_moveup = pNativeSpeaker->getProjectPanelLangMenuStr("FileMenu", IDM_PROJECT_MOVEUP, PM_MOVEUPENTRY);
 	edit_movedown = pNativeSpeaker->getProjectPanelLangMenuStr("FileMenu", IDM_PROJECT_MOVEDOWN, PM_MOVEDOWNENTRY);
@@ -435,10 +439,11 @@ void ProjectPanel::buildProjectXml(TiXmlNode *node, HTREEITEM hItem, const TCHAR
 	{
 		tvItem.hItem = hItemNode;
 		SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0,(LPARAM)&tvItem);
-		if (tvItem.lParam != NULL)
+		TreeViewFileInfo& tvFileInfo = *(TreeViewFileInfo*) tvItem.lParam;
+
+		if (tvFileInfo.isFile())
 		{
-			generic_string *fn = (generic_string *)tvItem.lParam;
-			generic_string newFn = getRelativePath(*fn, fn2write);
+			generic_string newFn = getRelativePath(tvFileInfo._filePath, fn2write);
 			TiXmlNode *fileLeaf = node->InsertEndChild(TiXmlElement(TEXT("File")));
 			fileLeaf->ToElement()->SetAttribute(TEXT("name"), newFn.c_str());
 		}
@@ -515,13 +520,14 @@ void ProjectPanel::openSelectFile()
 	::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0,(LPARAM)&tvItem);
 
 	NodeType nType = getNodeType(tvItem.hItem);
-	generic_string *fn = (generic_string *)tvItem.lParam;
-	if (nType == nodeType_file && fn)
+	TreeViewFileInfo& tvFileInfo = *(TreeViewFileInfo*)tvItem.lParam;
+
+	if (nType == nodeType_file && tvFileInfo.isFile())
 	{
 		tvItem.mask = TVIF_IMAGE | TVIF_SELECTEDIMAGE;
-		if (::PathFileExists(fn->c_str()))
+		if (::PathFileExists(tvFileInfo._filePath.c_str()))
 		{
-			::SendMessage(_hParent, NPPM_DOOPEN, 0, (LPARAM)(fn->c_str()));
+			::SendMessage(_hParent, NPPM_DOOPEN, 0, (LPARAM)(tvFileInfo._filePath.c_str()));
 			tvItem.iImage = INDEX_LEAF;
 			tvItem.iSelectedImage = INDEX_LEAF;
 		}
@@ -561,8 +567,10 @@ void ProjectPanel::notified(LPNMHDR notification)
 				if (getNodeType(tvnotif->item.hItem) == nodeType_root)
 					return;
 
+				TreeViewFileInfo& tvFileInfo = *(TreeViewFileInfo*)tvnotif->item.lParam;
+
 				// Processing for only File case
-				if (tvnotif->item.lParam) 
+				if (tvFileInfo.isFile()) 
 				{
 					// Get the old label
 					tvItem.hItem = _treeView.getSelection();
@@ -570,16 +578,16 @@ void ProjectPanel::notified(LPNMHDR notification)
 					size_t len = lstrlen(tvItem.pszText);
 
 					// Find the position of old label in File path
-					generic_string *filePath = (generic_string *)tvnotif->item.lParam;
-					size_t found = filePath->rfind(tvItem.pszText);
+					generic_string &filePath = tvFileInfo._filePath;
+					size_t found = filePath.rfind(tvItem.pszText);
 
 					// If found the old label, replace it with the modified one
 					if (found != generic_string::npos)
-						filePath->replace(found, len, tvnotif->item.pszText);
+						filePath.replace(found, len, tvnotif->item.pszText);
 
 					// Check the validity of modified file path
 					tvItem.mask = TVIF_IMAGE | TVIF_SELECTEDIMAGE;
-					if (::PathFileExists(filePath->c_str()))
+					if (::PathFileExists(filePath.c_str()))
 					{
 						tvItem.iImage = INDEX_LEAF;
 						tvItem.iSelectedImage = INDEX_LEAF;
@@ -609,8 +617,8 @@ void ProjectPanel::notified(LPNMHDR notification)
 				}
 				else
 				{
-					str = (generic_string *)lpGetInfoTip->lParam;
-					if (!str)
+					str = &((TreeViewFileInfo *)lpGetInfoTip->lParam)->_filePath;
+					if (str->empty())
 						return;
 				}
 				lpGetInfoTip->pszText = (LPTSTR)str->c_str();
@@ -706,6 +714,7 @@ NodeType ProjectPanel::getNodeType(HTREEITEM hItem)
 	tvItem.hItem = hItem;
 	tvItem.mask = TVIF_IMAGE | TVIF_PARAM;
 	SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0,(LPARAM)&tvItem);
+	TreeViewFileInfo& tvFileInfo = *(TreeViewFileInfo*)tvItem.lParam;
 
 	// Root
 	if (tvItem.iImage == INDEX_CLEAN_ROOT || tvItem.iImage == INDEX_DIRTY_ROOT)
@@ -718,7 +727,7 @@ NodeType ProjectPanel::getNodeType(HTREEITEM hItem)
 		return nodeType_project;
 	}
 	// Folder
-	else if (tvItem.lParam == NULL)
+	else if (tvFileInfo.isDir())
 	{
 		return nodeType_folder;
 	}
@@ -896,11 +905,17 @@ void ProjectPanel::popupMenuCmd(int cmdID)
 		}
 		break;
 
-		case IDM_PROJECT_ADDFILESRECUSIVELY :
+		case IDM_PROJECT_ADDFILESRECUSIVELY:
 		{
-			addFilesFromDirectory(hTreeItem);
+			addFilesFromDirectory(hTreeItem, false);
 			if (getNodeType(hTreeItem) == nodeType_folder)
 				_treeView.setItemImage(hTreeItem, INDEX_OPEN_NODE, INDEX_OPEN_NODE);
+		}
+		break;
+
+		case IDM_PROJECT_EDITADDFOLDERMONITOR:
+		{
+			addFilesFromDirectory(hTreeItem, true);
 		}
 		break;
 
@@ -1026,20 +1041,20 @@ void ProjectPanel::popupMenuCmd(int cmdID)
 			tvItem.cchTextMax = MAX_PATH;
 			
 			SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0,(LPARAM)&tvItem);
-			if (!tvItem.lParam)
+			TreeViewFileInfo& tvFileInfo = *(TreeViewFileInfo*)tvItem.lParam;
+			if (!tvFileInfo.isFile())
 				return;
-			generic_string * fn = (generic_string *)tvItem.lParam;
 
-			if (fileRelocalizerDlg.doDialog(fn->c_str()) == 0)
+			if (fileRelocalizerDlg.doDialog(tvFileInfo._filePath.c_str()) == 0)
 			{
 				generic_string newValue = fileRelocalizerDlg.getFullFilePath();
-				if (*fn == newValue)
+				if (tvFileInfo._filePath == newValue)
 					return;
 
-				*fn = newValue;
-				TCHAR *strValueLabel = ::PathFindFileName(fn->c_str());
+				tvFileInfo._filePath = newValue;
+				TCHAR *strValueLabel = ::PathFindFileName(tvFileInfo._filePath.c_str());
 				lstrcpy(textBuffer, strValueLabel);
-				int iImage = ::PathFileExists(fn->c_str())?INDEX_LEAF:INDEX_LEAF_INVALID;
+				int iImage = ::PathFileExists(tvFileInfo._filePath.c_str()) ? INDEX_LEAF : INDEX_LEAF_INVALID;
 				tvItem.iImage = tvItem.iSelectedImage = iImage;
 				SendMessage(_treeView.getHSelf(), TVM_SETITEM, 0,(LPARAM)&tvItem);
 				setWorkSpaceDirty(true);
@@ -1085,7 +1100,7 @@ void ProjectPanel::addFiles(HTREEITEM hTreeItem)
 	}
 }
 
-void ProjectPanel::recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTreeItem)
+void ProjectPanel::recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTreeItem, bool virtl)
 {
 	bool isRecursive = true;
 	bool isInHiddenDir = false;
@@ -1119,7 +1134,7 @@ void ProjectPanel::recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTre
 					pathDir += foundData.cFileName;
 					pathDir += TEXT("\\");
 					HTREEITEM addedItem = addFolder(hTreeItem, foundData.cFileName);
-					recursiveAddFilesFrom(pathDir.c_str(), addedItem);
+					recursiveAddFilesFrom(pathDir.c_str(), addedItem, virtl);
 				}
 			}
 		}
@@ -1141,7 +1156,7 @@ void ProjectPanel::recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTre
 	::FindClose(hFile);
 }
 
-void ProjectPanel::addFilesFromDirectory(HTREEITEM hTreeItem)
+void ProjectPanel::addFilesFromDirectory(HTREEITEM hTreeItem, bool virtl )
 {
 	if (_selDirOfFilesFromDirDlg == TEXT("") && _workSpaceFilePath != TEXT(""))
 	{
@@ -1158,14 +1173,14 @@ void ProjectPanel::addFilesFromDirectory(HTREEITEM hTreeItem)
 
 	if (dirPath != TEXT(""))
 	{
-		recursiveAddFilesFrom(dirPath.c_str(), hTreeItem);
+		recursiveAddFilesFrom(dirPath.c_str(), hTreeItem, virtl);
 		_treeView.expand(hTreeItem);
 		setWorkSpaceDirty(true);
 		_selDirOfFilesFromDirDlg = dirPath;
 	}
 }
 
-BOOL CALLBACK FileRelocalizerDlg::run_dlgProc(UINT Message, WPARAM wParam, LPARAM) 
+BOOL CALLBACK FileRelocalizerDlg::run_dlgProc(UINT Message, WPARAM wParam, LPARAM)
 {
 	switch (Message)
 	{

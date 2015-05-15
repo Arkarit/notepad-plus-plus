@@ -38,6 +38,24 @@ struct TreeStateNode {
 	std::vector<TreeStateNode> _children;
 };
 
+enum TreeViewFileType {
+	tfFileType_generic, tfFileType_filesystemRoot, tfFileType_filesystem,
+};
+
+struct TreeViewFileInfo {
+	generic_string _filePath;
+	TreeViewFileType _fileType;
+	bool isFile() {
+		return !_filePath.empty();
+	}
+	bool isDir() {
+		return _filePath.empty();
+	}
+	TreeViewFileInfo(const TCHAR* filePath = NULL, TreeViewFileType fileType = tfFileType_generic) : _fileType(fileType) {
+		if (filePath != NULL)
+			_filePath = generic_string(filePath);
+	}
+};
 
 class TreeView : public Window {
 public:
@@ -46,7 +64,7 @@ public:
 	virtual ~TreeView() {};
 	virtual void init(HINSTANCE hInst, HWND parent, int treeViewID);
 	virtual void destroy();
-	HTREEITEM addItem(const TCHAR *itemName, HTREEITEM hParentItem, int iImage, const TCHAR *filePath = NULL);
+	HTREEITEM addItem(const TCHAR *itemName, HTREEITEM hParentItem, int iImage, const TCHAR *filePath = NULL, TreeViewFileType fileType = tfFileType_generic);
 	bool setItemParam(HTREEITEM Item2Set, const TCHAR *paramStr);
 	HTREEITEM searchSubItemByName(const TCHAR *itemName, HTREEITEM hParentItem);
 	void removeItem(HTREEITEM hTreeItem);

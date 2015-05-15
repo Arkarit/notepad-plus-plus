@@ -80,16 +80,16 @@ bool TreeView::setItemParam(HTREEITEM Item2Set, const TCHAR *paramStr)
 	SendMessage(_hSelf, TVM_GETITEM, 0,(LPARAM)&tvItem);
 	
 	if (!tvItem.lParam) 
-		tvItem.lParam = (LPARAM)(new generic_string(paramStr));
+		tvItem.lParam = (LPARAM)(new TreeViewFileInfo(paramStr));
 	else
 	{
-		*((generic_string *)tvItem.lParam) = paramStr;
+		((TreeViewFileInfo *)tvItem.lParam)->_filePath = paramStr;
 	}
 	SendMessage(_hSelf, TVM_SETITEM, 0,(LPARAM)&tvItem);
 	return true;
 }
 
-HTREEITEM TreeView::addItem(const TCHAR *itemName, HTREEITEM hParentItem, int iImage, const TCHAR *filePath)
+HTREEITEM TreeView::addItem(const TCHAR *itemName, HTREEITEM hParentItem, int iImage, const TCHAR *filePath, TreeViewFileType fileType)
 {
 	TVITEM tvi;
 	tvi.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_PARAM; 
@@ -103,7 +103,7 @@ HTREEITEM TreeView::addItem(const TCHAR *itemName, HTREEITEM hParentItem, int iI
 	tvi.iSelectedImage = iImage;//isNode?INDEX_OPEN_NODE:INDEX_LEAF; 
 
 	// Save the full path of file in the item's application-defined data area. 
-	tvi.lParam = (filePath == NULL?0:(LPARAM)(new generic_string(filePath)));
+	tvi.lParam = (LPARAM)(new TreeViewFileInfo(filePath));
 
 	TVINSERTSTRUCT tvInsertStruct;
 	tvInsertStruct.item = tvi; 
@@ -123,8 +123,9 @@ void TreeView::removeItem(HTREEITEM hTreeItem)
 	tvItem.hItem = hTreeItem;
 	tvItem.mask = TVIF_PARAM;
 	SendMessage(_hSelf, TVM_GETITEM, 0,(LPARAM)&tvItem);
+
 	if (tvItem.lParam)
-		delete (generic_string *)(tvItem.lParam);
+		delete (TreeViewFileInfo *)(tvItem.lParam);
 
 	// Remove the node
 	TreeView_DeleteItem(_hSelf, hTreeItem);
@@ -155,7 +156,7 @@ void TreeView::dupTree(HTREEITEM hTree2Dup, HTREEITEM hParentItem)
 		SendMessage(_hSelf, TVM_GETITEM, 0,(LPARAM)&tvItem);
 		if (tvItem.lParam)
 		{
-			tvItem.lParam = (LPARAM)(new generic_string(*((generic_string *)(tvItem.lParam))));
+			tvItem.lParam = (LPARAM)(new TreeViewFileInfo(*((TreeViewFileInfo *)(tvItem.lParam))));
 		}
 
 		TVINSERTSTRUCT tvInsertStruct;
@@ -203,7 +204,7 @@ void TreeView::cleanSubEntries(HTREEITEM hTreeItem)
 		SendMessage(_hSelf, TVM_GETITEM, 0,(LPARAM)&tvItem);
 		if (tvItem.lParam)
 		{
-			delete (generic_string *)(tvItem.lParam);
+			delete (TreeViewFileInfo *)(tvItem.lParam);
 		}
 		cleanSubEntries(hItem);
 	}
@@ -355,8 +356,7 @@ void TreeView::moveTreeViewItem(HTREEITEM draggedItem, HTREEITEM targetItem)
 	tvDraggingItem.hItem = draggedItem;
 	SendMessage(_hSelf, TVM_GETITEM, 0,(LPARAM)&tvDraggingItem);
 
-	if (tvDraggingItem.lParam)
-		tvDraggingItem.lParam = (LPARAM)(new generic_string(*((generic_string *)(tvDraggingItem.lParam))));
+	tvDraggingItem.lParam = (LPARAM)(new TreeViewFileInfo(*((TreeViewFileInfo *)(tvDraggingItem.lParam))));
 
     TVINSERTSTRUCT tvInsertStruct;
 	tvInsertStruct.item = tvDraggingItem;
@@ -416,10 +416,8 @@ bool TreeView::swapTreeViewItem(HTREEITEM itemGoDown, HTREEITEM itemGoUp)
 
 	// make copy recursively for both items
 
-	if (tvUpItem.lParam)
-		tvUpItem.lParam = (LPARAM)(new generic_string(*((generic_string *)(tvUpItem.lParam))));
-	if (tvDownItem.lParam)
-		tvDownItem.lParam = (LPARAM)(new generic_string(*((generic_string *)(tvDownItem.lParam))));
+	tvUpItem.lParam = (LPARAM)(new TreeViewFileInfo(*((TreeViewFileInfo *)(tvUpItem.lParam))));
+	tvDownItem.lParam = (LPARAM)(new TreeViewFileInfo(*((TreeViewFileInfo *)(tvDownItem.lParam))));
 
 	// add 2 new items
     TVINSERTSTRUCT tvInsertUp;
@@ -520,7 +518,7 @@ bool TreeView::searchLeafRecusivelyAndBuildTree(HTREEITEM tree2Build, const gene
 		{
 			if (tvItem.lParam)
 			{
-				tvItem.lParam = (LPARAM)(new generic_string(*((generic_string *)(tvItem.lParam))));
+				tvItem.lParam = (LPARAM)(new TreeViewFileInfo(*((TreeViewFileInfo *)(tvItem.lParam))));
 			}
 			TVINSERTSTRUCT tvInsertStruct;
 			tvInsertStruct.item = tvItem;
@@ -560,10 +558,7 @@ bool TreeView::retrieveFoldingStateTo(TreeStateNode & treeState2Construct, HTREE
 	treeState2Construct._isExpanded = (tvItem.state & TVIS_EXPANDED) != 0;
 	treeState2Construct._isSelected = (tvItem.state & TVIS_SELECTED) != 0;
 
-	if (tvItem.lParam)
-	{
-		treeState2Construct._extraData = *((generic_string *)tvItem.lParam);
-	}
+	treeState2Construct._extraData = ((TreeViewFileInfo *)tvItem.lParam)->_filePath;
 
 	int i = 0;
 	for (HTREEITEM hItem = getChildFrom(treeviewNode); hItem != NULL; hItem = getNextSibling(hItem))
@@ -591,11 +586,8 @@ bool TreeView::restoreFoldingStateFrom(const TreeStateNode & treeState2Compare, 
 	if (treeState2Compare._label != textBuffer)
 		return false;
 
-	if (tvItem.lParam)
-	{
-		if (treeState2Compare._extraData != *((generic_string *)tvItem.lParam))
-			return false;
-	}
+	if (treeState2Compare._extraData != ((TreeViewFileInfo *)tvItem.lParam)->_filePath)
+		return false;
 
 	if (treeState2Compare._isExpanded) //= (tvItem.state & TVIS_EXPANDED) != 0;
 		expand(treeviewNode);

@@ -54,6 +54,7 @@
 #define PM_EDITNEWFOLDER           TEXT("Add Folder")
 #define PM_EDITADDFILES            TEXT("Add Files...")
 #define PM_EDITADDFILESRECUSIVELY  TEXT("Add Files from Directory...")
+#define PM_EDITADDFOLDERMONITOR    TEXT("Add Folder Monitor...")
 #define PM_EDITREMOVE              TEXT("Remove\tDEL")
 #define PM_EDITMODIFYFILE          TEXT("Modify File Path")
 
@@ -64,7 +65,7 @@
 #define PM_MOVEDOWNENTRY           TEXT("Move Down\tCtrl+Down")
 
 enum NodeType {
-	nodeType_root = 0, nodeType_project = 1, nodeType_folder = 2, nodeType_file = 3
+	nodeType_root = 0, nodeType_project = 1, nodeType_folder = 2, nodeType_file = 3, nodeType_folderMonitor = 4,
 };
 
 class TiXmlNode;
@@ -123,8 +124,8 @@ protected:
 	void destroyMenus();
 	BOOL setImageList(int root_clean_id, int root_dirty_id, int project_id, int open_node_id, int closed_node_id, int leaf_id, int ivalid_leaf_id);
 	void addFiles(HTREEITEM hTreeItem);
-	void addFilesFromDirectory(HTREEITEM hTreeItem);
-	void recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTreeItem);
+	void addFilesFromDirectory(HTREEITEM hTreeItem, bool virtl);
+	void recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTreeItem, bool virtl);
 	HTREEITEM addFolder(HTREEITEM hTreeItem, const TCHAR *folderName);
 
 	bool writeWorkSpace(TCHAR *projectFileName = NULL);

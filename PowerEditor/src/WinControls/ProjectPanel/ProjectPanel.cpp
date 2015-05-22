@@ -447,6 +447,12 @@ void ProjectPanel::buildProjectXml(TiXmlNode *node, HTREEITEM hItem, const TCHAR
 			TiXmlNode *fileLeaf = node->InsertEndChild(TiXmlElement(TEXT("File")));
 			fileLeaf->ToElement()->SetAttribute(TEXT("name"), newFn.c_str());
 		}
+		else if (tvFileInfo.isFolderMonitor())
+		{
+			generic_string newFn = getRelativePath(tvFileInfo._filePath, fn2write);
+			TiXmlNode *fileLeaf = node->InsertEndChild(TiXmlElement(TEXT("FolderMonitor")));
+			fileLeaf->ToElement()->SetAttribute(TEXT("name"), newFn.c_str());
+		}
 		else
 		{
 			TiXmlNode *folderNode = node->InsertEndChild(TiXmlElement(TEXT("Folder")));
@@ -487,6 +493,21 @@ bool ProjectPanel::buildTreeFrom(TiXmlNode *projectRoot, HTREEITEM hParentItem)
 				if (!isOK)
 					return false;
 			}
+		}
+		if (lstrcmp(TEXT("FolderMonitor"), v) == 0)
+		{
+
+			const TCHAR *strValue = (childNode->ToElement())->Attribute(TEXT("name"));
+			generic_string fullPath = getAbsoluteFilePath(strValue);
+
+			generic_string newFolderLabel(fullPath);
+			const size_t lastSlashIdx = newFolderLabel.find_last_of(TEXT("\\/"));
+			if (std::string::npos != lastSlashIdx)
+			{
+				newFolderLabel.erase(0, lastSlashIdx + 1);
+			}
+			HTREEITEM addedItem = addFolder(hParentItem, newFolderLabel.c_str(), true, fullPath.c_str());
+			recursiveAddFilesFrom(fullPath.c_str(), addedItem, true);
 		}
 		else if (lstrcmp(TEXT("File"), v) == 0)
 		{
@@ -636,7 +657,7 @@ void ProjectPanel::notified(LPNMHDR notification)
 				{
 					HTREEITEM hItem = _treeView.getSelection();
 					NodeType nType = getNodeType(hItem);
-					if (nType == nodeType_project || nType == nodeType_folder)
+					if (nType == nodeType_project || nType == nodeType_folder || nType == nodeType_folderMonitor)
 						popupMenuCmd(IDM_PROJECT_DELETEFOLDER);
 					else if (nType == nodeType_file)
 						popupMenuCmd(IDM_PROJECT_DELETEFILE);
@@ -727,14 +748,22 @@ NodeType ProjectPanel::getNodeType(HTREEITEM hItem)
 		return nodeType_project;
 	}
 	// Folder
-	else if (tvFileInfo.isDir())
+	else if (tvFileInfo.isFolder())
 	{
 		return nodeType_folder;
 	}
 	// File
-	else
+	else if (tvFileInfo.isFile())
 	{
 		return nodeType_file;
+	}
+	else if (tvFileInfo.isFolderMonitor())
+	{
+		return nodeType_folderMonitor;
+	}
+	else
+	{
+		return nodeType_invalid;
 	}
 }
 
@@ -782,9 +811,17 @@ POINT ProjectPanel::getMenuDisplyPoint(int iButton)
 	return p;
 }
 
-HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName)
+HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, bool virtl, const TCHAR *monitorPath)
 {
-	HTREEITEM addedItem = _treeView.addItem(folderName, hTreeItem, INDEX_CLOSED_NODE);
+	TreeViewFileType tvFileType(tfFileType_generic);
+	if (virtl)
+	{
+		if (monitorPath)
+			tvFileType = tfFileType_fsMonitorRoot;
+		else
+			tvFileType = tfFileType_fsMonitor;
+	}
+	HTREEITEM addedItem = _treeView.addItem(folderName, hTreeItem, INDEX_CLOSED_NODE, monitorPath, tvFileType);
 	
 	TreeView_Expand(_treeView.getHSelf(), hTreeItem, TVE_EXPAND);
 	TreeView_EditLabel(_treeView.getHSelf(), addedItem);
@@ -1133,7 +1170,7 @@ void ProjectPanel::recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTre
 						pathDir += TEXT("\\");
 					pathDir += foundData.cFileName;
 					pathDir += TEXT("\\");
-					HTREEITEM addedItem = addFolder(hTreeItem, foundData.cFileName);
+					HTREEITEM addedItem = addFolder(hTreeItem, foundData.cFileName, virtl);
 					recursiveAddFilesFrom(pathDir.c_str(), addedItem, virtl);
 				}
 			}
@@ -1156,7 +1193,7 @@ void ProjectPanel::recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTre
 	::FindClose(hFile);
 }
 
-void ProjectPanel::addFilesFromDirectory(HTREEITEM hTreeItem, bool virtl )
+void ProjectPanel::addFilesFromDirectory(HTREEITEM hTreeItem, bool virtl)
 {
 	if (_selDirOfFilesFromDirDlg == TEXT("") && _workSpaceFilePath != TEXT(""))
 	{
@@ -1173,6 +1210,17 @@ void ProjectPanel::addFilesFromDirectory(HTREEITEM hTreeItem, bool virtl )
 
 	if (dirPath != TEXT(""))
 	{
+		if (virtl)
+		{
+			generic_string newFolderLabel(dirPath);
+			const size_t lastSlashIdx = newFolderLabel.find_last_of(TEXT("\\/"));
+			if (std::string::npos != lastSlashIdx)
+			{
+				newFolderLabel.erase(0, lastSlashIdx + 1);
+			}
+			hTreeItem = addFolder(hTreeItem, newFolderLabel.c_str(), true, dirPath.c_str());
+		}
+
 		recursiveAddFilesFrom(dirPath.c_str(), hTreeItem, virtl);
 		_treeView.expand(hTreeItem);
 		setWorkSpaceDirty(true);

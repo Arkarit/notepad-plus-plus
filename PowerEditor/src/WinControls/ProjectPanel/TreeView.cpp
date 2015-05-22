@@ -103,7 +103,7 @@ HTREEITEM TreeView::addItem(const TCHAR *itemName, HTREEITEM hParentItem, int iI
 	tvi.iSelectedImage = iImage;//isNode?INDEX_OPEN_NODE:INDEX_LEAF; 
 
 	// Save the full path of file in the item's application-defined data area. 
-	tvi.lParam = (LPARAM)(new TreeViewFileInfo(filePath));
+	tvi.lParam = (LPARAM)(new TreeViewFileInfo(filePath, fileType));
 
 	TVINSERTSTRUCT tvInsertStruct;
 	tvInsertStruct.item = tvi; 

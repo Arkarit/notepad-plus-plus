@@ -65,7 +65,7 @@
 #define PM_MOVEDOWNENTRY           TEXT("Move Down\tCtrl+Down")
 
 enum NodeType {
-	nodeType_root = 0, nodeType_project = 1, nodeType_folder = 2, nodeType_file = 3, nodeType_folderMonitor = 4,
+	nodeType_invalid = -1, nodeType_root = 0, nodeType_project = 1, nodeType_folder = 2, nodeType_file = 3, nodeType_folderMonitor = 4,
 };
 
 class TiXmlNode;
@@ -126,7 +126,7 @@ protected:
 	void addFiles(HTREEITEM hTreeItem);
 	void addFilesFromDirectory(HTREEITEM hTreeItem, bool virtl);
 	void recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTreeItem, bool virtl);
-	HTREEITEM addFolder(HTREEITEM hTreeItem, const TCHAR *folderName);
+	HTREEITEM addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, bool virtl = false, const TCHAR *monitorPath=NULL);
 
 	bool writeWorkSpace(TCHAR *projectFileName = NULL);
 	generic_string getRelativePath(const generic_string & fn, const TCHAR *workSpaceFileName);

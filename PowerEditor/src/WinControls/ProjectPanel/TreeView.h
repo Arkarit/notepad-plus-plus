@@ -39,17 +39,20 @@ struct TreeStateNode {
 };
 
 enum TreeViewFileType {
-	tfFileType_generic, tfFileType_filesystemRoot, tfFileType_filesystem,
+	tfFileType_generic, tfFileType_fsMonitorRoot, tfFileType_fsMonitor,
 };
 
 struct TreeViewFileInfo {
 	generic_string _filePath;
 	TreeViewFileType _fileType;
 	bool isFile() {
-		return !_filePath.empty();
+		return !_filePath.empty() && _fileType == tfFileType_generic;
 	}
-	bool isDir() {
-		return _filePath.empty();
+	bool isFolder() {
+		return _filePath.empty() && _fileType == tfFileType_generic;
+	}
+	bool isFolderMonitor() {
+		return _fileType == tfFileType_fsMonitorRoot;
 	}
 	TreeViewFileInfo(const TCHAR* filePath = NULL, TreeViewFileType fileType = tfFileType_generic) : _fileType(fileType) {
 		if (filePath != NULL)

@@ -37,13 +37,16 @@
 #define CX_BITMAP         16
 #define CY_BITMAP         16
 
-#define INDEX_CLEAN_ROOT     0
-#define INDEX_DIRTY_ROOT     1
-#define INDEX_PROJECT        2
-#define INDEX_OPEN_NODE	     3
-#define INDEX_CLOSED_NODE    4
-#define INDEX_LEAF           5
-#define INDEX_LEAF_INVALID   6
+#define INDEX_CLEAN_ROOT      0
+#define INDEX_DIRTY_ROOT      1
+#define INDEX_PROJECT         2
+#define INDEX_OPEN_NODE	      3
+#define INDEX_CLOSED_NODE     4
+#define INDEX_LEAF            5
+#define INDEX_LEAF_INVALID    6
+#define INDEX_OPEN_MONITOR    7
+#define INDEX_CLOSED_MONITOR  8
+#define INDEX_INVALID_MONITOR 9
 
 #define GET_X_LPARAM(lp)                        ((int)(short)LOWORD(lp))
 #define GET_Y_LPARAM(lp)                        ((int)(short)HIWORD(lp))
@@ -85,7 +88,7 @@ BOOL CALLBACK ProjectPanel::run_dlgProc(UINT message, WPARAM wParam, LPARAM lPar
 
 			_treeView.init(_hInst, _hSelf, ID_PROJECTTREEVIEW);
 
-			setImageList(IDI_PROJECT_WORKSPACE, IDI_PROJECT_WORKSPACEDIRTY, IDI_PROJECT_PROJECT, IDI_PROJECT_FOLDEROPEN, IDI_PROJECT_FOLDERCLOSE, IDI_PROJECT_FILE, IDI_PROJECT_FILEINVALID);
+			setImageList(IDI_PROJECT_WORKSPACE, IDI_PROJECT_WORKSPACEDIRTY, IDI_PROJECT_PROJECT, IDI_PROJECT_FOLDEROPEN, IDI_PROJECT_FOLDERCLOSE, IDI_PROJECT_FILE, IDI_PROJECT_FILEINVALID, IDI_PROJECT_FOLDERMONITOROPEN, IDI_PROJECT_FOLDERMONITORCLOSE, IDI_PROJECT_FOLDERMONITORINVALID);
 			_treeView.addCanNotDropInList(INDEX_LEAF);
 			_treeView.addCanNotDropInList(INDEX_LEAF_INVALID);
 
@@ -258,7 +261,7 @@ void ProjectPanel::initMenus()
 }
 
 
-BOOL ProjectPanel::setImageList(int root_clean_id, int root_dirty_id, int project_id, int open_node_id, int closed_node_id, int leaf_id, int ivalid_leaf_id) 
+BOOL ProjectPanel::setImageList(int root_clean_id, int root_dirty_id, int project_id, int open_node_id, int closed_node_id, int leaf_id, int ivalid_leaf_id, int open_monitor_id, int closed_monitor_id, int invalid_monitor_id) 
 {
 	HBITMAP hbmp;
 	COLORREF maskColour = RGB(192, 192, 192);
@@ -306,6 +309,24 @@ BOOL ProjectPanel::setImageList(int root_clean_id, int root_dirty_id, int projec
 	DeleteObject(hbmp);
 
 	hbmp = LoadBitmap(_hInst, MAKEINTRESOURCE(ivalid_leaf_id));
+	if (hbmp == NULL)
+		return FALSE;
+	ImageList_AddMasked(_hImaLst, hbmp, maskColour);
+	DeleteObject(hbmp);
+
+	hbmp = LoadBitmap(_hInst, MAKEINTRESOURCE(open_monitor_id));
+	if (hbmp == NULL)
+		return FALSE;
+	ImageList_AddMasked(_hImaLst, hbmp, maskColour);
+	DeleteObject(hbmp);
+
+	hbmp = LoadBitmap(_hInst, MAKEINTRESOURCE(closed_monitor_id));
+	if (hbmp == NULL)
+		return FALSE;
+	ImageList_AddMasked(_hImaLst, hbmp, maskColour);
+	DeleteObject(hbmp);
+
+	hbmp = LoadBitmap(_hInst, MAKEINTRESOURCE(invalid_monitor_id));
 	if (hbmp == NULL)
 		return FALSE;
 	ImageList_AddMasked(_hImaLst, hbmp, maskColour);
@@ -708,6 +729,17 @@ void ProjectPanel::notified(LPNMHDR notification)
 						_treeView.setItemImage(nmtv->itemNew.hItem, INDEX_OPEN_NODE, INDEX_OPEN_NODE);
 					}
 				}
+				else if (getNodeType(nmtv->itemNew.hItem) == nodeType_folderMonitor)
+				{
+					if (nmtv->action == TVE_COLLAPSE)
+					{
+						_treeView.setItemImage(nmtv->itemNew.hItem, INDEX_CLOSED_MONITOR, INDEX_CLOSED_MONITOR);
+					}
+					else if (nmtv->action == TVE_EXPAND)
+					{
+						_treeView.setItemImage(nmtv->itemNew.hItem, INDEX_OPEN_MONITOR, INDEX_OPEN_MONITOR);
+					}
+				}
 			}
 			break;
 
@@ -814,19 +846,31 @@ POINT ProjectPanel::getMenuDisplyPoint(int iButton)
 HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, bool virtl, const TCHAR *monitorPath)
 {
 	TreeViewFileType tvFileType(tfFileType_generic);
+	int iconindex = INDEX_CLOSED_NODE;
+
 	if (virtl)
 	{
 		if (monitorPath)
+		{
 			tvFileType = tfFileType_fsMonitorRoot;
+			iconindex = ::PathFileExists(monitorPath) ? INDEX_CLOSED_MONITOR : INDEX_INVALID_MONITOR;
+		}
 		else
+		{
 			tvFileType = tfFileType_fsMonitor;
+			iconindex = INDEX_CLOSED_MONITOR;
+		}
 	}
-	HTREEITEM addedItem = _treeView.addItem(folderName, hTreeItem, INDEX_CLOSED_NODE, monitorPath, tvFileType);
+
+
+	HTREEITEM addedItem = _treeView.addItem(folderName, hTreeItem, iconindex, monitorPath, tvFileType);
 	
 	TreeView_Expand(_treeView.getHSelf(), hTreeItem, TVE_EXPAND);
 	TreeView_EditLabel(_treeView.getHSelf(), addedItem);
 	if (getNodeType(hTreeItem) == nodeType_folder)
 		_treeView.setItemImage(hTreeItem, INDEX_OPEN_NODE, INDEX_OPEN_NODE);
+	else if (getNodeType(hTreeItem) == nodeType_folderMonitor)
+		_treeView.setItemImage(hTreeItem, INDEX_OPEN_MONITOR, INDEX_OPEN_MONITOR);
 
 	return addedItem;
 }
@@ -953,6 +997,8 @@ void ProjectPanel::popupMenuCmd(int cmdID)
 		case IDM_PROJECT_EDITADDFOLDERMONITOR:
 		{
 			addFilesFromDirectory(hTreeItem, true);
+			if (getNodeType(hTreeItem) == nodeType_folderMonitor)
+				_treeView.setItemImage(hTreeItem, INDEX_OPEN_MONITOR, INDEX_OPEN_MONITOR);
 		}
 		break;
 

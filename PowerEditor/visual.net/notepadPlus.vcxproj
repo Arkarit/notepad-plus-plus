@@ -155,6 +155,7 @@ copy ..\src\contextMenu.xml ..\bin\contextMenu.xml
     <ClCompile Include="..\src\ScitillaComponent\columnEditor.cpp" />
     <ClCompile Include="..\src\MISC\Common\Common.cpp" />
     <ClCompile Include="..\src\WinControls\ContextMenu\ContextMenu.cpp" />
+    <ClCompile Include="..\src\WinControls\ProjectPanel\DirectoryWatcher.cpp" />
     <ClCompile Include="..\src\WinControls\TabBar\ControlsTab.cpp" />
     <ClCompile Include="..\src\WinControls\DockingWnd\DockingCont.cpp" />
     <ClCompile Include="..\src\WinControls\DockingWnd\DockingManager.cpp" />
@@ -446,6 +447,7 @@ copy ..\src\contextMenu.xml ..\bin\contextMenu.xml
     <ClInclude Include="..\src\WinControls\Grid\BabyGrid.h" />
     <ClInclude Include="..\src\WinControls\Grid\BabyGridWrapper.h" />
     <ClInclude Include="..\src\ScitillaComponent\Buffer.h" />
+    <ClInclude Include="..\src\WinControls\ProjectPanel\DirectoryWatcher.h" />
     <ClInclude Include="..\uchardet\CharDistribution.h" />
     <ClInclude Include="..\src\WinControls\ClipboardHistory\clipboardHistoryPanel.h" />
     <ClInclude Include="..\src\WinControls\ClipboardHistory\clipboardHistoryPanel_rc.h" />

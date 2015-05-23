@@ -258,6 +258,12 @@ void ProjectPanel::initMenus()
 	::InsertMenu(_hFileMenu, 0, MF_BYCOMMAND, IDM_PROJECT_RENAME, edit_rename.c_str());
 	::InsertMenu(_hFileMenu, 0, MF_BYCOMMAND, IDM_PROJECT_DELETEFILE, edit_remove.c_str());
 	::InsertMenu(_hFileMenu, 0, MF_BYCOMMAND, IDM_PROJECT_MODIFYFILEPATH, edit_modifyfile.c_str());
+
+	_hFolderMonitorMenu = ::CreatePopupMenu();
+	::InsertMenu(_hFolderMonitorMenu, 0, MF_BYCOMMAND, IDM_PROJECT_MOVEUP, edit_moveup.c_str());
+	::InsertMenu(_hFolderMonitorMenu, 0, MF_BYCOMMAND, IDM_PROJECT_MOVEDOWN, edit_movedown.c_str());
+	::InsertMenu(_hFolderMonitorMenu, 0, MF_BYCOMMAND, IDM_PROJECT_DELETEFILE, edit_remove.c_str());
+
 }
 
 
@@ -348,6 +354,7 @@ void ProjectPanel::destroyMenus()
 	::DestroyMenu(_hProjectMenu);
 	::DestroyMenu(_hFolderMenu);
 	::DestroyMenu(_hFileMenu);
+	::DestroyMenu(_hFolderMonitorMenu);
 }
 
 bool ProjectPanel::openWorkSpace(const TCHAR *projectFileName)
@@ -583,6 +590,26 @@ void ProjectPanel::openSelectFile()
 }
 
 
+HMENU ProjectPanel::getContextMenu(HTREEITEM hTreeItem) const
+{
+	HMENU hMenu;
+	NodeType nodeType = getNodeType(hTreeItem);
+	if (nodeType == nodeType_root)
+		hMenu = _hWorkSpaceMenu;
+	else if (nodeType == nodeType_project)
+		hMenu = _hProjectMenu;
+	else if (nodeType == nodeType_folder)
+		hMenu = _hFolderMenu;
+	else if (nodeType == nodeType_monitorFolderRoot)
+		hMenu = _hFolderMonitorMenu;
+	else if (nodeType == nodeType_monitorFolder || nodeType == nodeType_monitorFile)
+		hMenu = NULL; // currently no context menu for monitored files
+	else //nodeType_file
+		hMenu = _hFileMenu;
+	return hMenu;
+
+}
+
 void ProjectPanel::notified(LPNMHDR notification)
 {
 	if ((notification->hwndFrom == _treeView.getHSelf()))
@@ -761,7 +788,7 @@ void ProjectPanel::setWorkSpaceDirty(bool isDirty)
 	_treeView.setItemImage(_treeView.getRoot(), iImg, iImg);
 }
 
-NodeType ProjectPanel::getNodeType(HTREEITEM hItem)
+NodeType ProjectPanel::getNodeType(HTREEITEM hItem) const
 {
 	TVITEM tvItem;
 	tvItem.hItem = hItem;
@@ -828,19 +855,9 @@ void ProjectPanel::showContextMenu(int x, int y)
 		_treeView.selectItem(tvHitInfo.hItem);
 
 		// get clicked item type
-		NodeType nodeType = getNodeType(tvHitInfo.hItem);
-		HMENU hMenu = NULL;
-		if (nodeType == nodeType_root)
-			hMenu = _hWorkSpaceMenu;
-		else if (nodeType == nodeType_project)
-			hMenu = _hProjectMenu;
-		else if (nodeType == nodeType_folder || nodeType == nodeType_monitorFolderRoot)
-			hMenu = _hFolderMenu;
-		else if (nodeType == nodeType_monitorFolder || nodeType == nodeType_monitorFile)
-			return; // currently no context menu for monitored files
-		else //nodeType_file
-			hMenu = _hFileMenu;
-		TrackPopupMenu(hMenu, TPM_LEFTALIGN, x, y, 0, _hSelf, NULL);
+		HMENU hMenu = getContextMenu(tvHitInfo.hItem);
+		if (hMenu != NULL)
+			TrackPopupMenu(hMenu, TPM_LEFTALIGN, x, y, 0, _hSelf, NULL);
 	}
 }
 
@@ -910,18 +927,7 @@ void ProjectPanel::popupMenuCmd(int cmdID)
 		case IDB_EDIT_BTN:
 		{
 			POINT p = getMenuDisplyPoint(1);
-			HMENU hMenu = NULL;
-			NodeType nodeType = getNodeType(hTreeItem);
-			if (nodeType == nodeType_root)
-				hMenu = _hWorkSpaceMenu;
-			else if (nodeType == nodeType_project)
-				hMenu = _hProjectMenu;
-			else if (nodeType == nodeType_folder || nodeType == nodeType_monitorFolderRoot)
-				hMenu = _hFolderMenu;
-			else if (nodeType == nodeType_monitorFolder || nodeType == nodeType_monitorFile)
-				return; // currently no context menu for monitored files
-			else //nodeType_file
-				hMenu = _hFileMenu;
+			HMENU hMenu = getContextMenu(hTreeItem);
 			if (hMenu)
 				TrackPopupMenu(hMenu, TPM_LEFTALIGN, p.x, p.y, 0, _hSelf, NULL);
 		}

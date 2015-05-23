@@ -74,7 +74,7 @@ class ProjectPanel : public DockingDlgInterface {
 public:
 	ProjectPanel(): DockingDlgInterface(IDD_PROJECTPANEL),\
 		_hToolbarMenu(NULL), _hWorkSpaceMenu(NULL), _hProjectMenu(NULL),\
-		_hFolderMenu(NULL), _hFileMenu(NULL){};
+		_hFolderMenu(NULL), _hFileMenu(NULL), _hFolderMonitorMenu(NULL){};
 
 
 	void init(HINSTANCE hInst, HWND hPere) {
@@ -115,7 +115,7 @@ protected:
 	TreeView _treeView;
 	HIMAGELIST _hImaLst;
 	HWND _hToolbarMenu;
-	HMENU _hWorkSpaceMenu, _hProjectMenu, _hFolderMenu, _hFileMenu;
+	HMENU _hWorkSpaceMenu, _hProjectMenu, _hFolderMenu, _hFileMenu, _hFolderMonitorMenu;
 	generic_string _workSpaceFilePath;
 	generic_string _selDirOfFilesFromDirDlg;
 	bool _isDirty;
@@ -131,7 +131,7 @@ protected:
 	bool writeWorkSpace(TCHAR *projectFileName = NULL);
 	generic_string getRelativePath(const generic_string & fn, const TCHAR *workSpaceFileName);
 	void buildProjectXml(TiXmlNode *root, HTREEITEM hItem, const TCHAR* fn2write);
-	NodeType getNodeType(HTREEITEM hItem);
+	NodeType getNodeType(HTREEITEM hItem) const;
 	void setWorkSpaceDirty(bool isDirty);
 	void popupMenuCmd(int cmdID);
 	POINT getMenuDisplyPoint(int iButton);
@@ -141,6 +141,7 @@ protected:
 	void showContextMenu(int x, int y);
 	generic_string getAbsoluteFilePath(const TCHAR * relativePath);
 	void openSelectFile();
+	HMENU getContextMenu(HTREEITEM hTreeItem) const;
 };
 
 class FileRelocalizerDlg : public StaticDialog

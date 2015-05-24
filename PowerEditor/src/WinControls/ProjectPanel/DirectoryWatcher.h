@@ -29,19 +29,47 @@
 #ifndef DIRECTORYWATCHER_H
 #define  DIRECTORYWATCHER_H
 
+#include "resource.h"
+#define DIRECTORYWATCHER_UPDATE DIRECTORYWATCHER_USER
+
+// this class monitors a specific directory for changes in a separate thread.
+// If a change occurs, it sends a DIRECTORYWATCHER_UPDATE message to the owner's window, with a tree item handle in lparam.
+//
+// unfortunately, its usage is a bit unhandy due to the process of creating a tree view element:
+// 1. Create your user data containing this DirectoryWatcher
+// 2. Create the tree view element with a pointer to user data
+// 3. Start the DirectoryWatcher thread, passing the new tree view element.
+//
+// Note that this also applies to the copy constructor.
+// It only creates a non-running copy, which has to be started manually with startThread() (multiple threads for a single tree item make no sense at all).
+//
+
 class DirectoryWatcher
 {
 	friend static DWORD threadFunc(LPVOID data);
 	generic_string _filePath;
 	HANDLE _hThread;
 	HANDLE _hRunningEvent, _hStopEvent;
-	bool _valid;
+	bool _running;
+	HWND _hWnd;
+	HTREEITEM _treeItem;
+
 public:
-	DirectoryWatcher (const generic_string& filePath);
+
+	DirectoryWatcher(HWND hWnd, const generic_string& filePath);
 	virtual ~DirectoryWatcher();
+	DirectoryWatcher(const DirectoryWatcher& other);
+
+	void startThread(HTREEITEM treeItem);
+
 private:
+	void stopThread();
 	int thread();
 	static DWORD threadFunc(LPVOID data);
+	void post();
+	// assignment operator forbidden
+	DirectoryWatcher& operator= (const DirectoryWatcher& other) {}
+
 };
 
 #endif

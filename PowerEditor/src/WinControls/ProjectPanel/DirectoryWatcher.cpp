@@ -29,9 +29,37 @@
 #include "DirectoryWatcher.h"
 
 
-DirectoryWatcher::DirectoryWatcher(const generic_string& filePath) : _filePath(filePath), _hThread(NULL), _hRunningEvent(NULL), _hStopEvent(NULL), _valid(false)
+DirectoryWatcher::DirectoryWatcher(HWND hWnd, const generic_string& filePath) 
+	: _hWnd(hWnd)
+	, _filePath(filePath)
+	, _treeItem(NULL)
+	, _hThread(NULL)
+	, _hRunningEvent(NULL)
+	, _hStopEvent(NULL)
+	, _running(false)
 {
-	// Create manually reset non-signaled event
+}
+
+
+DirectoryWatcher::DirectoryWatcher(const DirectoryWatcher& other) 
+	: _hWnd(other._hWnd)
+	, _filePath(other._filePath)
+	, _treeItem(NULL)
+	, _hThread(NULL)
+	, _hRunningEvent(NULL)
+	, _hStopEvent(NULL)
+	, _running(false)
+{
+}
+
+DirectoryWatcher::~DirectoryWatcher()
+{
+	stopThread();
+}
+
+void DirectoryWatcher::startThread(HTREEITEM treeItem)
+{
+	_treeItem = treeItem;
 	_hRunningEvent = ::CreateEvent(NULL, TRUE, FALSE, NULL);
 	if (!_hRunningEvent)
 		return;
@@ -50,21 +78,42 @@ DirectoryWatcher::DirectoryWatcher(const generic_string& filePath) : _filePath(f
 	}
 
 	::WaitForSingleObject(_hRunningEvent, INFINITE);
+
 }
 
-
-DirectoryWatcher::~DirectoryWatcher ()
+void DirectoryWatcher::stopThread()
 {
-	if (_valid)
+	if (_running)
 	{
 		::SetEvent(_hStopEvent);
 		::WaitForSingleObject(_hThread, INFINITE);
 		::CloseHandle(_hThread);
 		::CloseHandle(_hRunningEvent);
 		::CloseHandle(_hStopEvent);
+		_running = false;
+		_hThread = NULL;
+		_hRunningEvent = NULL;
+		_hStopEvent = NULL;
+		_treeItem = NULL;
 	}
 
 }
+
+// this is the main thread routine to monitor directory changes.
+// Unfortunately, Windows afaik offers no way to monitor a non-existent directory. FindFirstChangeNotification() returns INVALID_HANDLE_VALUE in this case.
+// It might be possible to monitor the next valid parent dir, but this is complicated (even drive letters may be missing).
+// So we choose another way:
+//
+// There are two modes, an existing mode and a non-existing mode.
+//
+// The existing mode waits for either a directory change or the thread stop signal.
+// If it finds a directory change, it informs the tree view about it.
+// It then checks, if the directory has been removed completely, and if so, it switches to non-existing mode.
+// If not, it continues to wait for changes.
+//
+// The non-existing mode waits for 2 seconds for the thread stop signal.
+// If the 2 secs have passed without a stop signal, it checks the existence of the directory. If it now exists, it informs the tree view and switches to existing mode.
+// If it still does not exist, it continues waiting.
 
 int DirectoryWatcher::thread()
 {
@@ -75,7 +124,7 @@ int DirectoryWatcher::thread()
 	}
 	bool nonExistentMode = hFindChange == INVALID_HANDLE_VALUE;
 
-	_valid = true;
+	_running = true;
 	::SetEvent(_hRunningEvent);
 
 	HANDLE handles[2];
@@ -86,7 +135,6 @@ int DirectoryWatcher::thread()
 
 	while (!exitThread)
 	{
-
 		if (nonExistentMode)
 		{
 			// if the directory we wanted to monitor does not exist, we have no other chance than to poll it for creation.
@@ -107,7 +155,7 @@ int DirectoryWatcher::thread()
 				if (hFindChange != INVALID_HANDLE_VALUE)
 				{
 					nonExistentMode = false;
-					//TODO: send message to update the directory tree
+					post();
 				}
 			}
 		}
@@ -127,7 +175,7 @@ int DirectoryWatcher::thread()
 			}
 			else if (cause == WAIT_OBJECT_0)
 			{
-				//TODO: send message to update the directory tree
+				post();
 				if (PathFileExists(_filePath.c_str()))
 					FindNextChangeNotification(hFindChange);
 				else
@@ -150,4 +198,9 @@ DWORD DirectoryWatcher::threadFunc(LPVOID data)
 	DirectoryWatcher* pw = static_cast<DirectoryWatcher*>(data);
 	return (DWORD)pw->thread();
 
+}
+
+void DirectoryWatcher::post()
+{
+	SendMessage(_hWnd, DIRECTORYWATCHER_UPDATE, 0, (LPARAM)_treeItem);
 }

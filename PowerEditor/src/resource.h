@@ -443,10 +443,11 @@
 
 // See Notepad_plus_msgs.h
 //#define	RUNCOMMAND_USER    (WM_USER + 3000)
-#define SPLITTER_USER      (WM_USER + 4000)
-#define WORDSTYLE_USER     (WM_USER + 5000)
-#define COLOURPOPUP_USER   (WM_USER + 6000)
-#define BABYGRID_USER      (WM_USER + 7000)
+#define SPLITTER_USER         (WM_USER + 4000)
+#define WORDSTYLE_USER        (WM_USER + 5000)
+#define COLOURPOPUP_USER      (WM_USER + 6000)
+#define BABYGRID_USER         (WM_USER + 7000)
+#define DIRECTORYWATCHER_USER (WM_USER + 8000)
 
 //#define	IDD_DOCKING_MNG 	(IDM  + 7000)
 

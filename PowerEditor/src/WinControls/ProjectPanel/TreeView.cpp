@@ -62,10 +62,23 @@ void TreeView::destroy()
 	_hSelf = NULL;
 } 
 
-LRESULT TreeView::runProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
+LRESULT TreeView::runProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	return ::CallWindowProc(_defaultProc, hwnd, Message, wParam, lParam);
+
+	switch (message)
+	{
+		case DIRECTORYWATCHER_UPDATE:
+		{
+			HTREEITEM treeItem = (HTREEITEM)lParam;
+			if (itemValid(treeItem))
+			{
+				int a = 10;
+			}
+		}
+	}
+	return ::CallWindowProc(_defaultProc, hwnd, message, wParam, lParam);
 }
+
 
 
 bool TreeView::setItemParam(HTREEITEM Item2Set, const TCHAR *paramStr)
@@ -79,8 +92,12 @@ bool TreeView::setItemParam(HTREEITEM Item2Set, const TCHAR *paramStr)
 
 	SendMessage(_hSelf, TVM_GETITEM, 0,(LPARAM)&tvItem);
 	
-	if (!tvItem.lParam) 
-		tvItem.lParam = (LPARAM)(new TreeViewFileInfo(paramStr));
+	if (!tvItem.lParam)
+	{
+		TreeViewFileInfo* tvFileInfo = new TreeViewFileInfo(_hSelf, paramStr);
+		tvFileInfo->startThreadIfNecessary(Item2Set);
+		tvItem.lParam = (LPARAM)(tvFileInfo);
+	}
 	else
 	{
 		((TreeViewFileInfo *)tvItem.lParam)->_filePath = paramStr;
@@ -102,19 +119,27 @@ HTREEITEM TreeView::addItem(const TCHAR *itemName, HTREEITEM hParentItem, int iI
 	tvi.iImage = iImage;//isNode?INDEX_CLOSED_NODE:INDEX_LEAF; 
 	tvi.iSelectedImage = iImage;//isNode?INDEX_OPEN_NODE:INDEX_LEAF; 
 
-	// Save the full path of file in the item's application-defined data area. 
-	tvi.lParam = (LPARAM)(new TreeViewFileInfo(filePath, fileType));
+	// Save the full path of file in the item's application-defined data area.
+
+	TreeViewFileInfo* tvFileInfo = new TreeViewFileInfo(_hSelf, filePath, fileType);
+	tvi.lParam = (LPARAM)(tvFileInfo);
 
 	TVINSERTSTRUCT tvInsertStruct;
 	tvInsertStruct.item = tvi; 
 	tvInsertStruct.hInsertAfter = (HTREEITEM)TVI_LAST;
 	tvInsertStruct.hParent = hParentItem;
 
-	return (HTREEITEM)::SendMessage(_hSelf, TVM_INSERTITEM, 0, (LPARAM)(LPTVINSERTSTRUCT)&tvInsertStruct);
+	HTREEITEM newItem = (HTREEITEM)::SendMessage(_hSelf, TVM_INSERTITEM, 0, (LPARAM)(LPTVINSERTSTRUCT)&tvInsertStruct);
+	_validHandles.insert(newItem);
+	tvFileInfo->startThreadIfNecessary(newItem);
+	return newItem;
 }
 
 void TreeView::removeItem(HTREEITEM hTreeItem)
 {
+	// remove from valid handles
+	_validHandles.erase(hTreeItem);
+
 	// Deallocate all the sub-entries recursively
 	cleanSubEntries(hTreeItem);
 
@@ -154,9 +179,11 @@ void TreeView::dupTree(HTREEITEM hTree2Dup, HTREEITEM hParentItem)
 		tvItem.cchTextMax = MAX_PATH;
 		tvItem.mask = TVIF_TEXT | TVIF_PARAM | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
 		SendMessage(_hSelf, TVM_GETITEM, 0,(LPARAM)&tvItem);
+		TreeViewFileInfo* tvFileInfo = NULL;
 		if (tvItem.lParam)
 		{
-			tvItem.lParam = (LPARAM)(new TreeViewFileInfo(*((TreeViewFileInfo *)(tvItem.lParam))));
+			tvFileInfo = new TreeViewFileInfo(*((TreeViewFileInfo *)(tvItem.lParam)));
+			tvItem.lParam = (LPARAM)(tvFileInfo);
 		}
 
 		TVINSERTSTRUCT tvInsertStruct;
@@ -164,6 +191,11 @@ void TreeView::dupTree(HTREEITEM hTree2Dup, HTREEITEM hParentItem)
 		tvInsertStruct.hInsertAfter = (HTREEITEM)TVI_LAST;
 		tvInsertStruct.hParent = hParentItem;
 		HTREEITEM hTreeParent = (HTREEITEM)::SendMessage(_hSelf, TVM_INSERTITEM, 0, (LPARAM)(LPTVINSERTSTRUCT)&tvInsertStruct);
+		_validHandles.insert(hTreeParent);
+		if (tvFileInfo)
+		{
+			tvFileInfo->startThreadIfNecessary(hTreeParent);
+		}
 		dupTree(hItem, hTreeParent);
 	}
 }
@@ -356,7 +388,9 @@ void TreeView::moveTreeViewItem(HTREEITEM draggedItem, HTREEITEM targetItem)
 	tvDraggingItem.hItem = draggedItem;
 	SendMessage(_hSelf, TVM_GETITEM, 0,(LPARAM)&tvDraggingItem);
 
-	tvDraggingItem.lParam = (LPARAM)(new TreeViewFileInfo(*((TreeViewFileInfo *)(tvDraggingItem.lParam))));
+
+	TreeViewFileInfo* tvFileInfo = new TreeViewFileInfo(*((TreeViewFileInfo *)(tvDraggingItem.lParam)));
+	tvDraggingItem.lParam = (LPARAM)(tvFileInfo);
 
     TVINSERTSTRUCT tvInsertStruct;
 	tvInsertStruct.item = tvDraggingItem;
@@ -364,6 +398,9 @@ void TreeView::moveTreeViewItem(HTREEITEM draggedItem, HTREEITEM targetItem)
 	tvInsertStruct.hParent = targetItem;
 
 	HTREEITEM hTreeParent = (HTREEITEM)::SendMessage(_hSelf, TVM_INSERTITEM, 0, (LPARAM)(LPTVINSERTSTRUCT)&tvInsertStruct);
+	_validHandles.insert(hTreeParent);
+	tvFileInfo->startThreadIfNecessary(hTreeParent);
+
 	dupTree(draggedItem, hTreeParent);
 	removeItem(draggedItem);
 }
@@ -416,8 +453,12 @@ bool TreeView::swapTreeViewItem(HTREEITEM itemGoDown, HTREEITEM itemGoUp)
 
 	// make copy recursively for both items
 
-	tvUpItem.lParam = (LPARAM)(new TreeViewFileInfo(*((TreeViewFileInfo *)(tvUpItem.lParam))));
-	tvDownItem.lParam = (LPARAM)(new TreeViewFileInfo(*((TreeViewFileInfo *)(tvDownItem.lParam))));
+	TreeViewFileInfo* tvUpInfo = new TreeViewFileInfo(*((TreeViewFileInfo *)(tvUpItem.lParam)));
+	tvUpItem.lParam = (LPARAM)(tvUpInfo);
+
+	TreeViewFileInfo* tvDownInfo = new TreeViewFileInfo(*((TreeViewFileInfo *)(tvDownItem.lParam)));
+	tvDownItem.lParam = (LPARAM)(tvDownInfo);
+
 
 	// add 2 new items
     TVINSERTSTRUCT tvInsertUp;
@@ -425,6 +466,8 @@ bool TreeView::swapTreeViewItem(HTREEITEM itemGoDown, HTREEITEM itemGoUp)
 	tvInsertUp.hInsertAfter = itemTop;
 	tvInsertUp.hParent = parentGoUp;
 	HTREEITEM hTreeParent1stInserted = (HTREEITEM)::SendMessage(_hSelf, TVM_INSERTITEM, 0, (LPARAM)(LPTVINSERTSTRUCT)&tvInsertUp);
+	_validHandles.insert(hTreeParent1stInserted);
+	tvUpInfo->startThreadIfNecessary(hTreeParent1stInserted);
 	dupTree(itemGoUp, hTreeParent1stInserted);
 
 	TVINSERTSTRUCT tvInsertDown;
@@ -432,6 +475,8 @@ bool TreeView::swapTreeViewItem(HTREEITEM itemGoDown, HTREEITEM itemGoUp)
 	tvInsertDown.hInsertAfter = hTreeParent1stInserted;
 	tvInsertDown.hParent = parentGoDown;
 	HTREEITEM hTreeParent2ndInserted = (HTREEITEM)::SendMessage(_hSelf, TVM_INSERTITEM, 0, (LPARAM)(LPTVINSERTSTRUCT)&tvInsertDown);
+	_validHandles.insert(hTreeParent2ndInserted);
+	tvDownInfo->startThreadIfNecessary(hTreeParent2ndInserted);
 	dupTree(itemGoDown, hTreeParent2ndInserted);
 
 	// remove 2 old items
@@ -516,15 +561,20 @@ bool TreeView::searchLeafRecusivelyAndBuildTree(HTREEITEM tree2Build, const gene
 		size_t res = itemNameUpperCase.find(text2SearchUpperCase);
 		if (res != generic_string::npos)
 		{
+			TreeViewFileInfo* tvFileInfo = NULL;
 			if (tvItem.lParam)
 			{
-				tvItem.lParam = (LPARAM)(new TreeViewFileInfo(*((TreeViewFileInfo *)(tvItem.lParam))));
+				tvFileInfo = new TreeViewFileInfo(*((TreeViewFileInfo *)(tvItem.lParam)));
+				tvItem.lParam = (LPARAM)(tvFileInfo);
 			}
 			TVINSERTSTRUCT tvInsertStruct;
 			tvInsertStruct.item = tvItem;
 			tvInsertStruct.hInsertAfter = (HTREEITEM)TVI_LAST;
 			tvInsertStruct.hParent = tree2Build;
-			::SendMessage(_hSelf, TVM_INSERTITEM, 0, (LPARAM)(LPTVINSERTSTRUCT)&tvInsertStruct);
+			HTREEITEM hInsertedItem = (HTREEITEM)::SendMessage(_hSelf, TVM_INSERTITEM, 0, (LPARAM)(LPTVINSERTSTRUCT)&tvInsertStruct);
+			_validHandles.insert(hInsertedItem);
+			if (tvFileInfo)
+				tvFileInfo->startThreadIfNecessary(hInsertedItem);
 		}
 	}
 

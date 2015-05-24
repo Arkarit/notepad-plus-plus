@@ -30,6 +30,7 @@
 
 #include "window.h"
 #include "DirectoryWatcher.h"
+#include <set>
 
 struct TreeStateNode {
 	generic_string _label;
@@ -48,6 +49,17 @@ struct TreeViewFileInfo {
 	TreeViewFileType _fileType;
 	DirectoryWatcher* _directoryWatcher;
 
+	TreeViewFileInfo(HWND hWnd, const TCHAR* filePath = NULL, TreeViewFileType fileType = tfFileType_generic) : _fileType(fileType), _directoryWatcher(NULL) {
+		if (filePath != NULL)
+		{
+			_filePath = generic_string(filePath);
+			if (fileType == tfFileType_fsMonitorFolderRoot)
+				_directoryWatcher = new DirectoryWatcher(hWnd, _filePath);
+		}
+	}
+	~TreeViewFileInfo() {
+		delete _directoryWatcher;
+	}
 	bool isFile() const {
 		return !_filePath.empty() && _fileType == tfFileType_generic;
 	}
@@ -63,16 +75,9 @@ struct TreeViewFileInfo {
 	bool isFolderMonitorRoot() const {
 		return _fileType == tfFileType_fsMonitorFolderRoot;
 	}
-	TreeViewFileInfo(const TCHAR* filePath = NULL, TreeViewFileType fileType = tfFileType_generic) : _fileType(fileType), _directoryWatcher(NULL) {
-		if (filePath != NULL)
-		{
-			_filePath = generic_string(filePath);
-			if (fileType == tfFileType_fsMonitorFolderRoot)
-				_directoryWatcher = new DirectoryWatcher(_filePath);
-		}
-	}
-	~TreeViewFileInfo() {
-		delete _directoryWatcher;
+	void startThreadIfNecessary(HTREEITEM item) {
+		if (_directoryWatcher)
+			_directoryWatcher->startThread(item);
 	}
 };
 
@@ -147,7 +152,13 @@ public:
 	bool searchLeafAndBuildTree(TreeView & tree2Build, const generic_string & text2Search, int index2Search);
 	void sort(HTREEITEM hTreeItem);
 
+	bool itemValid(HTREEITEM item) {
+		return _validHandles.find(item) != _validHandles.end();
+	}
+
 protected:
+	std::set<HTREEITEM> _validHandles;
+
 	WNDPROC _defaultProc;
 	LRESULT runProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam);
 

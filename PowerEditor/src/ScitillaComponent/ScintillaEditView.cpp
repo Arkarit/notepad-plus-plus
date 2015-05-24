@@ -1703,7 +1703,7 @@ generic_string ScintillaEditView::getGenericTextAsString(int start, int end) con
 {
 	assert(end > start);
 	const int bufSize = end - start + 1;
-	_TCHAR *buf = new _TCHAR[bufSize];
+	TCHAR *buf = new TCHAR[bufSize];
 	getGenericText(buf, bufSize, start, end);
 	generic_string text = buf;
 	delete[] buf;
@@ -2587,8 +2587,10 @@ void ScintillaEditView::columnReplace(ColumnModeInfos & cmi, const TCHAR *str)
 	}
 }
 
-void ScintillaEditView::columnReplace(ColumnModeInfos & cmi, int initial, int incr, UCHAR format)
+void ScintillaEditView::columnReplace(ColumnModeInfos & cmi, int initial, int incr, int repeat, UCHAR format)
 {
+	assert(repeat > 0);
+
 	// 0000 00 00 : Dec BASE_10
 	// 0000 00 01 : Hex BASE_16
 	// 0000 00 10 : Oct BASE_08
@@ -2611,28 +2613,49 @@ void ScintillaEditView::columnReplace(ColumnModeInfos & cmi, int initial, int in
 	else if (f == BASE_02)
 		base = 2;
 
-	int endNumber = initial + incr * (cmi.size() - 1);
-	int nbEnd = getNbDigits(endNumber, base);
-	int nbInit = getNbDigits(initial, base);
-	int nb = max(nbInit, nbEnd);
-
 	const int stringSize = 512;
 	TCHAR str[stringSize];
 
+	// Compute the numbers to be placed at each column.
+	std::vector<int> numbers;
+	{
+		int curNumber = initial;
+		const unsigned int kiMaxSize = cmi.size();
+		while(numbers.size() < kiMaxSize)
+		{
+			for(int i = 0; i < repeat; i++)
+			{
+				numbers.push_back(curNumber);
+				if (numbers.size() >= kiMaxSize)
+				{
+					break;
+				}
+			}
+			curNumber += incr;
+		}
+	}
+
+	assert(numbers.size()> 0);
+
+	const int kibEnd = getNbDigits(*numbers.rbegin(), base);
+	const int kibInit = getNbDigits(initial, base);
+	const int kib = std::max<int>(kibInit, kibEnd);
+
 	int totalDiff = 0;
-	for (size_t i = 0, len = cmi.size() ; i < len ; ++i)
+	const size_t len = cmi.size();
+	for (size_t i = 0 ; i < len ; i++)
 	{
 		if (cmi[i].isValid())
 		{
-			int len2beReplace = cmi[i]._selRpos - cmi[i]._selLpos;
-			int diff = nb - len2beReplace;
+			const int len2beReplaced = cmi[i]._selRpos - cmi[i]._selLpos;
+			const int diff = kib - len2beReplaced;
 
 			cmi[i]._selLpos += totalDiff;
 			cmi[i]._selRpos += totalDiff;
 
-			int2str(str, stringSize, initial, base, nb, isZeroLeading);
+			int2str(str, stringSize, numbers.at(i), base, kib, isZeroLeading);
 
-			bool hasVirtualSpc = cmi[i]._nbVirtualAnchorSpc > 0;
+			const bool hasVirtualSpc = cmi[i]._nbVirtualAnchorSpc > 0;
 			if (hasVirtualSpc) // if virtual space is present, then insert space
 			{
 				for (int j = 0, k = cmi[i]._selLpos; j < cmi[i]._nbVirtualCaretSpc ; ++j, ++k)
@@ -2650,7 +2673,6 @@ void ScintillaEditView::columnReplace(ColumnModeInfos & cmi, int initial, int in
 			const char *strA = wmc->wchar2char(str, cp);
 			execute(SCI_REPLACETARGET, (WPARAM)-1, (LPARAM)strA);
 
-			initial += incr;
 			if (hasVirtualSpc) 
 			{
 				totalDiff += cmi[i]._nbVirtualAnchorSpc + lstrlen(str);
@@ -2947,7 +2969,7 @@ void ScintillaEditView::insertNewLineBelowCurrentLine()
 	execute(SCI_SETEMPTYSELECTION, execute(SCI_POSITIONFROMLINE, current_line + 1));
 }
 
-void ScintillaEditView::quickSortLines(size_t fromLine, size_t toLine, bool isDescending)
+void ScintillaEditView::sortLines(size_t fromLine, size_t toLine, bool isDescending)
 {
 	if (fromLine >= toLine)
 	{
@@ -2958,19 +2980,35 @@ void ScintillaEditView::quickSortLines(size_t fromLine, size_t toLine, bool isDe
 	const int endPos = execute(SCI_POSITIONFROMLINE, toLine) + execute(SCI_LINELENGTH, toLine);
 	const generic_string text = getGenericTextAsString(startPos, endPos);
 	std::vector<generic_string> splitText = stringSplit(text, getEOLString());
-	std::sort(splitText.begin(), splitText.end(), [isDescending](generic_string a, generic_string b)
+	const size_t lineCount = execute(SCI_GETLINECOUNT);
+	const bool sortEntireDocument = toLine == lineCount - 1;
+	if (!sortEntireDocument)
 	{
-		if (isDescending)
+		if (splitText.rbegin()->empty())
 		{
-			return a.compare(b) > 0;
+			splitText.pop_back();
 		}
-		else
-		{
-			return a.compare(b) < 0;
-		}
-	});
-	const generic_string joined = stringJoin(splitText, getEOLString());
-	replaceTarget(joined.c_str(), startPos, endPos);
+	}
+	assert(toLine - fromLine + 1 == splitText.size());
+	const bool isNumericSort = allLinesAreNumericOrEmpty(splitText);
+	std::vector<generic_string> sortedText;
+	if (isNumericSort)
+	{
+		sortedText = numericSort(splitText, isDescending);
+	}
+	else
+	{
+		sortedText = lexicographicSort(splitText, isDescending);
+	}
+	const generic_string joined = stringJoin(sortedText, getEOLString());
+	if (sortEntireDocument)
+	{
+		replaceTarget(joined.c_str(), startPos, endPos);
+	}
+	else
+	{
+		replaceTarget((joined + getEOLString()).c_str(), startPos, endPos);
+	}
 }
 
 bool ScintillaEditView::isTextDirectionRTL() const

@@ -56,7 +56,6 @@ mkdir .\zipped.package.release
 mkdir .\zipped.package.release\updater
 mkdir .\zipped.package.release\localization
 mkdir .\zipped.package.release\themes
-mkdir .\zipped.package.release\user.manual
 mkdir .\zipped.package.release\plugins
 mkdir .\zipped.package.release\plugins\APIs
 mkdir .\zipped.package.release\plugins\Config
@@ -120,10 +119,6 @@ rem plugins manager and its updater
 copy /Y "..\bin\plugins\PluginManager.dll" .\zipped.package.release\plugins\
 If ErrorLevel 1 PAUSE
 copy /Y "..\bin\updater\gpup.exe" .\zipped.package.release\updater\
-If ErrorLevel 1 PAUSE
-
-rem document
-xcopy /Y /S ..\bin\user.manual\*.* .\zipped.package.release\user.manual\
 If ErrorLevel 1 PAUSE
 
 

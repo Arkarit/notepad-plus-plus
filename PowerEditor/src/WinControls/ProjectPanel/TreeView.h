@@ -104,6 +104,9 @@ public:
 	virtual void onTreeItemChanged(HTREEITEM){}
 };
 
+class TreeViewDataFactory {
+};
+
 class TreeView : public Window {
 public:
 	TreeView() : Window(), _isItemDragged(false), _listener(NULL) {};

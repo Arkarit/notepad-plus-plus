@@ -149,8 +149,8 @@ protected:
 	generic_string getAbsoluteFilePath(const TCHAR * relativePath);
 	void openSelectFile();
 	HMENU getContextMenu(HTREEITEM hTreeItem) const;
-	virtual void onTreeItemAdded(HTREEITEM hTreeItem);
-	virtual void onTreeItemRemoved(HTREEITEM hTreeItem);
+//	virtual void onTreeItemAdded(HTREEITEM hTreeItem);
+//	virtual void onTreeItemRemoved(HTREEITEM hTreeItem);
 	virtual void onTreeItemChanged(HTREEITEM hTreeItem);
 };
 

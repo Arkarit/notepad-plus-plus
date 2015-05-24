@@ -57,6 +57,21 @@ struct TreeViewFileInfo {
 				_directoryWatcher = new DirectoryWatcher(hWnd, _filePath);
 		}
 	}
+	TreeViewFileInfo( const TreeViewFileInfo& other ) : _directoryWatcher(NULL) {
+		_filePath = other._filePath;
+		_fileType = other._fileType;
+		if( other._directoryWatcher )
+			_directoryWatcher = new DirectoryWatcher(*other._directoryWatcher);
+	}
+	TreeViewFileInfo& operator= ( const TreeViewFileInfo& other ) {
+		delete _directoryWatcher;
+		_directoryWatcher = NULL;
+		_filePath = other._filePath;
+		_fileType = other._fileType;
+		if( other._directoryWatcher )
+			_directoryWatcher = new DirectoryWatcher(*other._directoryWatcher);
+	}
+
 	~TreeViewFileInfo() {
 		delete _directoryWatcher;
 	}
@@ -83,9 +98,9 @@ struct TreeViewFileInfo {
 
 class TreeViewListener {
 public:
-	virtual void onTreeItemAdded(HTREEITEM item){}
-	virtual void onTreeItemRemoved(HTREEITEM item){}
-	virtual void onTreeItemChanged(HTREEITEM item){}
+	virtual void onTreeItemAdded(HTREEITEM){}
+	virtual void onTreeItemRemoved(HTREEITEM){}
+	virtual void onTreeItemChanged(HTREEITEM){}
 };
 
 class TreeView : public Window {

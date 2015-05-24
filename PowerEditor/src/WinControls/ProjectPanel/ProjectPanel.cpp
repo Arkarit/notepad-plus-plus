@@ -633,7 +633,7 @@ HMENU ProjectPanel::getContextMenu(HTREEITEM hTreeItem) const
 	return hMenu;
 
 }
-
+/*
 void ProjectPanel::onTreeItemAdded(HTREEITEM hTreeItem)
 {
 //	onTreeItemChanged(hTreeItem);
@@ -643,6 +643,7 @@ void ProjectPanel::onTreeItemRemoved(HTREEITEM hTreeItem)
 {
 	//TODO: remove selection if necessary?
 }
+*/
 
 void ProjectPanel::onTreeItemChanged(HTREEITEM hTreeItem)
 {

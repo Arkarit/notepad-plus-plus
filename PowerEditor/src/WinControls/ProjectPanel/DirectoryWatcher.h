@@ -68,7 +68,7 @@ private:
 	static DWORD threadFunc(LPVOID data);
 	void post();
 	// assignment operator forbidden
-	DirectoryWatcher& operator= (const DirectoryWatcher& other) {}
+	DirectoryWatcher& operator= (const DirectoryWatcher&) {}
 
 };
 

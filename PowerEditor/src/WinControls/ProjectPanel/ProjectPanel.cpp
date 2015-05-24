@@ -674,12 +674,13 @@ void ProjectPanel::onTreeItemChanged(HTREEITEM hTreeItem)
 			if (!::PathFileExists(tvFileInfo._filePath.c_str()))
 			{
 				iImg = INDEX_INVALID_MONITOR;
+				_treeView.removeAllChildren(hTreeItem);
 			}
 			else
 			{
 				iImg = (tvItem.state & TVIS_EXPANDED) ? INDEX_OPEN_MONITOR : INDEX_CLOSED_MONITOR;
+				rebuildFolderMonitorTree(hTreeItem);
 			}
-			rebuildFolderMonitorTree(hTreeItem);
 			break;
 		case nodeType_monitorFolder:
 			iImg = (tvItem.state & TVIS_EXPANDED) ? INDEX_OPEN_MONITOR : INDEX_CLOSED_MONITOR;

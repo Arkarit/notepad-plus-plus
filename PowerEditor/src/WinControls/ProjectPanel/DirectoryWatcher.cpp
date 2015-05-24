@@ -177,6 +177,9 @@ int DirectoryWatcher::thread()
 			}
 			else if (cause == WAIT_OBJECT_0)
 			{
+				//FIXME: if a directory is deleted, the notification is sent too early - before the folder really has been deleted.
+				// as a workaround, we sleep a bit here, but there has to be a better solution for this. Might fail on really big folders!
+				Sleep(500);
 				post();
 				if (PathFileExists(_filePath.c_str()))
 					FindNextChangeNotification(hFindChange);

@@ -70,6 +70,7 @@ struct TreeViewFileInfo {
 		_fileType = other._fileType;
 		if( other._directoryWatcher )
 			_directoryWatcher = new DirectoryWatcher(*other._directoryWatcher);
+		return *this;
 	}
 
 	~TreeViewFileInfo() {

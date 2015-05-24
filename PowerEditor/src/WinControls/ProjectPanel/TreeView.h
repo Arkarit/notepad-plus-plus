@@ -81,9 +81,16 @@ struct TreeViewFileInfo {
 	}
 };
 
+class TreeViewListener {
+public:
+	virtual void onTreeItemAdded(HTREEITEM item){}
+	virtual void onTreeItemRemoved(HTREEITEM item){}
+	virtual void onTreeItemChanged(HTREEITEM item){}
+};
+
 class TreeView : public Window {
 public:
-	TreeView() : Window(), _isItemDragged(false) {};
+	TreeView() : Window(), _isItemDragged(false), _listener(NULL) {};
 
 	virtual ~TreeView() {};
 	virtual void init(HINSTANCE hInst, HWND parent, int treeViewID);
@@ -156,7 +163,10 @@ public:
 		return _validHandles.find(item) != _validHandles.end();
 	}
 
+	void setListener(TreeViewListener* _val) { _listener = _val; }
+
 protected:
+	TreeViewListener* _listener;
 	std::set<HTREEITEM> _validHandles;
 
 	WNDPROC _defaultProc;

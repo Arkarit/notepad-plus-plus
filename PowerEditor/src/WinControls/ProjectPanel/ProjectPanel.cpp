@@ -610,6 +610,65 @@ HMENU ProjectPanel::getContextMenu(HTREEITEM hTreeItem) const
 
 }
 
+void ProjectPanel::onTreeItemAdded(HTREEITEM hTreeItem)
+{
+	onTreeItemChanged(hTreeItem);
+}
+
+void ProjectPanel::onTreeItemRemoved(HTREEITEM hTreeItem)
+{
+	//TODO: remove selection if necessary?
+}
+
+void ProjectPanel::onTreeItemChanged(HTREEITEM hTreeItem)
+{
+	TVITEM tvItem;
+	tvItem.mask = TVIF_PARAM;
+	tvItem.hItem = hTreeItem;
+	::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0, (LPARAM)&tvItem);
+
+	NodeType nodeType = getNodeType(tvItem.hItem);
+	TreeViewFileInfo& tvFileInfo = *(TreeViewFileInfo*)tvItem.lParam;
+	int iImg;
+	switch (nodeType)
+	{
+		case nodeType_invalid:
+			return;
+		case nodeType_root:
+			iImg = _isDirty ? INDEX_DIRTY_ROOT : INDEX_CLEAN_ROOT;
+			break;
+		case nodeType_project:
+			iImg = INDEX_PROJECT;
+			break;
+		case nodeType_folder:
+			iImg = (tvItem.state & TVIS_EXPANDED) ? INDEX_OPEN_NODE : INDEX_CLOSED_NODE;
+			break;
+		case nodeType_file:
+			iImg = ::PathFileExists(tvFileInfo._filePath.c_str()) ? INDEX_LEAF : INDEX_LEAF_INVALID;
+			break;
+		case nodeType_monitorFolderRoot:
+			if (!::PathFileExists(tvFileInfo._filePath.c_str()))
+			{
+				iImg = INDEX_INVALID_MONITOR;
+			}
+			else
+			{
+				iImg = (tvItem.state & TVIS_EXPANDED) ? INDEX_OPEN_MONITOR : INDEX_CLOSED_MONITOR;
+			}
+			break;
+		case nodeType_monitorFolder:
+			iImg = (tvItem.state & TVIS_EXPANDED) ? INDEX_OPEN_MONITOR : INDEX_CLOSED_MONITOR;
+			break;
+		case nodeType_monitorFile:
+			iImg = INDEX_LEAF;
+			break;
+		default:
+			return;
+	}
+	_treeView.setItemImage(hTreeItem, iImg, iImg);
+
+}
+
 void ProjectPanel::notified(LPNMHDR notification)
 {
 	if ((notification->hwndFrom == _treeView.getHSelf()))

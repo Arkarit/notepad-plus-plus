@@ -69,10 +69,11 @@ LRESULT TreeView::runProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		case DIRECTORYWATCHER_UPDATE:
 		{
-			HTREEITEM treeItem = (HTREEITEM)lParam;
-			if (itemValid(treeItem))
+			HTREEITEM hItem = (HTREEITEM)lParam;
+			if (itemValid(hItem))
 			{
-				int a = 10;
+				if (_listener)
+					_listener->onTreeItemChanged(hItem);
 			}
 		}
 	}
@@ -165,6 +166,7 @@ void TreeView::removeAllItems()
 		cleanSubEntries(tvProj);
 	}
 	TreeView_DeleteAllItems(_hSelf);
+	_validHandles.clear();
 }
 
 

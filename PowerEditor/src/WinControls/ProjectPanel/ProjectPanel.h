@@ -70,11 +70,17 @@ enum NodeType {
 
 class TiXmlNode;
 
-class ProjectPanel : public DockingDlgInterface {
+class ProjectPanel : public DockingDlgInterface, public TreeViewListener {
 public:
 	ProjectPanel(): DockingDlgInterface(IDD_PROJECTPANEL),\
 		_hToolbarMenu(NULL), _hWorkSpaceMenu(NULL), _hProjectMenu(NULL),\
-		_hFolderMenu(NULL), _hFileMenu(NULL), _hFolderMonitorMenu(NULL){};
+		_hFolderMenu(NULL), _hFileMenu(NULL), _hFolderMonitorMenu(NULL){
+		_treeView.setListener(this);
+	};
+
+	virtual ~ProjectPanel() {
+		_treeView.setListener(NULL);
+	}
 
 
 	void init(HINSTANCE hInst, HWND hPere) {
@@ -142,6 +148,9 @@ protected:
 	generic_string getAbsoluteFilePath(const TCHAR * relativePath);
 	void openSelectFile();
 	HMENU getContextMenu(HTREEITEM hTreeItem) const;
+	virtual void onTreeItemAdded(HTREEITEM hTreeItem);
+	virtual void onTreeItemRemoved(HTREEITEM hTreeItem);
+	virtual void onTreeItemChanged(HTREEITEM hTreeItem);
 };
 
 class FileRelocalizerDlg : public StaticDialog

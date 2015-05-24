@@ -143,6 +143,7 @@ protected:
 	POINT getMenuDisplyPoint(int iButton);
 	virtual BOOL CALLBACK ProjectPanel::run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam);
 	bool buildTreeFrom(TiXmlNode *projectRoot, HTREEITEM hParentItem);
+	void rebuildFolderMonitorTree(HTREEITEM hParentItem);
 	void notified(LPNMHDR notification);
 	void showContextMenu(int x, int y);
 	generic_string getAbsoluteFilePath(const TCHAR * relativePath);

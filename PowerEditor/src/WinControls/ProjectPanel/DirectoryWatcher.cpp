@@ -117,7 +117,9 @@ void DirectoryWatcher::stopThread()
 
 int DirectoryWatcher::thread()
 {
-	HANDLE hFindChange = FindFirstChangeNotification(_filePath.c_str(), TRUE, FILE_NOTIFY_CHANGE_LAST_WRITE);
+
+	DWORD notifyFilter = FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME | FILE_NOTIFY_CHANGE_ATTRIBUTES | FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_CREATION;
+	HANDLE hFindChange = FindFirstChangeNotification(_filePath.c_str(), TRUE, notifyFilter);
 	if (!hFindChange)
 	{
 		return -1;
@@ -150,7 +152,7 @@ int DirectoryWatcher::thread()
 				if (hFindChange != INVALID_HANDLE_VALUE)
 					FindCloseChangeNotification(hFindChange);
 
-				hFindChange = FindFirstChangeNotification(_filePath.c_str(), TRUE, FILE_NOTIFY_CHANGE_LAST_WRITE);
+				hFindChange = FindFirstChangeNotification(_filePath.c_str(), TRUE, notifyFilter);
 				handles[0] = hFindChange;
 				if (hFindChange != INVALID_HANDLE_VALUE)
 				{

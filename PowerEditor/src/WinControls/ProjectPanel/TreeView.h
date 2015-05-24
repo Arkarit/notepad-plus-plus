@@ -100,7 +100,8 @@ public:
 	HTREEITEM searchSubItemByName(const TCHAR *itemName, HTREEITEM hParentItem);
 	void removeItem(HTREEITEM hTreeItem);
 	void removeAllItems();
-	
+	void removeAllChildren(HTREEITEM hParent);
+
 	HTREEITEM getChildFrom(HTREEITEM hTreeItem) const {
 		return TreeView_GetChild(_hSelf, hTreeItem);
 	};
@@ -178,6 +179,8 @@ protected:
 	void cleanSubEntries(HTREEITEM hTreeItem);
 	void dupTree(HTREEITEM hTree2Dup, HTREEITEM hParentItem);
 	bool searchLeafRecusivelyAndBuildTree(HTREEITEM tree2Build, const generic_string & text2Search, int index2Search, HTREEITEM tree2Search);
+
+	void synchronizeTree(HTREEITEM parent);
 
 	// Drag and Drop operations
 	HTREEITEM _draggedItem;

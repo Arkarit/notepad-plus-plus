@@ -549,6 +549,30 @@ bool ProjectPanel::buildTreeFrom(TiXmlNode *projectRoot, HTREEITEM hParentItem)
 	return true;
 }
 
+void ProjectPanel::rebuildFolderMonitorTree(HTREEITEM hParentItem)
+{
+	assert(getNodeType(hParentItem) == nodeType_monitorFolderRoot);
+	if (getNodeType(hParentItem) != nodeType_monitorFolderRoot)
+		return;
+
+	TVITEM tvItem;
+	tvItem.mask = TVIF_PARAM;
+	tvItem.hItem = hParentItem;
+	::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0, (LPARAM)&tvItem);
+
+	TreeViewFileInfo& tvFileInfo = *(TreeViewFileInfo*)tvItem.lParam;
+
+
+	TreeStateNode treeState;
+	if (!_treeView.retrieveFoldingStateTo(treeState, hParentItem))
+		return;
+	_treeView.removeAllChildren(hParentItem);
+	recursiveAddFilesFrom(tvFileInfo._filePath.c_str(), hParentItem, true);
+	_treeView.restoreFoldingStateFrom(treeState, hParentItem);
+
+
+}
+
 generic_string ProjectPanel::getAbsoluteFilePath(const TCHAR * relativePath)
 {
 	if (!::PathIsRelative(relativePath))
@@ -612,7 +636,7 @@ HMENU ProjectPanel::getContextMenu(HTREEITEM hTreeItem) const
 
 void ProjectPanel::onTreeItemAdded(HTREEITEM hTreeItem)
 {
-	onTreeItemChanged(hTreeItem);
+//	onTreeItemChanged(hTreeItem);
 }
 
 void ProjectPanel::onTreeItemRemoved(HTREEITEM hTreeItem)
@@ -655,6 +679,7 @@ void ProjectPanel::onTreeItemChanged(HTREEITEM hTreeItem)
 			{
 				iImg = (tvItem.state & TVIS_EXPANDED) ? INDEX_OPEN_MONITOR : INDEX_CLOSED_MONITOR;
 			}
+			rebuildFolderMonitorTree(hTreeItem);
 			break;
 		case nodeType_monitorFolder:
 			iImg = (tvItem.state & TVIS_EXPANDED) ? INDEX_OPEN_MONITOR : INDEX_CLOSED_MONITOR;

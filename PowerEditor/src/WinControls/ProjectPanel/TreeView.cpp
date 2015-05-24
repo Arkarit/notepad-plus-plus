@@ -133,16 +133,24 @@ HTREEITEM TreeView::addItem(const TCHAR *itemName, HTREEITEM hParentItem, int iI
 	HTREEITEM newItem = (HTREEITEM)::SendMessage(_hSelf, TVM_INSERTITEM, 0, (LPARAM)(LPTVINSERTSTRUCT)&tvInsertStruct);
 	_validHandles.insert(newItem);
 	tvFileInfo->startThreadIfNecessary(newItem);
+
+	if (_listener)
+		_listener->onTreeItemAdded(newItem);
+
 	return newItem;
 }
 
 void TreeView::removeItem(HTREEITEM hTreeItem)
 {
+	// Deallocate all the sub-entries recursively
+	cleanSubEntries(hTreeItem);
+
+	if (_listener)
+		_listener->onTreeItemRemoved(hTreeItem);
+
 	// remove from valid handles
 	_validHandles.erase(hTreeItem);
 
-	// Deallocate all the sub-entries recursively
-	cleanSubEntries(hTreeItem);
 
 	// Deallocate current entry
 	TVITEM tvItem;
@@ -166,9 +174,20 @@ void TreeView::removeAllItems()
 		cleanSubEntries(tvProj);
 	}
 	TreeView_DeleteAllItems(_hSelf);
+	//TODO: listener onTreeItemRemoved() for root items
 	_validHandles.clear();
 }
 
+
+void TreeView::removeAllChildren(HTREEITEM hParent)
+{
+	HTREEITEM hItem;
+	while ((hItem = getChildFrom(hParent)) != NULL )
+	{
+		removeAllChildren(hItem);
+		removeItem(hItem);
+	}
+}
 
 void TreeView::dupTree(HTREEITEM hTree2Dup, HTREEITEM hParentItem)
 {
@@ -232,6 +251,10 @@ void TreeView::cleanSubEntries(HTREEITEM hTreeItem)
 {
 	for (HTREEITEM hItem = getChildFrom(hTreeItem); hItem != NULL; hItem = getNextSibling(hItem))
 	{
+		if (_listener)
+			_listener->onTreeItemRemoved(hItem);
+		_validHandles.erase(hItem);
+
 		TVITEM tvItem;
 		tvItem.hItem = hItem;
 		tvItem.mask = TVIF_PARAM;

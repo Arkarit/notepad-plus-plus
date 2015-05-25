@@ -65,32 +65,28 @@
 #define PM_MOVEDOWNENTRY           TEXT("Move Down\tCtrl+Down")
 
 enum NodeType {
-	nodeType_invalid = -1, nodeType_root = 0, nodeType_project = 1, nodeType_folder = 2, nodeType_file = 3, nodeType_monitorFolderRoot = 4, nodeType_monitorFolder = 5, nodeType_monitorFile = 6,
+	nodeType_root = 0, nodeType_project = 1, nodeType_folder = 2, nodeType_file = 3, nodeType_monitorFolderRoot = 4, nodeType_monitorFolder = 5, nodeType_monitorFile = 6,
 };
 
 class TiXmlNode;
 
-enum TreeViewFileType {
-	tfFileType_generic, tfFileType_fsMonitorFolderRoot, tfFileType_fsMonitorFolder, tfFileType_fsMonitorFile, 
-};
-
 class ProjectPanelFileData : public TreeViewData {
 public:
 	generic_string _filePath;
-	TreeViewFileType _fileType;
+	NodeType _nodeType;
 	DirectoryWatcher* _directoryWatcher;
 
-	ProjectPanelFileData(HWND hWnd, const TCHAR* filePath = NULL, TreeViewFileType fileType = tfFileType_generic) : TreeViewData(), _fileType(fileType), _directoryWatcher(NULL) {
+	ProjectPanelFileData(HWND hWnd, const TCHAR* filePath, NodeType nodeType) : TreeViewData(), _nodeType(nodeType), _directoryWatcher(NULL) {
 		if (filePath != NULL)
 		{
 			_filePath = generic_string(filePath);
-			if (fileType == tfFileType_fsMonitorFolderRoot)
+			if (nodeType == nodeType_monitorFolderRoot)
 				_directoryWatcher = new DirectoryWatcher(hWnd, _filePath);
 		}
 	}
 	ProjectPanelFileData( const ProjectPanelFileData& other ) : _directoryWatcher(NULL) {
 		_filePath = other._filePath;
-		_fileType = other._fileType;
+		_nodeType = other._nodeType;
 		if( other._directoryWatcher )
 			_directoryWatcher = new DirectoryWatcher(*other._directoryWatcher);
 	}
@@ -98,7 +94,7 @@ public:
 		delete _directoryWatcher;
 		_directoryWatcher = NULL;
 		_filePath = other._filePath;
-		_fileType = other._fileType;
+		_nodeType = other._nodeType;
 		if( other._directoryWatcher )
 			_directoryWatcher = new DirectoryWatcher(*other._directoryWatcher);
 		return *this;
@@ -107,20 +103,26 @@ public:
 	virtual ~ProjectPanelFileData() {
 		delete _directoryWatcher;
 	}
+	bool isRoot() const {
+		return _nodeType == nodeType_root;
+	}
+	bool isProject() const {
+		return _nodeType == nodeType_project;
+	}
 	bool isFile() const {
-		return !_filePath.empty() && _fileType == tfFileType_generic;
+		return _nodeType == nodeType_file;
 	}
 	bool isFolder() const {
-		return _filePath.empty() && _fileType == tfFileType_generic;
+		return _nodeType == nodeType_folder;
 	}
 	bool isFileMonitor() const {
-		return _fileType == tfFileType_fsMonitorFile;
+		return _nodeType == nodeType_monitorFile;
 	}
 	bool isFolderMonitor() const {
-		return _fileType == tfFileType_fsMonitorFolder;
+		return _nodeType == nodeType_monitorFolder;
 	}
 	bool isFolderMonitorRoot() const {
-		return _fileType == tfFileType_fsMonitorFolderRoot;
+		return _nodeType == nodeType_monitorFolderRoot;
 	}
 	void startThreadIfNecessary(HTREEITEM item) {
 		if (_directoryWatcher)

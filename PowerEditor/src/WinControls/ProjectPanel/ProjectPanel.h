@@ -70,16 +70,80 @@ enum NodeType {
 
 class TiXmlNode;
 
-class ProjectPanel : public DockingDlgInterface, public TreeViewListener {
+enum TreeViewFileType {
+	tfFileType_generic, tfFileType_fsMonitorFolderRoot, tfFileType_fsMonitorFolder, tfFileType_fsMonitorFile, 
+};
+
+class ProjectPanelFileData : public TreeViewData {
 public:
-	ProjectPanel(): DockingDlgInterface(IDD_PROJECTPANEL),\
-		_hToolbarMenu(NULL), _hWorkSpaceMenu(NULL), _hProjectMenu(NULL),\
-		_hFolderMenu(NULL), _hFileMenu(NULL), _hFolderMonitorMenu(NULL){
-		_treeView.setListener(this);
+	generic_string _filePath;
+	TreeViewFileType _fileType;
+	DirectoryWatcher* _directoryWatcher;
+
+	ProjectPanelFileData(HWND hWnd, const TCHAR* filePath = NULL, TreeViewFileType fileType = tfFileType_generic) : TreeViewData(), _fileType(fileType), _directoryWatcher(NULL) {
+		if (filePath != NULL)
+		{
+			_filePath = generic_string(filePath);
+			if (fileType == tfFileType_fsMonitorFolderRoot)
+				_directoryWatcher = new DirectoryWatcher(hWnd, _filePath);
+		}
+	}
+	ProjectPanelFileData( const ProjectPanelFileData& other ) : _directoryWatcher(NULL) {
+		_filePath = other._filePath;
+		_fileType = other._fileType;
+		if( other._directoryWatcher )
+			_directoryWatcher = new DirectoryWatcher(*other._directoryWatcher);
+	}
+	ProjectPanelFileData& operator= ( const ProjectPanelFileData& other ) {
+		delete _directoryWatcher;
+		_directoryWatcher = NULL;
+		_filePath = other._filePath;
+		_fileType = other._fileType;
+		if( other._directoryWatcher )
+			_directoryWatcher = new DirectoryWatcher(*other._directoryWatcher);
+		return *this;
+	}
+
+	virtual ~ProjectPanelFileData() {
+		delete _directoryWatcher;
+	}
+	bool isFile() const {
+		return !_filePath.empty() && _fileType == tfFileType_generic;
+	}
+	bool isFolder() const {
+		return _filePath.empty() && _fileType == tfFileType_generic;
+	}
+	bool isFileMonitor() const {
+		return _fileType == tfFileType_fsMonitorFile;
+	}
+	bool isFolderMonitor() const {
+		return _fileType == tfFileType_fsMonitorFolder;
+	}
+	bool isFolderMonitorRoot() const {
+		return _fileType == tfFileType_fsMonitorFolderRoot;
+	}
+	void startThreadIfNecessary(HTREEITEM item) {
+		if (_directoryWatcher)
+			_directoryWatcher->startThread(item);
+	}
+};
+
+
+class ProjectPanel : public DockingDlgInterface, public TreeViewController {
+public:
+	ProjectPanel()
+		: DockingDlgInterface(IDD_PROJECTPANEL)
+		, _treeView(this)
+		, _hToolbarMenu(NULL)
+		, _hWorkSpaceMenu(NULL)
+		, _hProjectMenu(NULL)
+		, _hFolderMenu(NULL)
+		, _hFileMenu(NULL)
+		, _hFolderMonitorMenu(NULL) 
+	{
 	};
 
 	virtual ~ProjectPanel() {
-		_treeView.setListener(NULL);
 	}
 
 
@@ -149,9 +213,26 @@ protected:
 	generic_string getAbsoluteFilePath(const TCHAR * relativePath);
 	void openSelectFile();
 	HMENU getContextMenu(HTREEITEM hTreeItem) const;
-//	virtual void onTreeItemAdded(HTREEITEM hTreeItem);
-//	virtual void onTreeItemRemoved(HTREEITEM hTreeItem);
-	virtual void onTreeItemChanged(HTREEITEM hTreeItem);
+#pragma warning( push )
+#pragma warning( disable : 4100 )
+
+	// TreeViewController
+	virtual void onTreeItemAdded(bool afterClone, HTREEITEM hItem, TreeViewData* newData);
+	virtual void onTreeItemRemoved(HTREEITEM hItem,TreeViewData* data) {}
+	virtual void onTreeItemChanged(HTREEITEM hItem,TreeViewData* data);
+
+	virtual void destroyDataInstance(HTREEITEM hItem, TreeViewData* data) {
+		delete data;
+	}
+	virtual TreeViewData* cloneDataInstance(HTREEITEM hItem, TreeViewData* data) {
+		return new ProjectPanelFileData( *((ProjectPanelFileData *) data) );
+	}
+
+	static ProjectPanelFileData* getInfo( TreeViewData* data ) {
+		return (ProjectPanelFileData*) data;
+	}
+
+#pragma warning( pop )
 };
 
 class FileRelocalizerDlg : public StaticDialog

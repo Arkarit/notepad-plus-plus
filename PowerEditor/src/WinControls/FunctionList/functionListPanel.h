@@ -91,10 +91,21 @@ struct TreeParams {
 	SearchParameters _searchParameters;
 };
 
-class FunctionListPanel : public DockingDlgInterface {
+class FunctionListPanelData : public TreeViewData {
 public:
-	FunctionListPanel(): DockingDlgInterface(IDD_FUNCLIST_PANEL), _ppEditView(NULL), _pTreeView(&_treeView),
-	_reloadTipStr(TEXT("Reload")), _sortTipStr(TEXT("Sort")) {};
+	generic_string _str;
+
+	FunctionListPanelData(const TCHAR* str) : TreeViewData(), _str(str) {}
+	virtual ~FunctionListPanelData() {}
+
+};
+
+class FunctionListPanel : public DockingDlgInterface, public TreeViewController {
+public:
+	FunctionListPanel(): DockingDlgInterface(IDD_FUNCLIST_PANEL), _ppEditView(NULL), _treeView(this), _treeViewSearchResult(this), _pTreeView(NULL),
+	_reloadTipStr(TEXT("Reload")), _sortTipStr(TEXT("Sort")) {
+		_pTreeView = &_treeView;
+	};
 
 	void init(HINSTANCE hInst, HWND hPere, ScintillaEditView **ppEditView);
 
@@ -125,6 +136,16 @@ public:
 protected:
 	virtual BOOL CALLBACK run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam);
 
+#pragma warning( push )
+#pragma warning( disable : 4100 )
+	virtual void destroyDataInstance(HTREEITEM hItem, TreeViewData* data) {
+		delete data;
+	}
+	virtual TreeViewData* cloneDataInstance(HTREEITEM hItem, TreeViewData* data) {
+		return new FunctionListPanelData(*(FunctionListPanelData*) data);
+	}
+#pragma warning( pop )
+
 private:
 	HWND _hToolbarMenu;
 	HWND _hSearchEdit;
@@ -146,7 +167,7 @@ private:
 	size_t getBodyClosePos(size_t begin, const TCHAR *bodyOpenSymbol, const TCHAR *bodyCloseSymbol);
 	void notified(LPNMHDR notification);
 	void addInStateArray(TreeStateNode tree2Update, const TCHAR *searchText, bool isSorted);
-	TreeParams* getFromStateArray(generic_string fullFilePath);
+	TreeParams* getFromStateArray(const GUID& id);
 	BOOL setTreeViewImageList(int root_id, int node_id, int leaf_id);
 	bool openSelection(const TreeView &treeView);
 	bool shouldSort();

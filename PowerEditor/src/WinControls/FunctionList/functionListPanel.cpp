@@ -50,13 +50,13 @@ void FunctionListPanel::addEntry(const TCHAR *nodeName, const TCHAR *displayText
 		itemParent = _treeView.searchSubItemByName(nodeName, root);
 		if (!itemParent)
 		{
-			itemParent = _treeView.addItem(nodeName, root, INDEX_NODE, TEXT("-1"));
+			itemParent = _treeView.addItem(nodeName, root, INDEX_NODE, new FunctionListPanelData(TEXT("-1")));
 		}
 	}
 	else
 		itemParent = root;
 
-	_treeView.addItem(displayText, itemParent, INDEX_LEAF, posStr);
+	_treeView.addItem(displayText, itemParent, INDEX_LEAF,  new FunctionListPanelData(posStr));
 }
 
 void FunctionListPanel::removeAllEntries()
@@ -162,7 +162,7 @@ void FunctionListPanel::addInStateArray(TreeStateNode tree2Update, const TCHAR *
 	bool found = false;
 	for (size_t i = 0, len = _treeParams.size(); i < len; ++i)
 	{
-		if (_treeParams[i]._treeState._extraData == tree2Update._extraData)
+		if (_treeParams[i]._treeState._id == tree2Update._id)
 		{
 			_treeParams[i]._searchParameters._text2Find = searchText;
 			_treeParams[i]._searchParameters._doSort = isSorted;
@@ -180,11 +180,11 @@ void FunctionListPanel::addInStateArray(TreeStateNode tree2Update, const TCHAR *
 	}
 }
 
-TreeParams* FunctionListPanel::getFromStateArray(generic_string fullFilePath)
+TreeParams* FunctionListPanel::getFromStateArray(const GUID& id)
 {
 	for (size_t i = 0, len = _treeParams.size(); i < len; ++i)
 	{
-		if (_treeParams[i]._treeState._extraData == fullFilePath)
+		if (_treeParams[i]._treeState._id == id)
 			return &_treeParams[i];
 	}
 	return NULL;
@@ -213,7 +213,7 @@ void FunctionListPanel::sortOrUnsort()
 
 			_treeViewSearchResult.removeAllItems();
 			const TCHAR *fn = ((*_ppEditView)->getCurrentBuffer())->getFileName();
-			_treeViewSearchResult.addItem(fn, NULL, INDEX_ROOT, TEXT("-1"));
+			_treeViewSearchResult.addItem(fn, NULL, INDEX_ROOT, new FunctionListPanelData(TEXT("-1")));
 			_treeView.searchLeafAndBuildTree(_treeViewSearchResult, text2search, INDEX_LEAF);
 			_treeViewSearchResult.display(true);
 			_treeViewSearchResult.expand(_treeViewSearchResult.getRoot());
@@ -253,7 +253,7 @@ void FunctionListPanel::reload()
 
 	if (_funcParserMgr.parse(fi, AssociationInfo(-1, langID, ext, udln)))
 	{
-		_treeView.addItem(fn, NULL, INDEX_ROOT, TEXT("-1"));
+		_treeView.addItem(fn, NULL, INDEX_ROOT, new FunctionListPanelData(TEXT("-1")));
 	}
 
 	for (size_t i = 0, len = fi.size(); i < len; ++i)
@@ -280,8 +280,10 @@ void FunctionListPanel::reload()
 	const TCHAR *fullFilePath = ((*_ppEditView)->getCurrentBuffer())->getFullPathName();
 	if (root)
 	{
-		_treeView.setItemParam(root, fullFilePath);
-		TreeParams *previousParams = getFromStateArray(fullFilePath);
+		FunctionListPanelData* data = (FunctionListPanelData*)_treeView.getData(root);
+		data->_str = fullFilePath;
+
+		TreeParams *previousParams = getFromStateArray(data->getId());
 		if (!previousParams)
 		{
 			::SendMessage(_hSearchEdit, WM_SETTEXT, 0, (LPARAM)TEXT(""));
@@ -357,12 +359,10 @@ bool FunctionListPanel::openSelection(const TreeView & treeView)
 	{
 		return false;
 	}
+	FunctionListPanelData* data = (FunctionListPanelData*) tvItem.lParam;
+	const generic_string& posStr = data->_str;
 
-	generic_string *posStr = (generic_string *)tvItem.lParam;
-	if (!posStr)
-		return false;
-
-	int pos = generic_atoi(posStr->c_str());
+	int pos = generic_atoi(posStr.c_str());
 	if (pos == -1)
 		return false;
 
@@ -484,7 +484,7 @@ void FunctionListPanel::searchFuncAndSwitchView()
 
 		_treeViewSearchResult.removeAllItems();
 		const TCHAR *fn = ((*_ppEditView)->getCurrentBuffer())->getFileName();
-		_treeViewSearchResult.addItem(fn, NULL, INDEX_ROOT, TEXT("-1"));
+		_treeViewSearchResult.addItem(fn, NULL, INDEX_ROOT, new FunctionListPanelData(TEXT("-1")));
 		_treeView.searchLeafAndBuildTree(_treeViewSearchResult, text2search, INDEX_LEAF);
 		_treeViewSearchResult.display(true);
 		_treeViewSearchResult.expand(_treeViewSearchResult.getRoot());

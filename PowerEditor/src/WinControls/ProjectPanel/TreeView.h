@@ -34,88 +34,52 @@
 
 struct TreeStateNode {
 	generic_string _label;
-	generic_string _extraData;
+	GUID _id;
 	bool _isExpanded;
 	bool _isSelected;
 	std::vector<TreeStateNode> _children;
 };
 
-enum TreeViewFileType {
-	tfFileType_generic, tfFileType_fsMonitorFolderRoot, tfFileType_fsMonitorFolder, tfFileType_fsMonitorFile, 
-};
+// note that this is no real MVC implementation... in fact the view does a lot of work the controller should do instead.
+// The previous implementation was based on a treeview only, and I did not want to write everything new. So the "controller" is instead more a listener and factory.
 
-struct TreeViewFileInfo {
-	generic_string _filePath;
-	TreeViewFileType _fileType;
-	DirectoryWatcher* _directoryWatcher;
-
-	TreeViewFileInfo(HWND hWnd, const TCHAR* filePath = NULL, TreeViewFileType fileType = tfFileType_generic) : _fileType(fileType), _directoryWatcher(NULL) {
-		if (filePath != NULL)
-		{
-			_filePath = generic_string(filePath);
-			if (fileType == tfFileType_fsMonitorFolderRoot)
-				_directoryWatcher = new DirectoryWatcher(hWnd, _filePath);
-		}
-	}
-	TreeViewFileInfo( const TreeViewFileInfo& other ) : _directoryWatcher(NULL) {
-		_filePath = other._filePath;
-		_fileType = other._fileType;
-		if( other._directoryWatcher )
-			_directoryWatcher = new DirectoryWatcher(*other._directoryWatcher);
-	}
-	TreeViewFileInfo& operator= ( const TreeViewFileInfo& other ) {
-		delete _directoryWatcher;
-		_directoryWatcher = NULL;
-		_filePath = other._filePath;
-		_fileType = other._fileType;
-		if( other._directoryWatcher )
-			_directoryWatcher = new DirectoryWatcher(*other._directoryWatcher);
-		return *this;
-	}
-
-	~TreeViewFileInfo() {
-		delete _directoryWatcher;
-	}
-	bool isFile() const {
-		return !_filePath.empty() && _fileType == tfFileType_generic;
-	}
-	bool isFolder() const {
-		return _filePath.empty() && _fileType == tfFileType_generic;
-	}
-	bool isFileMonitor() const {
-		return _fileType == tfFileType_fsMonitorFile;
-	}
-	bool isFolderMonitor() const {
-		return _fileType == tfFileType_fsMonitorFolder;
-	}
-	bool isFolderMonitorRoot() const {
-		return _fileType == tfFileType_fsMonitorFolderRoot;
-	}
-	void startThreadIfNecessary(HTREEITEM item) {
-		if (_directoryWatcher)
-			_directoryWatcher->startThread(item);
-	}
-};
-
-class TreeViewListener {
+class TreeViewData {
+	GUID _id;
 public:
-	virtual void onTreeItemAdded(HTREEITEM){}
-	virtual void onTreeItemRemoved(HTREEITEM){}
-	virtual void onTreeItemChanged(HTREEITEM){}
+	TreeViewData() {
+		CoCreateGuid(&_id);
+	}
+	virtual ~TreeViewData() {}
+
+	virtual const GUID& getId() const {
+		return _id;
+	}
 };
 
-class TreeViewDataFactory {
+//ha I suggest to switch off C4100 (unreferenced formal parameter) globally, because it does more harm than good. Optional virtual methods become unreadable with this warning.
+#pragma warning( push )
+#pragma warning( disable : 4100 )
+
+class TreeViewController {
+public:
+	virtual void onTreeItemAdded(bool afterClone, HTREEITEM hItem, TreeViewData* newData) {}
+	virtual void onTreeItemRemoved(HTREEITEM,TreeViewData*){}
+	virtual void onTreeItemChanged(HTREEITEM,TreeViewData*){}
+
+	virtual void destroyDataInstance(HTREEITEM hItem, TreeViewData* data)=0;
+	virtual TreeViewData* cloneDataInstance(HTREEITEM hItem, TreeViewData* data)=0;
 };
+
+#pragma warning( pop )
 
 class TreeView : public Window {
 public:
-	TreeView() : Window(), _isItemDragged(false), _listener(NULL) {};
+	TreeView(TreeViewController* controller) : Window(), _isItemDragged(false), _controller(controller) {};
 
 	virtual ~TreeView() {};
 	virtual void init(HINSTANCE hInst, HWND parent, int treeViewID);
 	virtual void destroy();
-	HTREEITEM addItem(const TCHAR *itemName, HTREEITEM hParentItem, int iImage, const TCHAR *filePath = NULL, TreeViewFileType fileType = tfFileType_generic);
-	bool setItemParam(HTREEITEM Item2Set, const TCHAR *paramStr);
+	HTREEITEM addItem(const TCHAR *itemName, HTREEITEM hParentItem, int iImage, TreeViewData* data);
 	HTREEITEM searchSubItemByName(const TCHAR *itemName, HTREEITEM hParentItem);
 	void removeItem(HTREEITEM hTreeItem);
 	void removeAllItems();
@@ -183,10 +147,10 @@ public:
 		return _validHandles.find(item) != _validHandles.end();
 	}
 
-	void setListener(TreeViewListener* _val) { _listener = _val; }
+	TreeViewData* getData(HTREEITEM item);
 
 protected:
-	TreeViewListener* _listener;
+	TreeViewController* _controller;
 	std::set<HTREEITEM> _validHandles;
 
 	WNDPROC _defaultProc;

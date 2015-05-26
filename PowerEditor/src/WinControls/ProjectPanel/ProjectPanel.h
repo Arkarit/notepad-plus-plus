@@ -85,6 +85,7 @@ public:
 		}
 	}
 	ProjectPanelFileData( const ProjectPanelFileData& other ) : _directoryWatcher(NULL) {
+		_id = other._id;
 		_filePath = other._filePath;
 		_nodeType = other._nodeType;
 		if( other._directoryWatcher )
@@ -93,6 +94,7 @@ public:
 	ProjectPanelFileData& operator= ( const ProjectPanelFileData& other ) {
 		delete _directoryWatcher;
 		_directoryWatcher = NULL;
+		_id = other._id;
 		_filePath = other._filePath;
 		_nodeType = other._nodeType;
 		if( other._directoryWatcher )

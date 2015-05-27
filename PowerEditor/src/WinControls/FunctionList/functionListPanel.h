@@ -98,11 +98,15 @@ public:
 	FunctionListPanelData(const TCHAR* str) : TreeViewData(), _str(str) {}
 	virtual ~FunctionListPanelData() {}
 
+	virtual TreeViewData* clone() const {
+		return new FunctionListPanelData(*this);
+	}
+
 };
 
-class FunctionListPanel : public DockingDlgInterface, public TreeViewController {
+class FunctionListPanel : public DockingDlgInterface {
 public:
-	FunctionListPanel(): DockingDlgInterface(IDD_FUNCLIST_PANEL), _ppEditView(NULL), _treeView(this), _treeViewSearchResult(this), _pTreeView(NULL),
+	FunctionListPanel(): DockingDlgInterface(IDD_FUNCLIST_PANEL), _ppEditView(NULL), _treeView(), _treeViewSearchResult(), _pTreeView(NULL),
 	_reloadTipStr(TEXT("Reload")), _sortTipStr(TEXT("Sort")) {
 		_pTreeView = &_treeView;
 	};
@@ -135,16 +139,6 @@ public:
 
 protected:
 	virtual BOOL CALLBACK run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam);
-
-#pragma warning( push )
-#pragma warning( disable : 4100 )
-	virtual void destroyDataInstance(HTREEITEM hItem, TreeViewData* data) {
-		delete data;
-	}
-	virtual TreeViewData* cloneDataInstance(HTREEITEM hItem, TreeViewData* data) {
-		return new FunctionListPanelData(*(FunctionListPanelData*) data);
-	}
-#pragma warning( pop )
 
 private:
 	HWND _hToolbarMenu;

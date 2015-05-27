@@ -85,6 +85,7 @@ public:
 		}
 	}
 	ProjectPanelFileData( const ProjectPanelFileData& other ) : _directoryWatcher(NULL) {
+		_id = other._id;
 		_filePath = other._filePath;
 		_nodeType = other._nodeType;
 		if( other._directoryWatcher )
@@ -93,6 +94,7 @@ public:
 	ProjectPanelFileData& operator= ( const ProjectPanelFileData& other ) {
 		delete _directoryWatcher;
 		_directoryWatcher = NULL;
+		_id = other._id;
 		_filePath = other._filePath;
 		_nodeType = other._nodeType;
 		if( other._directoryWatcher )
@@ -128,14 +130,19 @@ public:
 		if (_directoryWatcher)
 			_directoryWatcher->startThread(item);
 	}
+
+	virtual TreeViewData* clone() const {
+		return new ProjectPanelFileData(*this);
+	}
+
 };
 
 
-class ProjectPanel : public DockingDlgInterface, public TreeViewController {
+class ProjectPanel : public DockingDlgInterface, public TreeViewListener {
 public:
 	ProjectPanel()
 		: DockingDlgInterface(IDD_PROJECTPANEL)
-		, _treeView(this)
+		, _treeView()
 		, _hToolbarMenu(NULL)
 		, _hWorkSpaceMenu(NULL)
 		, _hProjectMenu(NULL)
@@ -143,9 +150,11 @@ public:
 		, _hFileMenu(NULL)
 		, _hFolderMonitorMenu(NULL) 
 	{
+		_treeView.setListener(this);
 	};
 
 	virtual ~ProjectPanel() {
+		_treeView.setListener(NULL);
 	}
 
 
@@ -222,13 +231,6 @@ protected:
 	virtual void onTreeItemAdded(bool afterClone, HTREEITEM hItem, TreeViewData* newData);
 	virtual void onTreeItemRemoved(HTREEITEM hItem,TreeViewData* data) {}
 	virtual void onTreeItemChanged(HTREEITEM hItem,TreeViewData* data);
-
-	virtual void destroyDataInstance(HTREEITEM hItem, TreeViewData* data) {
-		delete data;
-	}
-	virtual TreeViewData* cloneDataInstance(HTREEITEM hItem, TreeViewData* data) {
-		return new ProjectPanelFileData( *((ProjectPanelFileData *) data) );
-	}
 
 	static ProjectPanelFileData* getInfo( TreeViewData* data ) {
 		return (ProjectPanelFileData*) data;

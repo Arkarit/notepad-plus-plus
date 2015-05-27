@@ -44,6 +44,7 @@ struct TreeStateNode {
 // The previous implementation was based on a treeview only, and I did not want to write everything new. So the "controller" is instead more a listener and factory.
 
 class TreeViewData {
+protected:
 	GUID _id;
 public:
 	TreeViewData() {
@@ -54,27 +55,28 @@ public:
 	virtual const GUID& getId() const {
 		return _id;
 	}
+
+	virtual TreeViewData* clone() const = 0;
+
 };
 
 //ha I suggest to switch off C4100 (unreferenced formal parameter) globally, because it does more harm than good. Optional virtual methods become unreadable with this warning.
 #pragma warning( push )
 #pragma warning( disable : 4100 )
 
-class TreeViewController {
+class TreeViewListener {
 public:
 	virtual void onTreeItemAdded(bool afterClone, HTREEITEM hItem, TreeViewData* newData) {}
-	virtual void onTreeItemRemoved(HTREEITEM,TreeViewData*){}
-	virtual void onTreeItemChanged(HTREEITEM,TreeViewData*){}
+	virtual void onTreeItemRemoved(HTREEITEM hItem,TreeViewData* data){}
+	virtual void onTreeItemChanged(HTREEITEM hItem,TreeViewData* data){}
 
-	virtual void destroyDataInstance(HTREEITEM hItem, TreeViewData* data)=0;
-	virtual TreeViewData* cloneDataInstance(HTREEITEM hItem, TreeViewData* data)=0;
 };
 
 #pragma warning( pop )
 
 class TreeView : public Window {
 public:
-	TreeView(TreeViewController* controller) : Window(), _isItemDragged(false), _controller(controller) {};
+	TreeView() : Window(), _isItemDragged(false), _listener(NULL) {};
 
 	virtual ~TreeView() {};
 	virtual void init(HINSTANCE hInst, HWND parent, int treeViewID);
@@ -149,8 +151,13 @@ public:
 
 	TreeViewData* getData(HTREEITEM item);
 
+	void setListener(TreeViewListener* listener)
+	{
+		_listener = listener;
+	}
+
 protected:
-	TreeViewController* _controller;
+	TreeViewListener* _listener;
 	std::set<HTREEITEM> _validHandles;
 
 	WNDPROC _defaultProc;

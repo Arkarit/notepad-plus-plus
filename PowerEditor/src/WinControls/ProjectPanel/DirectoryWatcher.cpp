@@ -76,27 +76,40 @@ void DirectoryWatcher::removeAllDirs()
 
 }
 
-void DirectoryWatcher::startThread()
+void DirectoryWatcher::update()
+{
+	::SetEvent(_hUpdateEvent);
+}
+
+bool DirectoryWatcher::startThread()
 {
 	Scopelock lock(_lock);
 
 	_hRunningEvent = ::CreateEvent(NULL, TRUE, FALSE, NULL);
-	if (!_hRunningEvent)
-		return;
 	_hStopEvent = ::CreateEvent(NULL, TRUE, FALSE, NULL);
-	if (!_hStopEvent)
-	{
-		::CloseHandle(_hRunningEvent);
-		return;
-	}
+	_hUpdateEvent = ::CreateEvent(NULL, TRUE, FALSE, NULL);
+	if (!_hStopEvent || !_hRunningEvent || !_hUpdateEvent)
+		goto fail;
+
 	_hThread = ::CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)threadFunc, (LPVOID)this, 0, NULL);
 	if (!_hThread)
-	{
-		::CloseHandle(_hRunningEvent);
-		::CloseHandle(_hStopEvent);
-		return;
-	}
+		goto fail;
+
 	::WaitForSingleObject(_hRunningEvent, INFINITE);
+
+	return true;
+
+fail:
+	if (_hRunningEvent)
+		::CloseHandle(_hRunningEvent);
+	if (_hStopEvent)
+		::CloseHandle(_hStopEvent);
+	if (_hUpdateEvent)
+		::CloseHandle(_hUpdateEvent);
+	return false;
+
+
+
 }
 
 void DirectoryWatcher::stopThread()
@@ -140,15 +153,34 @@ int DirectoryWatcher::thread()
 	_running = true;
 	::SetEvent(_hRunningEvent);
 
+	HANDLE events[2];
+	events[0] = _hStopEvent;
+	events[1] = _hUpdateEvent;
 
-	do {
+
+	for(;;)
+	{
 		updateDirs();
 		if (_watching)
 			iterateDirs();
-	} while (WaitForSingleObject(_hStopEvent, _updateFrequencyMs) == WAIT_TIMEOUT);
+		DWORD waitresult = WaitForMultipleObjects(2, events, FALSE, _updateFrequencyMs);
+		switch (waitresult)
+		{
+			case WAIT_OBJECT_0:
+				return 0;
+			case WAIT_FAILED:
+				return -1;
+			case WAIT_OBJECT_0+1:
+				ResetEvent(_hUpdateEvent);
+				break;
+			case WAIT_TIMEOUT:
+				break;
+			default:
+				assert(0);
+				break;
+		}
 
-
-	return 0;
+	}
 
 }
 

@@ -672,6 +672,11 @@ void ProjectPanel::onTreeItemAdded(bool afterClone, HTREEITEM hItem, TreeViewDat
 {
 	ProjectPanelFileData* tvInfo = getInfo(newData);
 	tvInfo->setItem( hItem );
+
+	if (_treeView.isVisible(hItem))
+	{
+		tvInfo->watchDir(true);
+	}
 }
 
 void ProjectPanel::onTreeItemChanged(HTREEITEM hTreeItem,TreeViewData* data)
@@ -713,6 +718,48 @@ void ProjectPanel::onTreeItemChanged(HTREEITEM hTreeItem,TreeViewData* data)
 	}
 	_treeView.setItemImage(hTreeItem, iImg, iImg);
 	//_directoryWatcher->setWatching(true);
+
+}
+
+void ProjectPanel::expandOrCollapseMonitorFolder(bool expand, HTREEITEM hItem)
+{
+/*
+	TVITEM tvItem;
+	tvItem.mask = TVIF_PARAM;
+	tvItem.hItem = hItem;
+	::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0, (LPARAM)&tvItem);
+	ProjectPanelFileData& tvFileInfo = *(ProjectPanelFileData*)(tvItem.lParam);
+*/
+
+	for (HTREEITEM hItemNode = _treeView.getChildFrom(hItem);
+		hItemNode != NULL;
+		hItemNode = _treeView.getNextSibling(hItemNode))
+	{
+		TVITEM tvItem;
+		tvItem.mask = TVIF_PARAM;
+		tvItem.hItem = hItemNode;
+		::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0, (LPARAM)&tvItem);
+		ProjectPanelFileData& tvFileInfo = *(ProjectPanelFileData*)(tvItem.lParam);
+//		if (!(tvFileInfo.isFolderMonitor() || tvFileInfo.isFolderMonitorRoot()) )
+//			continue;
+
+//		if (generic_string(tvFileInfo._filePath) == TEXT("C:\\Neuer Ordner"))
+//		tvFileInfo.setItem(hItemNode);
+
+		if (expand)
+		{
+			tvFileInfo.watchDir(true);
+			if( _treeView.isVisible(hItemNode) && _treeView.isExpanded(hItemNode))
+				expandOrCollapseMonitorFolder(true, hItemNode);
+		}
+		else
+		{
+			tvFileInfo.watchDir(false);
+//			_treeView.removeAllChildren(hItemNode);
+		}
+
+	}
+//	_directoryWatcher->update();
 
 }
 
@@ -862,7 +909,7 @@ void ProjectPanel::notified(LPNMHDR notification)
 						_treeView.setItemImage(nmtv->itemNew.hItem, INDEX_OPEN_NODE, INDEX_OPEN_NODE);
 					}
 				}
-				else if (getNodeType(nmtv->itemNew.hItem) == nodeType_monitorFolderRoot)
+				else if (getNodeType(nmtv->itemNew.hItem) == nodeType_monitorFolder || getNodeType(nmtv->itemNew.hItem) == nodeType_monitorFolderRoot)
 				{
 					if (nmtv->action == TVE_COLLAPSE)
 					{
@@ -873,6 +920,9 @@ void ProjectPanel::notified(LPNMHDR notification)
 						_treeView.setItemImage(nmtv->itemNew.hItem, INDEX_OPEN_MONITOR, INDEX_OPEN_MONITOR);
 					}
 				}
+
+				expandOrCollapseMonitorFolder(nmtv->action == TVE_EXPAND, nmtv->itemNew.hItem);
+
 			}
 			break;
 
@@ -962,8 +1012,11 @@ HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, 
 
 	HTREEITEM addedItem = _treeView.addItem(folderName, hTreeItem, iconindex, new ProjectPanelFileData(_directoryWatcher, monitorPath, nodeType));
 	
-	TreeView_Expand(_treeView.getHSelf(), hTreeItem, TVE_EXPAND);
-	TreeView_EditLabel(_treeView.getHSelf(), addedItem);
+	if (getNodeType(hTreeItem) != nodeType_monitorFolderRoot && getNodeType(hTreeItem) != nodeType_monitorFolder)
+	{
+		TreeView_Expand(_treeView.getHSelf(), hTreeItem, TVE_EXPAND);
+		TreeView_EditLabel(_treeView.getHSelf(), addedItem);
+	}
 	if (getNodeType(hTreeItem) == nodeType_folder)
 		_treeView.setItemImage(hTreeItem, INDEX_OPEN_NODE, INDEX_OPEN_NODE);
 	else if (getNodeType(hTreeItem) == nodeType_monitorFolderRoot)

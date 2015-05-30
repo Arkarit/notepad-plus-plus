@@ -55,7 +55,7 @@ class DirectoryWatcher
 	friend static DWORD threadFunc(LPVOID data);
 	generic_string _filePath;
 	HANDLE _hThread;
-	HANDLE _hRunningEvent, _hStopEvent;
+	HANDLE _hRunningEvent, _hStopEvent, _hUpdateEvent;
 	bool _running;
 	HWND _hWnd;
 
@@ -71,7 +71,7 @@ class DirectoryWatcher
 	bool _watching;
 public:
 
-	DirectoryWatcher(HWND hWnd, DWORD updateFrequencyMs = 1000);
+	DirectoryWatcher(HWND hWnd, DWORD updateFrequencyMs = 333);
 	virtual ~DirectoryWatcher();
 
 	void addDir(const generic_string& _path, HTREEITEM _treeItem);
@@ -81,10 +81,12 @@ public:
 	bool getWatching() const { return _watching; }
 	void setWatching(bool _val) { Scopelock lock(_lock); _watching = _val; }
 
+	void update();
+
 
 
 private:
-	void startThread();
+	bool startThread();
 	void stopThread();
 	int thread();
 	static DWORD threadFunc(LPVOID data);

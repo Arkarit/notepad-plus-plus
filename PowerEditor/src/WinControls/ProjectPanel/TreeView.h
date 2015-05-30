@@ -69,7 +69,6 @@ public:
 	virtual void onTreeItemAdded(bool afterClone, HTREEITEM hItem, TreeViewData* newData) {}
 	virtual void onTreeItemRemoved(HTREEITEM hItem,TreeViewData* data){}
 	virtual void onTreeItemChanged(HTREEITEM hItem,TreeViewData* data){}
-
 };
 
 #pragma warning( pop )
@@ -120,6 +119,25 @@ public:
 	void toggleExpandCollapse(HTREEITEM hItem) const {
 		TreeView_Expand(_hSelf, hItem, TVE_TOGGLE);
 	};
+
+	bool isExpanded(HTREEITEM hItem) const {
+		TVITEM tvItem;
+		tvItem.mask = TVIF_PARAM | TVIF_STATE;
+		tvItem.hItem = hItem;
+		::SendMessage(_hSelf, TVM_GETITEM, 0, (LPARAM)&tvItem);
+
+		return (tvItem.state & TVIS_EXPANDED) != 0;
+	}
+
+	bool isVisible(HTREEITEM hItem) const {
+		for (hItem=getParent(hItem); hItem != NULL; hItem=getParent(hItem))
+		{
+			if( !isExpanded(hItem))
+				return false;
+		}
+		return true;
+	}
+
 	void setItemImage(HTREEITEM hTreeItem, int iImage, int iSelectedImage);
 
 	// Drag and Drop operations

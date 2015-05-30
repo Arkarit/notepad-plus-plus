@@ -78,12 +78,14 @@ public:
 	NodeType _nodeType;
 	DirectoryWatcher* _directoryWatcher;
 	HTREEITEM _hItem;
+	bool _watch;
 
 	ProjectPanelFileData(DirectoryWatcher* directoryWatcher, const TCHAR* filePath, NodeType nodeType) 
 		: TreeViewData()
 		, _nodeType(nodeType)
 		, _directoryWatcher(directoryWatcher)
 		, _hItem(NULL)
+		, _watch(false)
 	{
 		if (filePath != NULL)
 			_filePath = filePath;
@@ -95,13 +97,28 @@ public:
 
 	void setItem(HTREEITEM hItem)
 	{
-		if (_hItem)
+		if (_hItem && _hItem != hItem && _watch)
+			watchDir(false);
+		_hItem = hItem;
+	}
+
+	bool watchDir(bool watch)
+	{
+		if (_hItem && _watch)
 			if (_nodeType == nodeType_monitorFolderRoot || _nodeType == nodeType_monitorFolder)
 				_directoryWatcher->removeDir(_filePath,_hItem);
-		_hItem = hItem;
+
+		_watch = watch;
+		if( !watch)
+			return true;
+
 		if (_hItem)
-			if (_nodeType == nodeType_monitorFolderRoot || _nodeType == nodeType_monitorFolder)
+			if (watch && (_nodeType == nodeType_monitorFolderRoot || _nodeType == nodeType_monitorFolder))
 				_directoryWatcher->addDir(_filePath,_hItem);
+			else
+				return true;
+
+		return !(_nodeType == nodeType_monitorFolderRoot || _nodeType == nodeType_monitorFolder);
 	}
 
 	bool isRoot() const {
@@ -260,6 +277,8 @@ protected:
 	generic_string getAbsoluteFilePath(const TCHAR * relativePath);
 	void openSelectFile();
 	HMENU getContextMenu(HTREEITEM hTreeItem) const;
+	void expandOrCollapseMonitorFolder(bool expand, HTREEITEM hItem);
+
 #pragma warning( push )
 #pragma warning( disable : 4100 )
 
@@ -268,7 +287,7 @@ protected:
 	virtual void onTreeItemRemoved(HTREEITEM hItem,TreeViewData* data) {}
 	virtual void onTreeItemChanged(HTREEITEM hItem,TreeViewData* data);
 
-	static ProjectPanelFileData* getInfo( TreeViewData* data ) {
+	static ProjectPanelFileData* getInfo(TreeViewData* data) {
 		return (ProjectPanelFileData*) data;
 	}
 	static const ProjectPanelFileData* getInfo( const TreeViewData* data ) {

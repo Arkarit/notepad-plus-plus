@@ -36,6 +36,8 @@
 
 #include "TreeView.h"
 #include "ProjectPanel_rc.h"
+#include "Directory.h"
+#include <map>
 
 #define PM_PROJECTPANELTITLE     TEXT("Project")
 #define PM_WORKSPACEROOTNAME     TEXT("Workspace")
@@ -75,36 +77,33 @@ public:
 	generic_string _filePath;
 	NodeType _nodeType;
 	DirectoryWatcher* _directoryWatcher;
+	HTREEITEM _hItem;
 
-	ProjectPanelFileData(HWND hWnd, const TCHAR* filePath, NodeType nodeType) : TreeViewData(), _nodeType(nodeType), _directoryWatcher(NULL) {
+	ProjectPanelFileData(DirectoryWatcher* directoryWatcher, const TCHAR* filePath, NodeType nodeType) 
+		: TreeViewData()
+		, _nodeType(nodeType)
+		, _directoryWatcher(directoryWatcher)
+		, _hItem(NULL)
+	{
 		if (filePath != NULL)
-		{
-			_filePath = generic_string(filePath);
-			if (nodeType == nodeType_monitorFolderRoot)
-				_directoryWatcher = new DirectoryWatcher(hWnd, _filePath);
-		}
-	}
-	ProjectPanelFileData( const ProjectPanelFileData& other ) : _directoryWatcher(NULL) {
-		_id = other._id;
-		_filePath = other._filePath;
-		_nodeType = other._nodeType;
-		if( other._directoryWatcher )
-			_directoryWatcher = new DirectoryWatcher(*other._directoryWatcher);
-	}
-	ProjectPanelFileData& operator= ( const ProjectPanelFileData& other ) {
-		delete _directoryWatcher;
-		_directoryWatcher = NULL;
-		_id = other._id;
-		_filePath = other._filePath;
-		_nodeType = other._nodeType;
-		if( other._directoryWatcher )
-			_directoryWatcher = new DirectoryWatcher(*other._directoryWatcher);
-		return *this;
+			_filePath = filePath;
 	}
 
 	virtual ~ProjectPanelFileData() {
-		delete _directoryWatcher;
+		setItem(NULL);
 	}
+
+	void setItem(HTREEITEM hItem)
+	{
+		if (_hItem)
+			if (_nodeType == nodeType_monitorFolderRoot || _nodeType == nodeType_monitorFolder)
+				_directoryWatcher->removeDir(_filePath,_hItem);
+		_hItem = hItem;
+		if (_hItem)
+			if (_nodeType == nodeType_monitorFolderRoot || _nodeType == nodeType_monitorFolder)
+				_directoryWatcher->addDir(_filePath,_hItem);
+	}
+
 	bool isRoot() const {
 		return _nodeType == nodeType_root;
 	}
@@ -126,19 +125,51 @@ public:
 	bool isFolderMonitorRoot() const {
 		return _nodeType == nodeType_monitorFolderRoot;
 	}
-	void startThreadIfNecessary(HTREEITEM item) {
-		if (_directoryWatcher)
-			_directoryWatcher->startThread(item);
-	}
 
 	virtual TreeViewData* clone() const {
-		return new ProjectPanelFileData(*this);
+		return new ProjectPanelFileData(_directoryWatcher, _filePath.c_str(), _nodeType);
 	}
+
+private:
+	ProjectPanelFileData(const ProjectPanelFileData&) = delete;
+	ProjectPanelFileData& operator= (const ProjectPanelFileData&) = delete;
+};
+
+
+
+
+class ProjectPanel;
+
+class ProjectPanelDirectory : public Directory {
+	ProjectPanel& _projectPanel;
+	TreeView& _treeView;
+	HTREEITEM _hItem;
+	std::map<generic_string,HTREEITEM> _dirMap;
+	std::map<generic_string,HTREEITEM> _fileMap;
+
+public:
+	ProjectPanelDirectory( ProjectPanel &projectPanel, HTREEITEM hItem );
+	virtual ~ProjectPanelDirectory() {}
+
+protected:
+
+	virtual void onDirAdded(const generic_string& name);
+	virtual void onDirRemoved(const generic_string& name);
+	virtual void onFileAdded(const generic_string& name);
+	virtual void onFileRemoved(const generic_string& name);
+
+private:
+	ProjectPanelDirectory(const ProjectPanelDirectory&) = delete;
+	ProjectPanelDirectory& operator= (const ProjectPanelDirectory&) = delete;
 
 };
 
 
+
+
 class ProjectPanel : public DockingDlgInterface, public TreeViewListener {
+	friend class ProjectPanelDirectory;
+
 public:
 	ProjectPanel()
 		: DockingDlgInterface(IDD_PROJECTPANEL)
@@ -148,13 +179,15 @@ public:
 		, _hProjectMenu(NULL)
 		, _hFolderMenu(NULL)
 		, _hFileMenu(NULL)
-		, _hFolderMonitorMenu(NULL) 
+		, _hFolderMonitorMenu(NULL)
+		, _directoryWatcher(NULL)
 	{
 		_treeView.setListener(this);
 	};
 
 	virtual ~ProjectPanel() {
 		_treeView.setListener(NULL);
+		delete _directoryWatcher;
 	}
 
 
@@ -192,6 +225,8 @@ public:
 		TreeView_SetTextColor(_treeView.getHSelf(), fgColour);
     };
 
+	TreeView& getTreeView() { return _treeView; }
+
 protected:
 	TreeView _treeView;
 	HIMAGELIST _hImaLst;
@@ -200,6 +235,7 @@ protected:
 	generic_string _workSpaceFilePath;
 	generic_string _selDirOfFilesFromDirDlg;
 	bool _isDirty;
+	DirectoryWatcher* _directoryWatcher;
 
 	void initMenus();
 	void destroyMenus();
@@ -218,7 +254,7 @@ protected:
 	POINT getMenuDisplyPoint(int iButton);
 	virtual BOOL CALLBACK ProjectPanel::run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam);
 	bool buildTreeFrom(TiXmlNode *projectRoot, HTREEITEM hParentItem);
-	void rebuildFolderMonitorTree(HTREEITEM hParentItem);
+	void rebuildFolderMonitorTree(HTREEITEM hParentItem, const ProjectPanelFileData& data);
 	void notified(LPNMHDR notification);
 	void showContextMenu(int x, int y);
 	generic_string getAbsoluteFilePath(const TCHAR * relativePath);
@@ -233,6 +269,9 @@ protected:
 	virtual void onTreeItemChanged(HTREEITEM hItem,TreeViewData* data);
 
 	static ProjectPanelFileData* getInfo( TreeViewData* data ) {
+		return (ProjectPanelFileData*) data;
+	}
+	static const ProjectPanelFileData* getInfo( const TreeViewData* data ) {
 		return (ProjectPanelFileData*) data;
 	}
 

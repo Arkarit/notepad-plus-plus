@@ -29,7 +29,13 @@
 #ifndef DIRECTORYWATCHER_H
 #define  DIRECTORYWATCHER_H
 
+#include <map>
+#include <set>
+
 #include "resource.h"
+#include "Locking.h"
+#include "Directory.h"
+
 #define DIRECTORYWATCHER_UPDATE DIRECTORYWATCHER_USER
 
 // this class monitors a specific directory for changes in a separate thread.
@@ -52,23 +58,43 @@ class DirectoryWatcher
 	HANDLE _hRunningEvent, _hStopEvent;
 	bool _running;
 	HWND _hWnd;
-	HTREEITEM _treeItem;
 
+	std::map<generic_string,Directory*> _watchdirs;
+	std::multimap<generic_string,HTREEITEM> _dirItems;
+	DWORD _updateFrequencyMs;
+
+	Lock _lock;
+
+	std::multimap<generic_string,HTREEITEM> _dirItemsToAdd;
+	std::multimap<generic_string,HTREEITEM> _dirItemsToRemove;
+
+	bool _watching;
 public:
 
-	DirectoryWatcher(HWND hWnd, const generic_string& filePath);
+	DirectoryWatcher(HWND hWnd, DWORD updateFrequencyMs = 1000);
 	virtual ~DirectoryWatcher();
-	DirectoryWatcher(const DirectoryWatcher& other);
 
-	void startThread(HTREEITEM treeItem);
+	void addDir(const generic_string& _path, HTREEITEM _treeItem);
+	void removeDir(const generic_string& _path, HTREEITEM _treeItem);
+	void removeAllDirs();
+
+	bool getWatching() const { return _watching; }
+	void setWatching(bool _val) { Scopelock lock(_lock); _watching = _val; }
+
+
 
 private:
+	void startThread();
 	void stopThread();
 	int thread();
 	static DWORD threadFunc(LPVOID data);
-	void post();
-	// assignment operator forbidden
+	void post(HTREEITEM item);
+	void iterateDirs();
+	void updateDirs();
+
+	// noncopyable
 	DirectoryWatcher& operator= (const DirectoryWatcher&) {}
+	DirectoryWatcher(const DirectoryWatcher&) {}
 
 };
 

@@ -28,38 +28,58 @@
 #include "precompiledHeaders.h"
 #include "DirectoryWatcher.h"
 
+#include <set>
 
-DirectoryWatcher::DirectoryWatcher(HWND hWnd, const generic_string& filePath) 
+
+DirectoryWatcher::DirectoryWatcher(HWND hWnd, DWORD updateFrequencyMs) 
 	: _hWnd(hWnd)
-	, _filePath(filePath)
-	, _treeItem(NULL)
 	, _hThread(NULL)
 	, _hRunningEvent(NULL)
 	, _hStopEvent(NULL)
 	, _running(false)
+	, _updateFrequencyMs(updateFrequencyMs)
+	, _watching(true)
 {
-}
+	
+	startThread();
 
-
-DirectoryWatcher::DirectoryWatcher(const DirectoryWatcher& other) 
-	: _hWnd(other._hWnd)
-	, _filePath(other._filePath)
-	, _treeItem(NULL)
-	, _hThread(NULL)
-	, _hRunningEvent(NULL)
-	, _hStopEvent(NULL)
-	, _running(false)
-{
 }
 
 DirectoryWatcher::~DirectoryWatcher()
 {
 	stopThread();
+	removeAllDirs();
 }
 
-void DirectoryWatcher::startThread(HTREEITEM treeItem)
+void DirectoryWatcher::addDir(const generic_string& _path, HTREEITEM _treeItem)
 {
-	_treeItem = treeItem;
+	Scopelock lock(_lock);
+	_dirItemsToAdd.insert(std::pair<generic_string,HTREEITEM>(_path,_treeItem));
+}
+
+void DirectoryWatcher::removeDir(const generic_string& _path, HTREEITEM _treeItem)
+{
+	Scopelock lock(_lock);
+	_dirItemsToRemove.insert(std::pair<generic_string,HTREEITEM>(_path,_treeItem));
+}
+
+void DirectoryWatcher::removeAllDirs()
+{
+	Scopelock lock(_lock);
+	for( auto it=_watchdirs.begin(); it != _watchdirs.end(); ++it )
+		delete it->second;
+
+	_watchdirs.clear();
+	_dirItems.clear();
+	_dirItemsToAdd.clear();
+	_dirItemsToRemove.clear();
+
+}
+
+void DirectoryWatcher::startThread()
+{
+	Scopelock lock(_lock);
+
 	_hRunningEvent = ::CreateEvent(NULL, TRUE, FALSE, NULL);
 	if (!_hRunningEvent)
 		return;
@@ -76,13 +96,13 @@ void DirectoryWatcher::startThread(HTREEITEM treeItem)
 		::CloseHandle(_hStopEvent);
 		return;
 	}
-
 	::WaitForSingleObject(_hRunningEvent, INFINITE);
-
 }
 
 void DirectoryWatcher::stopThread()
 {
+	Scopelock lock(_lock);
+
 	if (_running)
 	{
 		::SetEvent(_hStopEvent);
@@ -94,7 +114,6 @@ void DirectoryWatcher::stopThread()
 		_hThread = NULL;
 		_hRunningEvent = NULL;
 		_hStopEvent = NULL;
-		_treeItem = NULL;
 	}
 
 }
@@ -118,81 +137,16 @@ void DirectoryWatcher::stopThread()
 int DirectoryWatcher::thread()
 {
 
-	DWORD notifyFilter = FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME | FILE_NOTIFY_CHANGE_ATTRIBUTES | FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_CREATION;
-	HANDLE hFindChange = FindFirstChangeNotification(_filePath.c_str(), TRUE, notifyFilter);
-	if (!hFindChange)
-	{
-		return -1;
-	}
-	bool nonExistentMode = hFindChange == INVALID_HANDLE_VALUE;
-
 	_running = true;
 	::SetEvent(_hRunningEvent);
 
-	HANDLE handles[2];
-	handles[0] = hFindChange;
-	handles[1] = _hStopEvent;
 
-	bool exitThread = false;
+	do {
+		updateDirs();
+		if (_watching)
+			iterateDirs();
+	} while (WaitForSingleObject(_hStopEvent, _updateFrequencyMs) == WAIT_TIMEOUT);
 
-	while (!exitThread)
-	{
-		if (nonExistentMode)
-		{
-			// if the directory we wanted to monitor does not exist, we have no other chance than to poll it for creation.
-			if (!PathFileExists(_filePath.c_str()))
-			{
-				// poll every 2 secs
-				DWORD cause = WaitForSingleObject(_hStopEvent, 2000);
-				if (cause == WAIT_OBJECT_0)
-					exitThread = true;
-			}
-			else
-			{
-				if (hFindChange != INVALID_HANDLE_VALUE)
-					FindCloseChangeNotification(hFindChange);
-
-				hFindChange = FindFirstChangeNotification(_filePath.c_str(), TRUE, notifyFilter);
-				handles[0] = hFindChange;
-				if (hFindChange != INVALID_HANDLE_VALUE)
-				{
-					nonExistentMode = false;
-					post();
-				}
-			}
-		}
-		else
-		{
-			DWORD cause = WaitForMultipleObjects(2, handles, FALSE, INFINITE);
-			if (cause == WAIT_FAILED)
-			{
-				DWORD error = GetLastError();
-				if (error == ERROR_INVALID_HANDLE)
-				{
-					// the directory was removed
-					nonExistentMode = true;
-				}
-				else
-					exitThread = true;
-			}
-			else if (cause == WAIT_OBJECT_0)
-			{
-				//FIXME: if a directory is deleted, the notification is sent too early - before the folder really has been deleted.
-				// as a workaround, we sleep a bit here, but there has to be a better solution for this. Might fail on really big folders!
-				Sleep(500);
-				post();
-				if (PathFileExists(_filePath.c_str()))
-					FindNextChangeNotification(hFindChange);
-				else
-					nonExistentMode = true;
-			}
-			else
-				exitThread = true;
-		}
-	}
-
-	if (hFindChange != INVALID_HANDLE_VALUE)
-		FindCloseChangeNotification(hFindChange);
 
 	return 0;
 
@@ -205,7 +159,118 @@ DWORD DirectoryWatcher::threadFunc(LPVOID data)
 
 }
 
-void DirectoryWatcher::post()
+void DirectoryWatcher::post(HTREEITEM item)
 {
-	SendMessage(_hWnd, DIRECTORYWATCHER_UPDATE, 0, (LPARAM)_treeItem);
+	SendMessage(_hWnd, DIRECTORYWATCHER_UPDATE, 0, (LPARAM)item);
+//	SendMessageTimeout(_hWnd, DIRECTORYWATCHER_UPDATE, 0, (LPARAM)item, SMTO_ABORTIFHUNG, 1, NULL);
 }
+
+void DirectoryWatcher::iterateDirs()
+{
+	std::map<generic_string,bool> changedMap;
+
+	for (auto it=_dirItems.begin(); it!=_dirItems.end(); ++it)
+	{
+		const generic_string& path = it->first;
+		const HTREEITEM& treeItem = it->second;
+
+		// first, look if we already checked if the current directory has been changed
+		// this may happen, because dirItems is a multimap, and there might be the same directory with multiple tree nodes assigned to it
+		auto itAlreadyChanged = changedMap.find(path);
+		if (itAlreadyChanged != changedMap.end())
+		{
+			// yes, we have checked already.
+
+			bool wasChanged = itAlreadyChanged->second;
+
+			// if it was changed, inform tree item.
+			if (wasChanged)
+				post(treeItem);
+			continue;
+		}
+
+		// find the matching watchdir
+		auto itWatchdirs = _watchdirs.find(path);
+
+		if (itWatchdirs == _watchdirs.end())
+		{
+			// there is no matching watchdir, because the dir has been freshly added. Create a new one.
+			_watchdirs[path] = new Directory(path);
+			// always inform, when a new directory was posted, and always set change to true.
+			changedMap[path] = true;
+			post(treeItem);
+			continue;
+		}
+
+		// fetch the old dir state
+		Directory* oldDirState = itWatchdirs->second;
+		// read in the current state of the directory
+		Directory* newDirState = new Directory(path);
+		// check if the old state and the new state are not the same
+		bool changed = *oldDirState != *newDirState;
+		// store this comparison for future comparisons
+		changedMap[path] = changed;
+
+		// it was not changed. Simply delete the new dir and continue.
+		if(!changed)
+		{
+			delete newDirState;
+			continue;
+		}
+
+		// it was changed. Inform..
+		post(treeItem);
+
+		// delete the old dir state
+		delete oldDirState;
+		// and set the new one.
+		_watchdirs[path] = newDirState;
+	}
+
+	// at last, remove all watchdirs, which are not used anymore.
+
+	std::vector<std::map<generic_string,Directory*>::iterator> deleteCandidates;
+	deleteCandidates.reserve(_watchdirs.size());
+
+	for (auto it=_watchdirs.begin(); it !=_watchdirs.end(); ++it)
+	{
+		if (_dirItems.find(it->first) == _dirItems.end())
+			deleteCandidates.push_back(it);
+	}
+
+	for (size_t i=0; i<deleteCandidates.size(); i++ )
+	{
+		delete deleteCandidates[i]->second;
+		_watchdirs.erase( deleteCandidates[i] );
+	}
+
+
+}
+
+void DirectoryWatcher::updateDirs()
+{
+	Scopelock lock(_lock);
+	_dirItems.insert(_dirItemsToAdd.begin(),_dirItemsToAdd.end());
+	_dirItemsToAdd.clear();
+
+	for (auto itToRemove = _dirItemsToRemove.begin(); itToRemove != _dirItemsToRemove.end(); ++itToRemove)
+	{
+		const generic_string& path = itToRemove->first;
+		const HTREEITEM& treeItem = itToRemove->second;
+
+		for (auto itDirItems = _dirItems.find(path); itDirItems != _dirItems.end(); ++itDirItems )
+		{
+			if (itDirItems->second == treeItem)
+			{
+				_dirItems.erase(itDirItems);
+				break;
+			}
+		}
+	}
+
+	_dirItemsToRemove.clear();
+
+		
+
+}
+

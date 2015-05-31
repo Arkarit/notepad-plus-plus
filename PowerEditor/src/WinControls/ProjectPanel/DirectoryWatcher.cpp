@@ -194,7 +194,7 @@ DWORD DirectoryWatcher::threadFunc(LPVOID data)
 bool DirectoryWatcher::post(HTREEITEM item)
 {
 //	SendMessage(_hWnd, DIRECTORYWATCHER_UPDATE, 0, (LPARAM)item);
-	LRESULT smResult = SendMessageTimeout(_hWnd, DIRECTORYWATCHER_UPDATE, 0, (LPARAM)item, SMTO_ABORTIFHUNG, 100, NULL);
+	LRESULT smResult = SendMessageTimeout(_hWnd, DIRECTORYWATCHER_UPDATE, 0, (LPARAM)item, SMTO_ABORTIFHUNG, 10000, NULL);
 	return smResult != 0;
 }
 

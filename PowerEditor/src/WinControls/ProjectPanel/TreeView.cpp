@@ -89,7 +89,7 @@ LRESULT TreeView::runProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 }
 
 
-HTREEITEM TreeView::addItem(const TCHAR *itemName, HTREEITEM hParentItem, int iImage, TreeViewData* data)
+HTREEITEM TreeView::addItem(const TCHAR *itemName, HTREEITEM hParentItem, int iImage, TreeViewData* data, TreeviewInsertFunc insertFunc)
 {
 	TVITEM tvi;
 	tvi.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_PARAM; 
@@ -108,8 +108,18 @@ HTREEITEM TreeView::addItem(const TCHAR *itemName, HTREEITEM hParentItem, int iI
 
 	TVINSERTSTRUCT tvInsertStruct;
 	tvInsertStruct.item = tvi; 
-	tvInsertStruct.hInsertAfter = (HTREEITEM)TVI_LAST;
+	tvInsertStruct.hInsertAfter = TVI_LAST;
 	tvInsertStruct.hParent = hParentItem;
+
+	if (insertFunc)
+	{
+		TVITEM tvItem;
+		tvItem.mask = TVIF_PARAM;
+		tvItem.hItem = hParentItem;
+		SendMessage(_hSelf, TVM_GETITEM, 0,(LPARAM)&tvItem);
+		TreeViewData* parentData = (TreeViewData*) tvItem.lParam;
+		tvInsertStruct.hInsertAfter = insertFunc(this, hParentItem, parentData, itemName, data);
+	}
 
 	HTREEITEM newItem = (HTREEITEM)::SendMessage(_hSelf, TVM_INSERTITEM, 0, (LPARAM)(LPTVINSERTSTRUCT)&tvInsertStruct);
 	_validHandles.insert(newItem);

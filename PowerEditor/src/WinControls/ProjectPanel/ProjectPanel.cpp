@@ -173,6 +173,42 @@ BOOL CALLBACK ProjectPanel::run_dlgProc(UINT message, WPARAM wParam, LPARAM lPar
 	return DockingDlgInterface::run_dlgProc(message, wParam, lParam);
 }
 
+static HTREEITEM treeviewInsertFunc(TreeView* treeView, HTREEITEM hParent, const TreeViewData* parentTVData, const TCHAR *toInsertName, const TreeViewData* toInsertTVData)
+{
+	const ProjectPanelFileData* parentData = (const ProjectPanelFileData*) parentTVData;
+	const ProjectPanelFileData* toInsertData = (const ProjectPanelFileData*) toInsertTVData;
+
+	if( !parentData->isFolderMonitor() && !parentData->isFolderMonitorRoot() )
+		return TVI_LAST;
+
+	HTREEITEM hLastItem = NULL;
+    for (HTREEITEM hItem = treeView->getChildFrom(hParent);
+        hItem != NULL;
+        hLastItem = hItem, hItem = treeView->getNextSibling(hItem))
+    {
+		TCHAR currentName[MAX_PATH];
+		TVITEM tvItem;
+		tvItem.mask = TVIF_PARAM|TVIF_TEXT;
+		tvItem.hItem = hItem;
+		tvItem.pszText = currentName;
+		tvItem.cchTextMax = MAX_PATH;
+		SendMessage(treeView->getHSelf(), TVM_GETITEM, 0,(LPARAM)&tvItem);
+		ProjectPanelFileData* itemData = (ProjectPanelFileData*) tvItem.lParam;
+
+		// folders always before files
+		if( itemData->isFolderMonitor() && !toInsertData->isFolderMonitor() )
+			continue;
+
+		if( !itemData->isFolderMonitor() && toInsertData->isFolderMonitor()
+		||  lstrcmpi(currentName,toInsertName) > 0)
+			return hLastItem == NULL ? TVI_FIRST : hLastItem;
+
+    }
+
+	return TVI_LAST;
+
+}
+
 void ProjectPanel::checkIfNeedSave(const TCHAR *title)
 {
 	if (_isDirty)
@@ -1016,7 +1052,7 @@ HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, 
 	}
 
 
-	HTREEITEM addedItem = _treeView.addItem(folderName, hTreeItem, iconindex, new ProjectPanelFileData(_directoryWatcher, monitorPath, nodeType));
+	HTREEITEM addedItem = _treeView.addItem(folderName, hTreeItem, iconindex, new ProjectPanelFileData(_directoryWatcher, monitorPath, nodeType), treeviewInsertFunc);
 	
 	if (getNodeType(hTreeItem) != nodeType_monitorFolderRoot && getNodeType(hTreeItem) != nodeType_monitorFolder)
 	{
@@ -1381,7 +1417,7 @@ void ProjectPanel::recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTre
 		if (folderPath[lstrlen(folderPath)-1] != '\\')
 			pathFile += TEXT("\\");
 		pathFile += files[i];
-		_treeView.addItem(files[i].c_str(), hTreeItem, virtl ? INDEX_LEAF_MONITOR : INDEX_LEAF, new ProjectPanelFileData(_directoryWatcher, pathFile.c_str(), virtl ? nodeType_monitorFile : nodeType_file ));
+		_treeView.addItem(files[i].c_str(), hTreeItem, virtl ? INDEX_LEAF_MONITOR : INDEX_LEAF, new ProjectPanelFileData(_directoryWatcher, pathFile.c_str(), virtl ? nodeType_monitorFile : nodeType_file ), treeviewInsertFunc);
 	}
 
 	::FindClose(hFile);
@@ -1546,7 +1582,7 @@ void ProjectPanelDirectory::onDirRemoved(const generic_string& name)
 
 void ProjectPanelDirectory::onFileAdded(const generic_string& name)
 {
-	_treeView.addItem(name.c_str(), _hItem, INDEX_LEAF_MONITOR, new ProjectPanelFileData(_projectPanel._directoryWatcher, (_path + TEXT("\\") + name).c_str(), nodeType_monitorFile ));
+	_treeView.addItem(name.c_str(), _hItem, INDEX_LEAF_MONITOR, new ProjectPanelFileData(_projectPanel._directoryWatcher, (_path + TEXT("\\") + name).c_str(), nodeType_monitorFile ), treeviewInsertFunc);
 
 }
 

@@ -73,6 +73,10 @@ public:
 
 #pragma warning( pop )
 
+class TreeView;
+
+typedef HTREEITEM (* TreeviewInsertFunc)(TreeView* treeView, HTREEITEM hParent, const TreeViewData* parentData, const TCHAR *toInsertName, const TreeViewData* toInsertData);
+
 class TreeView : public Window {
 public:
 	TreeView() : Window(), _isItemDragged(false), _listener(NULL) {};
@@ -80,7 +84,7 @@ public:
 	virtual ~TreeView() {};
 	virtual void init(HINSTANCE hInst, HWND parent, int treeViewID);
 	virtual void destroy();
-	HTREEITEM addItem(const TCHAR *itemName, HTREEITEM hParentItem, int iImage, TreeViewData* data);
+	HTREEITEM addItem(const TCHAR *itemName, HTREEITEM hParentItem, int iImage, TreeViewData* data, TreeviewInsertFunc insertFunc = NULL );
 	HTREEITEM searchSubItemByName(const TCHAR *itemName, HTREEITEM hParentItem);
 	void removeItem(HTREEITEM hTreeItem);
 	void removeAllItems();

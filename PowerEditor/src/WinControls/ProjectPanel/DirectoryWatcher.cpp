@@ -191,10 +191,11 @@ DWORD DirectoryWatcher::threadFunc(LPVOID data)
 
 }
 
-void DirectoryWatcher::post(HTREEITEM item)
+bool DirectoryWatcher::post(HTREEITEM item)
 {
-	SendMessage(_hWnd, DIRECTORYWATCHER_UPDATE, 0, (LPARAM)item);
-//	SendMessageTimeout(_hWnd, DIRECTORYWATCHER_UPDATE, 0, (LPARAM)item, SMTO_ABORTIFHUNG, 1, NULL);
+//	SendMessage(_hWnd, DIRECTORYWATCHER_UPDATE, 0, (LPARAM)item);
+	LRESULT smResult = SendMessageTimeout(_hWnd, DIRECTORYWATCHER_UPDATE, 0, (LPARAM)item, SMTO_ABORTIFHUNG, 100, NULL);
+	return smResult != 0;
 }
 
 void DirectoryWatcher::iterateDirs()
@@ -217,7 +218,8 @@ void DirectoryWatcher::iterateDirs()
 
 			// if it was changed, inform tree item.
 			if (wasChanged)
-				post(treeItem);
+				if (!post(treeItem))
+					return;
 			continue;
 		}
 
@@ -226,11 +228,12 @@ void DirectoryWatcher::iterateDirs()
 
 		if (itWatchdirs == _watchdirs.end())
 		{
+			if (!post(treeItem))
+				return;
 			// there is no matching watchdir, because the dir has been freshly added. Create a new one.
 			_watchdirs[path] = new Directory(path);
 			// always inform, when a new directory was posted, and always set change to true.
 			changedMap[path] = true;
-			post(treeItem);
 			continue;
 		}
 
@@ -251,7 +254,11 @@ void DirectoryWatcher::iterateDirs()
 		}
 
 		// it was changed. Inform..
-		post(treeItem);
+		if (!post(treeItem))
+		{
+			delete newDirState;
+			return;
+		}
 
 		// delete the old dir state
 		delete oldDirState;

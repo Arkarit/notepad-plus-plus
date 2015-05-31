@@ -90,7 +90,7 @@ private:
 	void stopThread();
 	int thread();
 	static DWORD threadFunc(LPVOID data);
-	void post(HTREEITEM item);
+	bool post(HTREEITEM item);
 	void iterateDirs();
 	void updateDirs();
 

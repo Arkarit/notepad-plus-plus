@@ -1326,9 +1326,8 @@ void ProjectPanel::addFiles(HTREEITEM hTreeItem)
 	}
 }
 
-void ProjectPanel::recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTreeItem, bool virtl)
+void ProjectPanel::recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTreeItem, bool virtl, bool recursive)
 {
-	bool isRecursive = true;
 	bool isInHiddenDir = false;
 	generic_string dirFilter(folderPath);
 	if (folderPath[lstrlen(folderPath)-1] != '\\')
@@ -1350,7 +1349,7 @@ void ProjectPanel::recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTre
 			{
 				// do nothing
 			}
-			else if (isRecursive)
+			else if (recursive)
 			{
 				if ((lstrcmp(foundData.cFileName, TEXT("."))) && (lstrcmp(foundData.cFileName, TEXT(".."))))
 				{
@@ -1360,7 +1359,7 @@ void ProjectPanel::recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTre
 					pathDir += foundData.cFileName;
 					pathDir += TEXT("\\");
 					HTREEITEM addedItem = addFolder(hTreeItem, foundData.cFileName, virtl, false, virtl ? folderPath : NULL);
-					recursiveAddFilesFrom(pathDir.c_str(), addedItem, virtl);
+					recursiveAddFilesFrom(pathDir.c_str(), addedItem, virtl, true);
 				}
 			}
 		}
@@ -1410,8 +1409,9 @@ void ProjectPanel::addFilesFromDirectory(HTREEITEM hTreeItem, bool virtl)
 			hTreeItem = addFolder(hTreeItem, newFolderLabel.c_str(), true, true, dirPath.c_str());
 		}
 
-		recursiveAddFilesFrom(dirPath.c_str(), hTreeItem, virtl);
-		_treeView.expand(hTreeItem);
+		recursiveAddFilesFrom(dirPath.c_str(), hTreeItem, virtl, !virtl);
+		if (!virtl)
+			_treeView.expand(hTreeItem);
 		setWorkSpaceDirty(true);
 		_selDirOfFilesFromDirDlg = dirPath;
 	}
@@ -1524,7 +1524,7 @@ ProjectPanelDirectory::ProjectPanelDirectory(ProjectPanel &projectPanel, HTREEIT
 
 void ProjectPanelDirectory::onDirAdded(const generic_string& name)
 {
-	_projectPanel.addFolder(_hItem, name.c_str(), true, false, (_path + TEXT("/") + name).c_str());
+	_projectPanel.addFolder(_hItem, name.c_str(), true, false, (_path + TEXT("\\") + name).c_str());
 
 }
 
@@ -1535,7 +1535,7 @@ void ProjectPanelDirectory::onDirRemoved(const generic_string& name)
 
 void ProjectPanelDirectory::onFileAdded(const generic_string& name)
 {
-	_treeView.addItem(name.c_str(), _hItem, INDEX_LEAF_MONITOR, new ProjectPanelFileData(_projectPanel._directoryWatcher, (_path + TEXT("/") + name).c_str(), nodeType_monitorFile ));
+	_treeView.addItem(name.c_str(), _hItem, INDEX_LEAF_MONITOR, new ProjectPanelFileData(_projectPanel._directoryWatcher, (_path + TEXT("\\") + name).c_str(), nodeType_monitorFile ));
 
 }
 

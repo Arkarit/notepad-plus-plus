@@ -36,13 +36,12 @@ DirectoryWatcher::DirectoryWatcher(HWND hWnd, DWORD updateFrequencyMs)
 	, _hThread(NULL)
 	, _hRunningEvent(NULL)
 	, _hStopEvent(NULL)
+	, _hUpdateEvent(NULL)
 	, _running(false)
 	, _updateFrequencyMs(updateFrequencyMs)
 	, _watching(true)
+	, _changeOccurred(false)
 {
-	
-	startThread();
-
 }
 
 DirectoryWatcher::~DirectoryWatcher()
@@ -81,32 +80,36 @@ void DirectoryWatcher::update()
 	::SetEvent(_hUpdateEvent);
 }
 
-bool DirectoryWatcher::startThread()
+void DirectoryWatcher::startThread()
 {
-	Scopelock lock(_lock);
 
-	_hRunningEvent = ::CreateEvent(NULL, TRUE, FALSE, NULL);
-	_hStopEvent = ::CreateEvent(NULL, TRUE, FALSE, NULL);
-	_hUpdateEvent = ::CreateEvent(NULL, TRUE, FALSE, NULL);
-	if (!_hStopEvent || !_hRunningEvent || !_hUpdateEvent)
-		goto fail;
+	try {
+		Scopelock lock(_lock);
+		if (_running)
+			return;
 
-	_hThread = ::CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)threadFunc, (LPVOID)this, 0, NULL);
-	if (!_hThread)
-		goto fail;
+		_hRunningEvent = ::CreateEvent(NULL, TRUE, FALSE, NULL);
+		_hStopEvent = ::CreateEvent(NULL, TRUE, FALSE, NULL);
+		_hUpdateEvent = ::CreateEvent(NULL, TRUE, FALSE, NULL);
+		if (!_hStopEvent || !_hRunningEvent || !_hUpdateEvent)
+			throw std::runtime_error("Could not create DirectoryWatcher events");
 
-	::WaitForSingleObject(_hRunningEvent, INFINITE);
+		_hThread = ::CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)threadFunc, (LPVOID)this, 0, NULL);
+		if (!_hThread)
+			throw std::runtime_error("Could not create DirectoryWatcher thread");
 
-	return true;
-
-fail:
-	if (_hRunningEvent)
-		::CloseHandle(_hRunningEvent);
-	if (_hStopEvent)
-		::CloseHandle(_hStopEvent);
-	if (_hUpdateEvent)
-		::CloseHandle(_hUpdateEvent);
-	return false;
+		::WaitForSingleObject(_hRunningEvent, INFINITE);
+	}
+	catch (...)
+	{
+		if (_hRunningEvent)
+			::CloseHandle(_hRunningEvent);
+		if (_hStopEvent)
+			::CloseHandle(_hStopEvent);
+		if (_hUpdateEvent)
+			::CloseHandle(_hUpdateEvent);
+		throw;
+	}
 
 
 
@@ -191,16 +194,19 @@ DWORD DirectoryWatcher::threadFunc(LPVOID data)
 
 }
 
-bool DirectoryWatcher::post(HTREEITEM item)
+bool DirectoryWatcher::post(HTREEITEM item, UINT message)
 {
-//	SendMessage(_hWnd, DIRECTORYWATCHER_UPDATE, 0, (LPARAM)item);
-	LRESULT smResult = SendMessageTimeout(_hWnd, DIRECTORYWATCHER_UPDATE, 0, (LPARAM)item, SMTO_ABORTIFHUNG, 10000, NULL);
+	if (message == DIRECTORYWATCHER_UPDATE)
+		_changeOccurred = true;
+
+	LRESULT smResult = SendMessageTimeout(_hWnd, message, 0, (LPARAM)item, SMTO_ABORTIFHUNG, 10000, NULL);
 	return smResult != 0;
 }
 
 void DirectoryWatcher::iterateDirs()
 {
 	std::map<generic_string,bool> changedMap;
+	_changeOccurred = false;
 
 	for (auto it=_dirItems.begin(); it!=_dirItems.end(); ++it)
 	{
@@ -282,6 +288,9 @@ void DirectoryWatcher::iterateDirs()
 		delete deleteCandidates[i]->second;
 		_watchdirs.erase( deleteCandidates[i] );
 	}
+
+	if (_changeOccurred)
+		post(NULL, DIRECTORYWATCHER_UPDATE_DONE);
 
 
 }

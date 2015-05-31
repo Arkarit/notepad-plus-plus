@@ -36,19 +36,14 @@
 #include "Locking.h"
 #include "Directory.h"
 
-#define DIRECTORYWATCHER_UPDATE DIRECTORYWATCHER_USER
+#define DIRECTORYWATCHER_UPDATE			DIRECTORYWATCHER_USER
+#define DIRECTORYWATCHER_UPDATE_DONE	DIRECTORYWATCHER_USER + 1
 
-// this class monitors a specific directory for changes in a separate thread.
+// this class monitors specific directories for changes in a separate thread.
 // If a change occurs, it sends a DIRECTORYWATCHER_UPDATE message to the owner's window, with a tree item handle in lparam.
 //
-// unfortunately, its usage is a bit unhandy due to the process of creating a tree view element:
-// 1. Create your user data containing this DirectoryWatcher
-// 2. Create the tree view element with a pointer to user data
-// 3. Start the DirectoryWatcher thread, passing the new tree view element.
-//
-// Note that this also applies to the copy constructor.
-// It only creates a non-running copy, which has to be started manually with startThread() (multiple threads for a single tree item make no sense at all).
-//
+// It works by polling all directories in a given update frequency.
+// If changes are detected, and DIRECTORYWATCHER_UPDATE have been sent during a cycle, at last a DIRECTORYWATCHER_UPDATE_DONE is sent
 
 class DirectoryWatcher
 {
@@ -62,6 +57,7 @@ class DirectoryWatcher
 	std::map<generic_string,Directory*> _watchdirs;
 	std::multimap<generic_string,HTREEITEM> _dirItems;
 	DWORD _updateFrequencyMs;
+	bool _changeOccurred;
 
 	Lock _lock;
 
@@ -74,6 +70,11 @@ public:
 	DirectoryWatcher(HWND hWnd, DWORD updateFrequencyMs = 333);
 	virtual ~DirectoryWatcher();
 
+	// startThread() must be called manually after creation. Throws std::runtime_error if fails to create events/resources (not very likely)
+	void startThread();
+	// stopThread() is called automatically on destruction
+	void stopThread();
+
 	void addDir(const generic_string& _path, HTREEITEM _treeItem);
 	void removeDir(const generic_string& _path, HTREEITEM _treeItem);
 	void removeAllDirs();
@@ -85,12 +86,11 @@ public:
 
 
 
+
 private:
-	bool startThread();
-	void stopThread();
 	int thread();
 	static DWORD threadFunc(LPVOID data);
-	bool post(HTREEITEM item);
+	bool post(HTREEITEM item, UINT message = DIRECTORYWATCHER_UPDATE);
 	void iterateDirs();
 	void updateDirs();
 

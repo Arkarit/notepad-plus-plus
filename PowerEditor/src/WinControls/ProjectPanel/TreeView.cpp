@@ -83,6 +83,7 @@ LRESULT TreeView::runProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 				_if_listener->onTreeItemChanged(hItem, (TreeViewData*) tvItem.lParam);
 			}
 		}
+		break;
 	}
 	return ::CallWindowProc(_defaultProc, hwnd, message, wParam, lParam);
 }

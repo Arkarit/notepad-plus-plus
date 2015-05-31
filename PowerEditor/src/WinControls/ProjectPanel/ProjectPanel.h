@@ -67,21 +67,23 @@
 #define PM_MOVEDOWNENTRY           TEXT("Move Down\tCtrl+Down")
 
 enum NodeType {
-	nodeType_root = 0, nodeType_project = 1, nodeType_folder = 2, nodeType_file = 3, nodeType_monitorFolderRoot = 4, nodeType_monitorFolder = 5, nodeType_monitorFile = 6,
+	nodeType_dummy = -1, nodeType_root = 0, nodeType_project = 1, nodeType_folder = 2, nodeType_file = 3, nodeType_monitorFolderRoot = 4, nodeType_monitorFolder = 5, nodeType_monitorFile = 6,
 };
 
 class TiXmlNode;
 
 class ProjectPanelFileData : public TreeViewData {
 public:
+	generic_string _name;
 	generic_string _filePath;
 	NodeType _nodeType;
 	DirectoryWatcher* _directoryWatcher;
 	HTREEITEM _hItem;
 	bool _watch;
 
-	ProjectPanelFileData(DirectoryWatcher* directoryWatcher, const TCHAR* filePath, NodeType nodeType) 
+	ProjectPanelFileData(DirectoryWatcher* directoryWatcher, const TCHAR* name, const TCHAR* filePath, NodeType nodeType) 
 		: TreeViewData()
+		, _name(name)
 		, _nodeType(nodeType)
 		, _directoryWatcher(directoryWatcher)
 		, _hItem(NULL)
@@ -144,7 +146,7 @@ public:
 	}
 
 	virtual TreeViewData* clone() const {
-		return new ProjectPanelFileData(_directoryWatcher, _filePath.c_str(), _nodeType);
+		return new ProjectPanelFileData(_directoryWatcher, _name.c_str(), _filePath.c_str(), _nodeType);
 	}
 
 private:

@@ -545,6 +545,11 @@ bool ProjectPanel::buildTreeFrom(TiXmlNode *projectRoot, HTREEITEM hParentItem)
 			if (std::string::npos != lastSlashIdx)
 			{
 				newFolderLabel.erase(0, lastSlashIdx + 1);
+				if( newFolderLabel.empty() ) // drive
+				{
+					newFolderLabel = fullPath;
+					newFolderLabel.erase(lastSlashIdx);
+				}
 			}
 			/* HTREEITEM addedItem = */ addFolder(hParentItem, newFolderLabel.c_str(), true, true, fullPath.c_str());
 //			recursiveAddFilesFrom(fullPath.c_str(), addedItem, true);
@@ -1405,6 +1410,11 @@ void ProjectPanel::addFilesFromDirectory(HTREEITEM hTreeItem, bool virtl)
 			if (std::string::npos != lastSlashIdx)
 			{
 				newFolderLabel.erase(0, lastSlashIdx + 1);
+				if( newFolderLabel.empty() ) // drive added
+				{
+					newFolderLabel = dirPath;
+					newFolderLabel.erase(lastSlashIdx);
+				}
 			}
 			hTreeItem = addFolder(hTreeItem, newFolderLabel.c_str(), true, true, dirPath.c_str());
 		}

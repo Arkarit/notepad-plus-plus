@@ -144,6 +144,9 @@ public:
 	bool isFolderMonitorRoot() const {
 		return _nodeType == nodeType_monitorFolderRoot;
 	}
+	bool isDummy() const {
+		return _nodeType == nodeType_dummy;
+	}
 
 	virtual TreeViewData* clone() const {
 		return new ProjectPanelFileData(_directoryWatcher, _name.c_str(), _filePath.c_str(), _nodeType);
@@ -280,6 +283,8 @@ protected:
 	void openSelectFile();
 	HMENU getContextMenu(HTREEITEM hTreeItem) const;
 	void expandOrCollapseMonitorFolder(bool expand, HTREEITEM hItem);
+
+	void removeDummies(HTREEITEM hTreeItem);
 
 #pragma warning( push )
 #pragma warning( disable : 4100 )

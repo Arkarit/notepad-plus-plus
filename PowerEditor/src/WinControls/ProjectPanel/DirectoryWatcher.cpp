@@ -50,16 +50,22 @@ DirectoryWatcher::~DirectoryWatcher()
 	removeAllDirs();
 }
 
-void DirectoryWatcher::addDir(const generic_string& _path, HTREEITEM _treeItem)
+void DirectoryWatcher::addDir(const generic_string& path, HTREEITEM treeItem)
 {
 	Scopelock lock(_lock);
-	_dirItemsToAdd.insert(std::pair<generic_string,HTREEITEM>(_path,_treeItem));
+
+	// force an update for newly added paths by removing the current watchdir
+	auto itWatchdirs = _watchdirs.find(path);
+	if (itWatchdirs != _watchdirs.end())
+		_watchdirsToRemove.push_back(itWatchdirs);
+
+	_dirItemsToAdd.insert(std::pair<generic_string,HTREEITEM>(path,treeItem));
 }
 
-void DirectoryWatcher::removeDir(const generic_string& _path, HTREEITEM _treeItem)
+void DirectoryWatcher::removeDir(const generic_string& path, HTREEITEM treeItem)
 {
 	Scopelock lock(_lock);
-	_dirItemsToRemove.insert(std::pair<generic_string,HTREEITEM>(_path,_treeItem));
+	_dirItemsToRemove.insert(std::pair<generic_string,HTREEITEM>(path,treeItem));
 }
 
 void DirectoryWatcher::removeAllDirs()
@@ -72,6 +78,7 @@ void DirectoryWatcher::removeAllDirs()
 	_dirItems.clear();
 	_dirItemsToAdd.clear();
 	_dirItemsToRemove.clear();
+	_watchdirsToRemove.clear();
 
 }
 
@@ -295,12 +302,22 @@ void DirectoryWatcher::iterateDirs()
 
 }
 
+void DirectoryWatcher::updateWatchdirs()
+{
+	for (size_t i=0; i<_watchdirsToRemove.size(); i++ )
+	{
+		delete _watchdirsToRemove[i]->second;
+		_watchdirs.erase(_watchdirsToRemove[i]);
+	}
+	_watchdirsToRemove.clear();
+
+}
+
 void DirectoryWatcher::updateDirs()
 {
 	Scopelock lock(_lock);
-	_dirItems.insert(_dirItemsToAdd.begin(),_dirItemsToAdd.end());
-	_dirItemsToAdd.clear();
 
+	// first, remove all dir items
 	for (auto itToRemove = _dirItemsToRemove.begin(); itToRemove != _dirItemsToRemove.end(); ++itToRemove)
 	{
 		const generic_string& path = itToRemove->first;
@@ -316,8 +333,21 @@ void DirectoryWatcher::updateDirs()
 		}
 	}
 
+	updateWatchdirs();
+
+	// next, collect all watchdirs, which are not needed anymore, because no fitting dir items exist
+	for (auto itWatchdirs = _watchdirs.begin(); itWatchdirs != _watchdirs.end(); ++itWatchdirs)
+	{
+		if (_dirItems.find(itWatchdirs->first) == _dirItems.end())
+			_watchdirsToRemove.push_back(itWatchdirs);
+	}
 	_dirItemsToRemove.clear();
 
+	updateWatchdirs();
+
+	// last, enter the new items.
+	_dirItems.insert(_dirItemsToAdd.begin(),_dirItemsToAdd.end());
+	_dirItemsToAdd.clear();
 		
 
 }

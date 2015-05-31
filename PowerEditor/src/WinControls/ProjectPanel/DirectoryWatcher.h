@@ -63,6 +63,7 @@ class DirectoryWatcher
 
 	std::multimap<generic_string,HTREEITEM> _dirItemsToAdd;
 	std::multimap<generic_string,HTREEITEM> _dirItemsToRemove;
+	std::vector<std::map<generic_string,Directory*>::iterator> _watchdirsToRemove;
 
 	bool _watching;
 public:
@@ -75,12 +76,12 @@ public:
 	// stopThread() is called automatically on destruction
 	void stopThread();
 
-	void addDir(const generic_string& _path, HTREEITEM _treeItem);
-	void removeDir(const generic_string& _path, HTREEITEM _treeItem);
+	void addDir(const generic_string& path, HTREEITEM treeItem);
+	void removeDir(const generic_string& path, HTREEITEM treeItem);
 	void removeAllDirs();
 
 	bool getWatching() const { return _watching; }
-	void setWatching(bool _val) { Scopelock lock(_lock); _watching = _val; }
+	void setWatching(bool val) { Scopelock lock(_lock); _watching = val; }
 
 	void update();
 
@@ -92,6 +93,7 @@ private:
 	static DWORD threadFunc(LPVOID data);
 	bool post(HTREEITEM item, UINT message = DIRECTORYWATCHER_UPDATE);
 	void iterateDirs();
+	void updateWatchdirs();
 	void updateDirs();
 
 	// noncopyable

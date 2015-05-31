@@ -779,17 +779,35 @@ void ProjectPanel::expandOrCollapseMonitorFolder(bool expand, HTREEITEM hItem)
 
 	if (expand)
 	{
-		_treeView.removeAllChildren(hItem);
+		removeDummies(hItem);
+//		_treeView.removeAllChildren(hItem);
 		tvFileInfo.watchDir(true);
 	}
 	else
 	{
 		tvFileInfo.watchDir(false);
-		_treeView.removeAllChildren(hItem);
-		_treeView.addItem( TEXT(""), hItem, INDEX_LEAF_MONITOR, new ProjectPanelFileData(_directoryWatcher, TEXT(""), TEXT(""), nodeType_dummy ));
+//		_treeView.removeAllChildren(hItem);
+//		_treeView.addItem( TEXT(""), hItem, INDEX_LEAF_MONITOR, new ProjectPanelFileData(_directoryWatcher, TEXT(""), TEXT(""), nodeType_dummy ));
 	}
 
 	_directoryWatcher->update();
+
+}
+
+void ProjectPanel::removeDummies(HTREEITEM hTreeItem)
+{
+	HTREEITEM hItemNode = _treeView.getChildFrom(hTreeItem);
+	if (hItemNode == NULL)
+		return;
+
+	TVITEM tvItem;
+	tvItem.mask = TVIF_PARAM;
+	tvItem.hItem = hItemNode;
+	::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0, (LPARAM)&tvItem);
+	ProjectPanelFileData& tvFileInfo = *(ProjectPanelFileData*)(tvItem.lParam);
+
+	if (tvFileInfo.isDummy())
+		_treeView.removeAllChildren(hTreeItem);
 
 }
 

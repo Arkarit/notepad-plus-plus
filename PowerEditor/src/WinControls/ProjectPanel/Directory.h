@@ -52,6 +52,8 @@ public:
 	bool operator== (const Directory& other) const;
 	bool operator!= (const Directory& other) const;
 
+	bool empty() const { return _dirs.empty() && _files.empty(); }
+
 	// synchronizeTo is basically like a copy constructor, with the difference, that it calls the
 	// following virtual functions onDirAdded(), ...
 	// Using this makes only sense, if you have subclassed this and evaluate those virtual methods; otherwise just use the copy ctor/assigment operator.
@@ -60,10 +62,12 @@ public:
 
 protected:
 
+	virtual void onBeginSynchronize() {}
 	virtual void onDirAdded(const generic_string&) {}
 	virtual void onDirRemoved(const generic_string&) {}
 	virtual void onFileAdded(const generic_string&) {}
 	virtual void onFileRemoved(const generic_string&) {}
+	virtual void onEndSynchronize() {}
 
 
 };

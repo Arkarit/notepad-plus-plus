@@ -1037,7 +1037,7 @@ POINT ProjectPanel::getMenuDisplyPoint(int iButton)
 	return p;
 }
 
-HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, bool virtl, bool root, const TCHAR *monitorPath)
+HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, bool virtl, bool root, const TCHAR *monitorPath, bool sortIn)
 {
 	NodeType nodeType(nodeType_folder);
 	int iconindex = INDEX_CLOSED_NODE;
@@ -1057,7 +1057,7 @@ HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, 
 	}
 
 
-	HTREEITEM addedItem = _treeView.addItem(folderName, hTreeItem, iconindex, new ProjectPanelFileData(_directoryWatcher, folderName, monitorPath, nodeType), treeviewInsertFunc);
+	HTREEITEM addedItem = _treeView.addItem(folderName, hTreeItem, iconindex, new ProjectPanelFileData(_directoryWatcher, folderName, monitorPath, nodeType), sortIn ? treeviewInsertFunc : NULL);
 
 	if (virtl)
 		_treeView.addItem( TEXT(""), addedItem, INDEX_LEAF_MONITOR, new ProjectPanelFileData(_directoryWatcher,TEXT(""), TEXT(""), nodeType_dummy ));
@@ -1529,6 +1529,7 @@ ProjectPanelDirectory::ProjectPanelDirectory(ProjectPanel &projectPanel, HTREEIT
 	, _projectPanel(projectPanel)
 	, _treeView(projectPanel.getTreeView())
 	, _hItem(hItem)
+	, _wasInitiallyEmpty(false)
 {
 	TCHAR textBuffer[MAX_PATH];
 	TVITEM tvItem;
@@ -1578,9 +1579,14 @@ ProjectPanelDirectory::ProjectPanelDirectory(ProjectPanel &projectPanel, HTREEIT
 }
 
 
+void ProjectPanelDirectory::onBeginSynchronize()
+{
+	_wasInitiallyEmpty = empty();
+}
+
 void ProjectPanelDirectory::onDirAdded(const generic_string& name)
 {
-	_projectPanel.addFolder(_hItem, name.c_str(), true, false, (_path + TEXT("\\") + name).c_str());
+	_projectPanel.addFolder(_hItem, name.c_str(), true, false, (_path + TEXT("\\") + name).c_str(), !_wasInitiallyEmpty );
 
 }
 
@@ -1591,7 +1597,7 @@ void ProjectPanelDirectory::onDirRemoved(const generic_string& name)
 
 void ProjectPanelDirectory::onFileAdded(const generic_string& name)
 {
-	_treeView.addItem(name.c_str(), _hItem, INDEX_LEAF_MONITOR, new ProjectPanelFileData(_projectPanel._directoryWatcher, name.c_str(), (_path + TEXT("\\") + name).c_str(), nodeType_monitorFile ), treeviewInsertFunc);
+	_treeView.addItem(name.c_str(), _hItem, INDEX_LEAF_MONITOR, new ProjectPanelFileData(_projectPanel._directoryWatcher, name.c_str(), (_path + TEXT("\\") + name).c_str(), nodeType_monitorFile ), _wasInitiallyEmpty ? NULL : treeviewInsertFunc);
 
 }
 

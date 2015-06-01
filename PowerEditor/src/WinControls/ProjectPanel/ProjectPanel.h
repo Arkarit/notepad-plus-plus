@@ -168,6 +168,7 @@ class ProjectPanelDirectory : public Directory {
 	HTREEITEM _hItem;
 	std::map<generic_string,HTREEITEM> _dirMap;
 	std::map<generic_string,HTREEITEM> _fileMap;
+	bool _wasInitiallyEmpty;
 
 public:
 	ProjectPanelDirectory( ProjectPanel &projectPanel, HTREEITEM hItem );
@@ -175,6 +176,7 @@ public:
 
 protected:
 
+	virtual void onBeginSynchronize();
 	virtual void onDirAdded(const generic_string& name);
 	virtual void onDirRemoved(const generic_string& name);
 	virtual void onFileAdded(const generic_string& name);
@@ -265,7 +267,7 @@ protected:
 	void addFiles(HTREEITEM hTreeItem);
 	void addFilesFromDirectory(HTREEITEM hTreeItem, bool virtl);
 	void recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTreeItem, bool virtl, bool recursive);
-	HTREEITEM addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, bool virtl = false, bool root = false, const TCHAR *monitorPath = NULL);
+	HTREEITEM addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, bool virtl = false, bool root = false, const TCHAR *monitorPath = NULL, bool sortIn = false );
 
 	bool writeWorkSpace(TCHAR *projectFileName = NULL);
 	generic_string getRelativePath(const generic_string & fn, const TCHAR *workSpaceFileName);

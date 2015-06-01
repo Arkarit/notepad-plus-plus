@@ -643,6 +643,7 @@ void ProjectPanel::rebuildFolderMonitorTree(HTREEITEM hParentItem, const Project
 		return;
 	}
 
+	removeDummies(hParentItem);
 	ProjectPanelDirectory currDir( *this, hParentItem );
 	Directory newDir(tvFileInfo._filePath);
 	currDir.synchronizeTo(newDir);
@@ -716,12 +717,8 @@ void ProjectPanel::onTreeItemAdded(bool afterClone, HTREEITEM hItem, TreeViewDat
 {
 	ProjectPanelFileData* tvInfo = getInfo(newData);
 	tvInfo->setItem( hItem );
-/*
-	if (_treeView.isVisible(hItem))
-	{
+	if (tvInfo->isFolderMonitorRoot())
 		tvInfo->watchDir(true);
-	}
-*/
 }
 
 void ProjectPanel::onTreeItemChanged(HTREEITEM hTreeItem,TreeViewData* data)
@@ -781,11 +778,13 @@ void ProjectPanel::expandOrCollapseMonitorFolder(bool expand, HTREEITEM hItem)
 	{
 		removeDummies(hItem);
 //		_treeView.removeAllChildren(hItem);
-		tvFileInfo.watchDir(true);
+		if (tvFileInfo.isFolderMonitor())
+			tvFileInfo.watchDir(true);
 	}
 	else
 	{
-		tvFileInfo.watchDir(false);
+		if (tvFileInfo.isFolderMonitor())
+			tvFileInfo.watchDir(false);
 //		_treeView.removeAllChildren(hItem);
 //		_treeView.addItem( TEXT(""), hItem, INDEX_LEAF_MONITOR, new ProjectPanelFileData(_directoryWatcher, TEXT(""), TEXT(""), nodeType_dummy ));
 	}

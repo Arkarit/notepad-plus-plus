@@ -53,12 +53,7 @@ DirectoryWatcher::~DirectoryWatcher()
 void DirectoryWatcher::addDir(const generic_string& path, HTREEITEM treeItem)
 {
 	Scopelock lock(_lock);
-
-	// force an update for newly added paths by removing the current watchdir
-	auto itWatchdirs = _watchdirs.find(path);
-	if (itWatchdirs != _watchdirs.end())
-		_watchdirsToRemove.push_back(itWatchdirs);
-
+	_forcedUpdateToAdd.insert(treeItem);
 	_dirItemsToAdd.insert(std::pair<generic_string,HTREEITEM>(path,treeItem));
 }
 
@@ -78,7 +73,6 @@ void DirectoryWatcher::removeAllDirs()
 	_dirItems.clear();
 	_dirItemsToAdd.clear();
 	_dirItemsToRemove.clear();
-	_watchdirsToRemove.clear();
 
 }
 
@@ -220,6 +214,8 @@ void DirectoryWatcher::iterateDirs()
 		const generic_string& path = it->first;
 		const HTREEITEM& treeItem = it->second;
 
+		bool forced = _forcedUpdate.find(treeItem) != _forcedUpdate.end();
+
 		// first, look if we already checked if the current directory has been changed
 		// this may happen, because dirItems is a multimap, and there might be the same directory with multiple tree nodes assigned to it
 		auto itAlreadyChanged = changedMap.find(path);
@@ -229,8 +225,8 @@ void DirectoryWatcher::iterateDirs()
 
 			bool wasChanged = itAlreadyChanged->second;
 
-			// if it was changed, inform tree item.
-			if (wasChanged)
+			// if it was changed or inform is forced, inform tree item.
+			if (wasChanged || forced)
 				if (!post(treeItem))
 					return;
 			continue;
@@ -262,6 +258,9 @@ void DirectoryWatcher::iterateDirs()
 		// it was not changed. Simply delete the new dir and continue.
 		if(!changed)
 		{
+			if (forced)
+				post(treeItem);
+
 			delete newDirState;
 			continue;
 		}
@@ -295,21 +294,12 @@ void DirectoryWatcher::iterateDirs()
 		delete deleteCandidates[i]->second;
 		_watchdirs.erase( deleteCandidates[i] );
 	}
+	
+	_forcedUpdate.clear();
 
 	if (_changeOccurred)
 		post(NULL, DIRECTORYWATCHER_UPDATE_DONE);
 
-
-}
-
-void DirectoryWatcher::updateWatchdirs()
-{
-	for (size_t i=0; i<_watchdirsToRemove.size(); i++ )
-	{
-		delete _watchdirsToRemove[i]->second;
-		_watchdirs.erase(_watchdirsToRemove[i]);
-	}
-	_watchdirsToRemove.clear();
 
 }
 
@@ -332,18 +322,10 @@ void DirectoryWatcher::updateDirs()
 			}
 		}
 	}
-
-	updateWatchdirs();
-
-	// next, collect all watchdirs, which are not needed anymore, because no fitting dir items exist
-	for (auto itWatchdirs = _watchdirs.begin(); itWatchdirs != _watchdirs.end(); ++itWatchdirs)
-	{
-		if (_dirItems.find(itWatchdirs->first) == _dirItems.end())
-			_watchdirsToRemove.push_back(itWatchdirs);
-	}
 	_dirItemsToRemove.clear();
 
-	updateWatchdirs();
+	_forcedUpdate.insert(_forcedUpdateToAdd.begin(), _forcedUpdateToAdd.end());
+	_forcedUpdateToAdd.clear();
 
 	// last, enter the new items.
 	_dirItems.insert(_dirItemsToAdd.begin(),_dirItemsToAdd.end());

@@ -31,6 +31,8 @@
 
 #include <set>
 
+// a simple basic directory.
+
 class Directory {
 protected:
 	std::set<generic_string> _dirs;
@@ -62,12 +64,12 @@ public:
 
 protected:
 
-	virtual void onBeginSynchronize() {}
+	virtual void onBeginSynchronize(const Directory&) {}
 	virtual void onDirAdded(const generic_string&) {}
 	virtual void onDirRemoved(const generic_string&) {}
 	virtual void onFileAdded(const generic_string&) {}
 	virtual void onFileRemoved(const generic_string&) {}
-	virtual void onEndSynchronize() {}
+	virtual void onEndSynchronize(const Directory&) {}
 
 
 };

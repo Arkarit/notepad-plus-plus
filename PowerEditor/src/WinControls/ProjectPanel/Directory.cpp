@@ -86,7 +86,7 @@ void Directory::setPath(const generic_string& path)
 
 void Directory::synchronizeTo(const Directory& other)
 {
-	onBeginSynchronize();
+	onBeginSynchronize(other);
 	for (auto it = _dirs.begin(); it != _dirs.end(); ++it)
 		if (other._dirs.find(*it) == other._dirs.end())
 			onDirRemoved(*it);
@@ -99,7 +99,7 @@ void Directory::synchronizeTo(const Directory& other)
 	for (auto it = other._files.begin(); it != other._files.end(); ++it)
 		if (_files.find(*it) == _files.end())
 			onFileAdded(*it);
-	onEndSynchronize();
+	onEndSynchronize(other);
 
 	*this = other;
 
@@ -112,15 +112,7 @@ bool Directory::operator==(const Directory& other) const
 		|| _files.size() != other._files.size())
 		return false;
 
-	for (auto it = _dirs.begin(); it != _dirs.end(); ++it)
-		if (other._dirs.find(*it) == other._dirs.end())
-			return false;
-
-	for (auto it = _files.begin(); it != _files.end(); ++it)
-		if (other._files.find(*it) == other._files.end())
-			return false;
-
-	return true;
+	return _dirs == other._dirs && _files == other._files;
 }
 
 bool Directory::operator!=(const Directory& other) const

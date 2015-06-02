@@ -43,7 +43,10 @@
 // If a change occurs, it sends a DIRECTORYWATCHER_UPDATE message to the owner's window, with a tree item handle in lparam.
 //
 // It works by polling all directories in a given update frequency.
-// If changes are detected, and DIRECTORYWATCHER_UPDATE have been sent during a cycle, at last a DIRECTORYWATCHER_UPDATE_DONE is sent
+// If changes are detected, and DIRECTORYWATCHER_UPDATE have been sent during a cycle, at last a DIRECTORYWATCHER_UPDATE_DONE is sent.
+
+// The main part of this class is a thread, which constantly polls an arbitrary number of directories for changes.
+// There are 
 
 class DirectoryWatcher
 {
@@ -56,6 +59,8 @@ class DirectoryWatcher
 
 	std::map<generic_string,Directory*> _watchdirs;
 	std::multimap<generic_string,HTREEITEM> _dirItems;
+	std::set<HTREEITEM> _forcedUpdate;
+
 	DWORD _updateFrequencyMs;
 	bool _changeOccurred;
 
@@ -63,12 +68,12 @@ class DirectoryWatcher
 
 	std::multimap<generic_string,HTREEITEM> _dirItemsToAdd;
 	std::multimap<generic_string,HTREEITEM> _dirItemsToRemove;
-	std::vector<std::map<generic_string,Directory*>::iterator> _watchdirsToRemove;
+	std::set<HTREEITEM> _forcedUpdateToAdd;
 
 	bool _watching;
 public:
 
-	DirectoryWatcher(HWND hWnd, DWORD updateFrequencyMs = 333);
+	DirectoryWatcher(HWND hWnd, DWORD updateFrequencyMs = 5000);
 	virtual ~DirectoryWatcher();
 
 	// startThread() must be called manually after creation. Throws std::runtime_error if fails to create events/resources (not very likely)

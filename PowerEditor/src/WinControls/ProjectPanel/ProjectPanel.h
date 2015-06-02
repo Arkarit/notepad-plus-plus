@@ -163,28 +163,25 @@ private:
 class ProjectPanel;
 
 class ProjectPanelDirectory : public Directory {
-	ProjectPanel& _projectPanel;
-	TreeView& _treeView;
+protected:
+	ProjectPanel* _projectPanel;
+	TreeView* _treeView;
 	HTREEITEM _hItem;
 	std::map<generic_string,HTREEITEM> _dirMap;
 	std::map<generic_string,HTREEITEM> _fileMap;
 	bool _wasInitiallyEmpty;
 
 public:
-	ProjectPanelDirectory( ProjectPanel &projectPanel, HTREEITEM hItem );
+	ProjectPanelDirectory( ProjectPanel *projectPanel, HTREEITEM hItem );
 	virtual ~ProjectPanelDirectory() {}
 
 protected:
 
-	virtual void onBeginSynchronize();
+	virtual void onBeginSynchronize(const Directory& other);
 	virtual void onDirAdded(const generic_string& name);
 	virtual void onDirRemoved(const generic_string& name);
 	virtual void onFileAdded(const generic_string& name);
 	virtual void onFileRemoved(const generic_string& name);
-
-private:
-	ProjectPanelDirectory(const ProjectPanelDirectory&) = delete;
-	ProjectPanelDirectory& operator= (const ProjectPanelDirectory&) = delete;
 
 };
 

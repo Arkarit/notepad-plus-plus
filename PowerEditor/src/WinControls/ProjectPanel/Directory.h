@@ -39,8 +39,10 @@ protected:
 	std::set<generic_string> _files;
 	bool _exists;
 	generic_string _path;
+
+	FILETIME _lastChanged;
 public:
-	Directory() : _exists(false) {}
+	Directory();
 	Directory( const generic_string& path );
 	virtual ~Directory() {}
 
@@ -55,6 +57,8 @@ public:
 	bool operator!= (const Directory& other) const;
 
 	bool empty() const { return _dirs.empty() && _files.empty(); }
+
+	bool hasChanged() const;
 
 	// synchronizeTo is basically like a copy constructor, with the difference, that it calls the
 	// following virtual functions onDirAdded(), ...

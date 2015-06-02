@@ -248,6 +248,15 @@ void DirectoryWatcher::iterateDirs()
 
 		// fetch the old dir state
 		Directory* oldDirState = itWatchdirs->second;
+		// if the last write time has not changed,
+		if (!oldDirState->hasChanged())
+		{
+			// only post if forced and continue
+			if (forced)
+				post(treeItem);
+			continue;
+		}
+
 		// read in the current state of the directory
 		Directory* newDirState = new Directory(path);
 		// check if the old state and the new state are not the same
@@ -255,27 +264,14 @@ void DirectoryWatcher::iterateDirs()
 		// store this comparison for future comparisons
 		changedMap[path] = changed;
 
-		// it was not changed. Simply delete the new dir and continue.
-		if(!changed)
-		{
-			if (forced)
-				post(treeItem);
-
-			delete newDirState;
-			continue;
-		}
-
-		// it was changed. Inform..
-		if (!post(treeItem))
-		{
-			delete newDirState;
-			return;
-		}
-
 		// delete the old dir state
 		delete oldDirState;
-		// and set the new one.
+		// and set the new one. Have to do this always, because at least the last write time is different.
 		_watchdirs[path] = newDirState;
+
+		if(changed || forced)
+			post(treeItem);
+
 	}
 
 	// at last, remove all watchdirs, which are not used anymore.

@@ -28,6 +28,13 @@
 #include "precompiledHeaders.h"
 #include "Directory.h"
 
+Directory::Directory()
+	: _exists(false)
+{
+	_lastChanged.dwLowDateTime = 0;
+	_lastChanged.dwHighDateTime = 0;
+}
+
 Directory::Directory(const generic_string& path)
 {
 	setPath(path);
@@ -37,16 +44,15 @@ void Directory::setPath(const generic_string& path)
 {
 	_path = path;
 	_exists = false;
+	_lastChanged.dwLowDateTime = 0;
+	_lastChanged.dwHighDateTime = 0;
 	_files.clear();
 	_dirs.clear();
 
-	if (!PathFileExists(path.c_str()))
-		return;
-
-	generic_string wpath(path + TEXT("/*.*"));
+	generic_string searchPath = _path + TEXT("\\*.*");
 
 	WIN32_FIND_DATAW fd;
-	HANDLE hFind = FindFirstFile(wpath.c_str(), &fd);
+	HANDLE hFind = FindFirstFile(searchPath.c_str(), &fd);
 
 	if (hFind == INVALID_HANDLE_VALUE)
 		return;
@@ -64,7 +70,13 @@ void Directory::setPath(const generic_string& path)
 
 		if (m_attr.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 		{
-			if (file == TEXT(".") || file == TEXT(".."))
+			if (file == TEXT("."))
+			{
+				_lastChanged = fd.ftLastWriteTime;
+				goto cont;
+			}
+
+			if (file == TEXT(".."))
 				goto cont;
 
 			_dirs.insert(file);
@@ -82,6 +94,39 @@ void Directory::setPath(const generic_string& path)
 
 	if (hFind != INVALID_HANDLE_VALUE)
 		FindClose(hFind);
+}
+
+bool Directory::hasChanged() const
+{
+	if (_path.empty())
+		return false;
+
+	// root path? Your'e fucked by MS. You don't get the write time of a root dir. Believe it or not.
+	if (PathIsRoot(_path.c_str()))
+		return true;
+
+	generic_string searchPath(_path+TEXT("\\*.*"));
+
+	WIN32_FIND_DATAW fd;
+	HANDLE hFind = FindFirstFile(searchPath.c_str(), &fd);
+
+	if (hFind == INVALID_HANDLE_VALUE)
+	{
+		return (_lastChanged.dwHighDateTime || _lastChanged.dwLowDateTime);
+	}
+
+	FindClose(hFind);
+
+	// if it was not existing previously, it was changed if it is now existing
+	if (!(_lastChanged.dwHighDateTime || _lastChanged.dwLowDateTime))
+		return true;
+
+	const FILETIME& ftWrite = fd.ftLastWriteTime;
+
+	return    _lastChanged.dwLowDateTime != ftWrite.dwLowDateTime
+		|| _lastChanged.dwHighDateTime != ftWrite.dwHighDateTime;
+
+
 }
 
 void Directory::synchronizeTo(const Directory& other)

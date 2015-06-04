@@ -29,7 +29,6 @@
 #define TREE_VIEW_H
 
 #include "window.h"
-#include "DirectoryWatcher.h"
 #include <set>
 
 struct TreeStateNode {
@@ -39,9 +38,6 @@ struct TreeStateNode {
 	bool _isSelected;
 	std::vector<TreeStateNode> _children;
 };
-
-// note that this is no real MVC implementation... in fact the view does a lot of work the controller should do instead.
-// The previous implementation was based on a treeview only, and I did not want to write everything new. So the "controller" is instead more a listener and factory.
 
 class TreeViewData {
 protected:
@@ -68,7 +64,8 @@ class TreeViewListener {
 public:
 	virtual void onTreeItemAdded(bool afterClone, HTREEITEM hItem, TreeViewData* newData) {}
 	virtual void onTreeItemRemoved(HTREEITEM hItem,TreeViewData* data){}
-	virtual void onTreeItemChanged(HTREEITEM hItem,TreeViewData* data){}
+	virtual void treeItemChanged(HTREEITEM hItem,TreeViewData* data){}
+	virtual void onMessage(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam){}
 };
 
 #pragma warning( pop )

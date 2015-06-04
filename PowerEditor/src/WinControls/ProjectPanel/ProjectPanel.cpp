@@ -590,8 +590,7 @@ bool ProjectPanel::buildTreeFrom(TiXmlNode *projectRoot, HTREEITEM hParentItem)
 					newFolderLabel.erase(lastSlashIdx);
 				}
 			}
-			/* HTREEITEM addedItem = */ addFolder(hParentItem, newFolderLabel.c_str(), true, true, fullPath.c_str());
-//			recursiveAddFilesFrom(fullPath.c_str(), addedItem, true);
+			addFolder(hParentItem, newFolderLabel.c_str(), true, true, fullPath.c_str());
 		}
 		else if (lstrcmp(TEXT("File"), v) == 0)
 		{
@@ -721,9 +720,30 @@ void ProjectPanel::onTreeItemAdded(bool afterClone, HTREEITEM hItem, TreeViewDat
 		tvInfo->watchDir(true);
 }
 
-void ProjectPanel::onTreeItemChanged(HTREEITEM hTreeItem,TreeViewData* data)
+void ProjectPanel::onMessage(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	//_directoryWatcher->setWatching(false);
+	switch (message)
+	{
+		case DIRECTORYWATCHER_UPDATE:
+		{
+			HTREEITEM hItem = (HTREEITEM)lParam;
+			if (_treeView.itemValid(hItem))
+			{
+
+				TVITEM tvItem;
+				tvItem.hItem = hItem;
+				tvItem.mask = TVIF_PARAM;
+				SendMessage(hwnd, TVM_GETITEM, 0,(LPARAM)&tvItem);
+				treeItemChanged(hItem, (TreeViewData*) tvItem.lParam);
+			}
+		}
+		break;
+	}
+
+}
+
+void ProjectPanel::treeItemChanged(HTREEITEM hTreeItem, TreeViewData* data)
+{
 
 	TVITEM tvItem;
 	tvItem.mask = TVIF_PARAM;

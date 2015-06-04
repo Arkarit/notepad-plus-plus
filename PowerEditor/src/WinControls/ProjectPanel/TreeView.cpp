@@ -67,24 +67,7 @@ void TreeView::destroy()
 
 LRESULT TreeView::runProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-
-	switch (message)
-	{
-		case DIRECTORYWATCHER_UPDATE:
-		{
-			HTREEITEM hItem = (HTREEITEM)lParam;
-			if (itemValid(hItem))
-			{
-
-				TVITEM tvItem;
-				tvItem.hItem = hItem;
-				tvItem.mask = TVIF_PARAM;
-				SendMessage(_hSelf, TVM_GETITEM, 0,(LPARAM)&tvItem);
-				IF_LISTENER_THEN->onTreeItemChanged(hItem, (TreeViewData*) tvItem.lParam);
-			}
-		}
-		break;
-	}
+	IF_LISTENER_THEN->onMessage(hwnd, message, wParam, lParam);
 	return ::CallWindowProc(_defaultProc, hwnd, message, wParam, lParam);
 }
 

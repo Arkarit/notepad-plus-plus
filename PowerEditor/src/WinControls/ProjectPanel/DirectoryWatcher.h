@@ -46,11 +46,9 @@
 // If changes are detected, and DIRECTORYWATCHER_UPDATE have been sent during a cycle, at last a DIRECTORYWATCHER_UPDATE_DONE is sent.
 
 // The main part of this class is a thread, which constantly polls an arbitrary number of directories for changes.
-// There are 
 
 class DirectoryWatcher
 {
-	friend static DWORD threadFunc(LPVOID data);
 	generic_string _filePath;
 	HANDLE _hThread;
 	HANDLE _hRunningEvent, _hStopEvent, _hUpdateEvent;
@@ -73,7 +71,7 @@ class DirectoryWatcher
 	bool _watching;
 public:
 
-	DirectoryWatcher(HWND hWnd, DWORD updateFrequencyMs = 5000);
+	DirectoryWatcher(HWND hWnd, DWORD updateFrequencyMs = 3000);
 	virtual ~DirectoryWatcher();
 
 	// startThread() must be called manually after creation. Throws std::runtime_error if fails to create events/resources (not very likely)
@@ -89,9 +87,6 @@ public:
 	void setWatching(bool val) { Scopelock lock(_lock); _watching = val; }
 
 	void update();
-
-
-
 
 private:
 	int thread();

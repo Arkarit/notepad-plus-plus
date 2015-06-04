@@ -47,7 +47,7 @@ public:
 	virtual ~Directory() {}
 
 	const generic_string& getPath() const { return _path; }
-	void setPath(const generic_string& path);
+	void read(const generic_string& path);
 	bool exists() const { return _exists; }
 
 	const std::set<generic_string>& getDirs() const { return _dirs; }

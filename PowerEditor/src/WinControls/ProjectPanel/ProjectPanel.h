@@ -37,6 +37,7 @@
 #include "TreeView.h"
 #include "ProjectPanel_rc.h"
 #include "Directory.h"
+#include "DirectoryWatcher.h"
 #include <map>
 
 #define PM_PROJECTPANELTITLE     TEXT("Project")
@@ -285,13 +286,15 @@ protected:
 
 	void removeDummies(HTREEITEM hTreeItem);
 
+	void treeItemChanged(HTREEITEM hItem,TreeViewData* data);
+
 #pragma warning( push )
 #pragma warning( disable : 4100 )
 
 	// TreeViewController
 	virtual void onTreeItemAdded(bool afterClone, HTREEITEM hItem, TreeViewData* newData);
 	virtual void onTreeItemRemoved(HTREEITEM hItem,TreeViewData* data) {}
-	virtual void onTreeItemChanged(HTREEITEM hItem,TreeViewData* data);
+	virtual void onMessage(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 
 	static ProjectPanelFileData* getInfo(TreeViewData* data) {
 		return (ProjectPanelFileData*) data;

@@ -37,10 +37,10 @@ Directory::Directory()
 
 Directory::Directory(const generic_string& path)
 {
-	setPath(path);
+	read(path);
 }
 
-void Directory::setPath(const generic_string& path)
+void Directory::read(const generic_string& path)
 {
 	_path = path;
 	_exists = false;
@@ -101,7 +101,7 @@ bool Directory::hasChanged() const
 	if (_path.empty())
 		return false;
 
-	// root path? Your'e fucked by MS. You don't get the write time of a root dir. Believe it or not.
+	// root path? Your'e lost. You don't get the last write time of a root dir. Believe it or not.
 	if (PathIsRoot(_path.c_str()))
 		return true;
 
@@ -123,7 +123,7 @@ bool Directory::hasChanged() const
 
 	const FILETIME& ftWrite = fd.ftLastWriteTime;
 
-	return    _lastChanged.dwLowDateTime != ftWrite.dwLowDateTime
+	return _lastChanged.dwLowDateTime != ftWrite.dwLowDateTime
 		|| _lastChanged.dwHighDateTime != ftWrite.dwHighDateTime;
 
 

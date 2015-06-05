@@ -93,7 +93,17 @@ BOOL CALLBACK ProjectPanel::run_dlgProc(UINT message, WPARAM wParam, LPARAM lPar
 
 			_treeView.init(_hInst, _hSelf, ID_PROJECTTREEVIEW);
 			_directoryWatcher = new DirectoryWatcher(_treeView.getHSelf());
-			_directoryWatcher->startThread();
+
+			try
+			{
+				_directoryWatcher->startThread();
+			}
+			catch (std::runtime_error e)
+			{
+				std::basic_string<char> s("Sorry, could not start Project Panel thread. Project panel will be partially dysfunctional.\nReason: ");
+				s += e.what();
+				::MessageBoxA(NULL, s.c_str(), "Project Panel thread error", MB_OK);
+			}
 
 			setImageList(IDI_PROJECT_WORKSPACE, IDI_PROJECT_WORKSPACEDIRTY, IDI_PROJECT_PROJECT, IDI_PROJECT_FOLDEROPEN, IDI_PROJECT_FOLDERCLOSE, IDI_PROJECT_FILE, IDI_PROJECT_FILEINVALID, IDI_PROJECT_FOLDERMONITOROPEN, IDI_PROJECT_FOLDERMONITORCLOSE, IDI_PROJECT_FOLDERMONITORINVALID, IDI_PROJECT_FILEMONITOR);
 			_treeView.addCanNotDropInList(INDEX_LEAF);

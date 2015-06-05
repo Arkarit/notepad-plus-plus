@@ -39,29 +39,42 @@
 #include "Directory.h"
 
 #define DIRECTORYWATCHER_UPDATE			DIRECTORYWATCHER_USER
-#define DIRECTORYWATCHER_UPDATE_DONE	DIRECTORYWATCHER_USER + 1
-
 
 #define READBUFFER_SIZE 4096
 
+// Thread signals stop and update
 #define PQCS_SIGNAL_STOP 0
 #define PQCS_SIGNAL_UPDATE 1
 
 
-// this class monitors specific directories for changes in a separate thread.
+// This class monitors specific directories for changes in a separate thread.
 // If a change occurs, it sends a DIRECTORYWATCHER_UPDATE message to the owner's window, with a tree item handle in lparam.
 //
-// It works by polling all directories in a given update frequency.
-// If changes are detected, and DIRECTORYWATCHER_UPDATE have been sent during a cycle, at last a DIRECTORYWATCHER_UPDATE_DONE is sent.
-
-// The main part of this class is a thread, which constantly polls an arbitrary number of directories for changes in a given frequency.
-// The first attempt was to use 
+// It works by 
+// a) watching valid directories by using an IoCompletionPort/ReadDirectoryChangesW and
+// b) watching offline directories (e.g. removed USB drive, offline network drive) by periodically polling them for getting online again and
+//    getting them back into a) when they are.
+// The latter is done, because ReadDirectoryChangesW is not very good in monitoring offline directories; the parent directory would have to be
+// watched, which would have made this whole stuff even more complicated.
+//
+// According to Notepad++'s simple approach, this class is specialized to only support TreeView's.
+// Only "name changes" (rename, create, delete) are watched, since only those are currently interesting for Notepad++.
+// Once a change is detected, a DIRECTORYWATCHER_UPDATE message with the according HTREEITEM in lparam is sent to the window, which was set in ctor.
+// The details provided by ReadDirectoryChangesW are discarded; the receiving class is responsible for updating the directory itself.
+// The change messages are sent a bit delayed to combine as many as possible into one, except on creation (otherwise each tree item open would
+// last a second or so).
+//
+// Credits go to Wes Jones http://www.codeproject.com/Articles/950/CDirectoryChangeWatcher-ReadDirectoryChangesW-all
+// for explaining the technique of this microsoftish complex approach.
+// According to his license, no code of his classes was used directly, it was only used as a source for inspiration.
 
 class DirectoryWatcher
 {
 
-	class WatcherDirectory {
-		enum State {starting, online, stopping, markedForDelete, offline};
+	// each watched directory has a WatchedDirectory instance, which is responsible for monitoring the directory.
+	// It may have multiple tree items assigned to it, since multiple tree items may refer to the same directory.
+	class WatchedDirectory {
+		enum State {starting, online, moribund, offline};
 		State _state;
 		generic_string _dir;
 		HANDLE _hDir;
@@ -72,140 +85,44 @@ class DirectoryWatcher
 		HANDLE* _hCompletionPort;
 		bool _immediate;
 	public:
-		WatcherDirectory( const generic_string& dir, HANDLE* hCompletionPort) 
-			: _state(starting) 
-			, _dir(dir)
-			, _hDir(INVALID_HANDLE_VALUE)
-			, _hCompletionPort(hCompletionPort)
-			, _immediate(false)
-		{
-			std::wstringstream ss;
-			ss << TEXT("created: 0x") << std::hex << std::setfill(TEXT('0')) << std::setw(8) << (unsigned long) this << TEXT("\n"); 
-			OutputDebugStringW(ss.str().c_str());
+		WatchedDirectory( const generic_string& dir, HANDLE* hCompletionPort);
+		virtual ~WatchedDirectory();
+
+		// one WatcherDirectory can have multiple tree items assigned to it, all of which have to be informed when the directory changes.
+		void addTreeItem(HTREEITEM treeItem);
+		void removeTreeItem(HTREEITEM treeItem);
+		size_t numTreeItems() const;
+		const std::set<HTREEITEM>& getTreeItems() const {
+			return _treeItems; 
 		}
 
-		virtual ~WatcherDirectory() {
-			std::wstringstream ss;
-			ss << TEXT("deleted: 0x") << std::hex << std::setfill(TEXT('0')) << std::setw(8) << (unsigned long) this << TEXT("\n"); 
-			OutputDebugStringW(ss.str().c_str());
-			if (_hDir != INVALID_HANDLE_VALUE)
-				CloseHandle(_hDir);
-		}
-
-		void addTreeItem(HTREEITEM treeItem) {
-			assert(_treeItems.find(treeItem) == _treeItems.end());
-			_treeItems.insert(treeItem);
-		}
-
-		void removeTreeItem(HTREEITEM treeItem) {
-			assert(_treeItems.find(treeItem) != _treeItems.end());
-			_treeItems.erase(treeItem);
-		}
-
-		size_t numTreeItems() const {
-			return _treeItems.size();
-		}
-
-		bool isMarkedForDelete() const {
-			return _state == markedForDelete; 
-		}
-		bool setMarkedForDelete() { 
-			_state = markedForDelete;
-			if (_hDir != INVALID_HANDLE_VALUE)
-			{
-				CloseHandle( _hDir );
-				_hDir = INVALID_HANDLE_VALUE;
-				return false;
-			}
-			else
-			{
-				delete this;
-				return true;
-			}
-		}
-/*
-		void update() {
-			PostQueuedCompletionStatus(*_hCompletionPort, 0, PQCS_SIGNAL_UPDATE, NULL);
-		}
-*/
-		const std::set<HTREEITEM>& getTreeItems() const { return _treeItems; }
-
-
-		void startWatch() {
-			_immediate = true;
-			if (!PathFileExists(_dir.c_str()))
-			{
-				if (_state != offline)
-				{
-					CloseHandle( _hDir );
-					_hDir = INVALID_HANDLE_VALUE;
-					_state = offline;
-				}
-				return;
-			}
-			assert (_hDir == INVALID_HANDLE_VALUE);
-			_hDir = CreateFile(_dir.c_str(), FILE_LIST_DIRECTORY, FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED, NULL);
-			if( _hDir == INVALID_HANDLE_VALUE )
-			{
-				_state = offline;
-				return;
-			}
-
-			*_hCompletionPort = CreateIoCompletionPort(_hDir, *_hCompletionPort, (DWORD)this, 0);
-			if( !_hCompletionPort )
-			{
-				CloseHandle( _hDir );
-				_hDir = INVALID_HANDLE_VALUE;
-				_state = offline;
-				return;
-			}
-			PostQueuedCompletionStatus(*_hCompletionPort, sizeof(WatcherDirectory), (ULONG_PTR)this, &_overlapped);
-			_state = online;
-		}
-
+		// states
 		bool isStarting() const { return _state == starting; }
 		bool isOnline() const { return _state == online; }
+		bool isOffline() const { return _state == offline; }
+		bool isMoribund() const { return _state == moribund; }
 
+		// immediate posting flag - true directly after creation, otherwise always false
 		bool isImmediate() const { return _immediate; }
 
-		bool checkOnlineStatusChanged() {
+		// WatchedDirectory is a bit bitchy on deleting.
+		// If you simply delete it from outside, it releases its directory handle in the dtor - and this leads
+		// to a GetQueuedCompletionStatus invocation with an invalid pointer to the deleted this!
+		// So, if the directory is online, in this call only the directory handle is released.
+		// The final deletion then takes place in the invoked GetQueuedCompletionStatus in the worker thread.
+		// For offline directories, this is not the case, and so it is deleted instantly here.
+		// 
+		// returns true if instantly deleted, false on queued deletion
+		bool deleteOrSetMoribund();
 
-			if (_state != offline && _state != online)
-				return false;
+		// start watching this directory; assign it to the ioCompletionPort
+		void startWatch();
 
-			bool exists = PathFileExists(_dir.c_str()) != 0;
-			bool online = _state != offline;
-			bool stateChanged = online != exists;
+		// This is called periodically in the worker thread and switches the technique between off- and online
+		bool checkOnlineStatusChanged();
 
-			if (stateChanged)
-				startWatch();
-
-			return stateChanged;
-
-		}
-
-		bool invoke() {
-			
-			_immediate = false;
-
-			if (_state != starting && _state != online)
-				return false;
-
-			// we are not interested in any details, so we always clear the buffer without evaluating it
-			memset(&_overlapped, 0, sizeof(OVERLAPPED));
-			if( !ReadDirectoryChangesW( _hDir, _buffer, READBUFFER_SIZE, FALSE, FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME,
-							            &_bufferLength, &_overlapped, NULL))
-			{
-				_state = offline;
-				return false;
-			}
-
-			_state = online;
-			return true;
-		}
-
-	private:
-
+		// Invoke watching
+		bool invoke();
 
 	};
 
@@ -218,14 +135,11 @@ class DirectoryWatcher
 	HWND _hWnd;
 
 	DWORD _updateFrequencyMs;
-	bool _changeOccurred;
 
 	Lock _lock;
 
-	bool _watching;
-
-	std::map<generic_string,WatcherDirectory*> _watchedDirectoriesMap;
-	std::set<WatcherDirectory*> _validDirectories;
+	std::map<generic_string,WatchedDirectory*> _watchedDirectoriesMap;
+	std::set<WatchedDirectory*> _validDirectories;
 	std::set<HTREEITEM> _changedItems;
 
 public:
@@ -238,13 +152,12 @@ public:
 	// stopThread() is called automatically on destruction
 	void stopThread();
 
+	// adding and removing directories
 	void addDir(const generic_string& path, HTREEITEM treeItem);
 	void removeDir(const generic_string& path, HTREEITEM treeItem);
 	void removeAllDirs();
 
-	bool getWatching() const { return _watching; }
-	void setWatching(bool val) { Scopelock lock(_lock); _watching = val; }
-
+	// force an update (instant posting of all delayed messages)
 	void update() {
 		PostQueuedCompletionStatus(_hCompletionPort, 0, PQCS_SIGNAL_UPDATE, NULL);
 	}
@@ -253,13 +166,7 @@ private:
 	int thread();
 	static DWORD threadFunc(LPVOID data);
 	bool post(HTREEITEM item, UINT message = DIRECTORYWATCHER_UPDATE);
-	bool post(const std::set<HTREEITEM>& items, UINT message = DIRECTORYWATCHER_UPDATE){
-		bool result = true;
-		for (auto it=items.begin(); it != items.end(); ++it)
-			if (!post(*it, message))
-				result = false;
-		return result;
-	}
+	void post(std::set<HTREEITEM>& items, UINT message = DIRECTORYWATCHER_UPDATE);
 	bool enablePrivilege(LPCTSTR privName);
 
 

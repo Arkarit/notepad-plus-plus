@@ -38,18 +38,16 @@ DirectoryWatcher::DirectoryWatcher(HWND hWnd, DWORD updateFrequencyMs)
 	, _hCompletionPort(NULL)
 	, _running(false)
 	, _updateFrequencyMs(updateFrequencyMs)
-	, _watching(true)
-	, _changeOccurred(false)
 {
-
+	// create a basic IoCompletionPort without any directories assigned to it
 	_hCompletionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
 
 }
 
 DirectoryWatcher::~DirectoryWatcher()
 {
-	stopThread();
 	removeAllDirs();
+	stopThread();
 
 	CloseHandle(_hCompletionPort);
 }
@@ -77,6 +75,7 @@ void DirectoryWatcher::startThread()
 		if (!_hThread)
 			throw std::runtime_error("Could not create DirectoryWatcher thread");
 
+
 		::WaitForSingleObject(_hRunningEvent, INFINITE);
 	}
 	catch (...)
@@ -94,8 +93,12 @@ void DirectoryWatcher::stopThread()
 {
 	Scopelock lock(_lock);
 
+
 	if (_running)
 	{
+		assert(_validDirectories.empty() && "Please remove all directories before stopping thread");
+		removeAllDirs(); // to be sure
+
 		PostQueuedCompletionStatus(_hCompletionPort, 0, PQCS_SIGNAL_STOP, NULL);
 
 		::WaitForSingleObject(_hThread, INFINITE);
@@ -120,7 +123,7 @@ int DirectoryWatcher::thread()
 
 	for(;;)
 	{
-		WatcherDirectory* watcherDirectory = NULL;
+		WatchedDirectory* watcherDirectory = NULL;
 		DWORD sig;
         bool queuedCompletionStatusResult = GetQueuedCompletionStatus(_hCompletionPort, &numBytes, &sig, &lpOverlapped, _updateFrequencyMs) != 0;
 
@@ -129,7 +132,7 @@ int DirectoryWatcher::thread()
 		else if (sig == PQCS_SIGNAL_UPDATE)
 			;//queuedCompletionStatusResult = false;
 		else
-			watcherDirectory = (WatcherDirectory*) sig;
+			watcherDirectory = (WatchedDirectory*) sig;
 
 
 		{
@@ -137,16 +140,13 @@ int DirectoryWatcher::thread()
 
 			for (auto it = _watchedDirectoriesMap.begin(); it != _watchedDirectoriesMap.end(); ++it)
 			{
-				WatcherDirectory* dir = it->second;
+				WatchedDirectory* dir = it->second;
 				if (dir->checkOnlineStatusChanged())
 					_changedItems.insert(dir->getTreeItems().begin(), dir->getTreeItems().end());
 			}
 		}
 
-		for (auto it = _changedItems.begin(); it != _changedItems.end(); ++it)
-			post(*it);
-		_changedItems.clear();
-
+		post(_changedItems);
 
 		std::set<HTREEITEM> postImmediate;
 
@@ -155,7 +155,7 @@ int DirectoryWatcher::thread()
 
 		{
 			Scopelock lock(_lock);
-			if (watcherDirectory->isMarkedForDelete())
+			if (watcherDirectory->isMoribund())
 			{
 				_validDirectories.erase(watcherDirectory);
 				delete watcherDirectory;
@@ -189,13 +189,24 @@ DWORD DirectoryWatcher::threadFunc(LPVOID data)
 
 bool DirectoryWatcher::post(HTREEITEM item, UINT message)
 {
-	if (message == DIRECTORYWATCHER_UPDATE)
-		_changeOccurred = true;
-
 	LRESULT smResult = SendMessageTimeout(_hWnd, message, 0, (LPARAM)item, SMTO_ABORTIFHUNG, 10000, NULL);
 	return smResult != 0;
 }
 
+
+void DirectoryWatcher::post(std::set<HTREEITEM>& items, UINT message /*= DIRECTORYWATCHER_UPDATE*/)
+{
+	// lost messages (posting failed) are postponed
+	std::set<HTREEITEM> lostMessages;
+	for (auto it = items.begin(); it != items.end(); ++it)
+		if (!post(*it, message))
+			lostMessages.insert(*it);
+	items.clear();
+
+	// avoid overflow
+	if (_changedItems.size() < 2000 && lostMessages.size() < 2000)
+		_changedItems.insert(lostMessages.begin(), lostMessages.end());
+}
 
 void DirectoryWatcher::addDir(const generic_string& path, HTREEITEM treeItem)
 {
@@ -203,7 +214,7 @@ void DirectoryWatcher::addDir(const generic_string& path, HTREEITEM treeItem)
 
 	if (_watchedDirectoriesMap.find(path) == _watchedDirectoriesMap.end())
 	{
-		WatcherDirectory* dir = new WatcherDirectory(path, &_hCompletionPort);
+		WatchedDirectory* dir = new WatchedDirectory(path, &_hCompletionPort);
 		_watchedDirectoriesMap[path] = dir;
 		dir->addTreeItem(treeItem);
 		_validDirectories.insert(dir);
@@ -222,14 +233,24 @@ void DirectoryWatcher::removeDir(const generic_string& path, HTREEITEM treeItem)
 	assert (_watchedDirectoriesMap.find(path) != _watchedDirectoriesMap.end());
 	if (_watchedDirectoriesMap.find(path) == _watchedDirectoriesMap.end())
 		return;
-	WatcherDirectory* wDir = _watchedDirectoriesMap[path];
+	WatchedDirectory* wDir = _watchedDirectoriesMap[path];
 	wDir->removeTreeItem(treeItem);
 	if (wDir->numTreeItems() == 0)
 	{
-		
-		_watchedDirectoriesMap.erase(path);
-		if (wDir->setMarkedForDelete())
-		_validDirectories.erase(wDir);
+		if (!_running)
+		{
+			// This should only occur (and is only allowed), if the worker thread could not be created on begin.
+			// hard delete all watched directories, and don't wait for the thread to delete them.
+			_watchedDirectoriesMap.erase(path);
+			delete wDir;
+			_validDirectories.erase(wDir);
+		}
+		else
+		{
+			_watchedDirectoriesMap.erase(path);
+			if (wDir->deleteOrSetMoribund())
+				_validDirectories.erase(wDir);
+		}
 	}
 }
 
@@ -237,14 +258,37 @@ void DirectoryWatcher::removeAllDirs()
 {
 	{
 		Scopelock lock(_lock);
-		for (auto it =_watchedDirectoriesMap.begin(); it != _watchedDirectoriesMap.end(); ++it)
+		if (!_running)
 		{
-			if (it->second->setMarkedForDelete())
-				_validDirectories.erase(it->second);
+			// This should only occur (and is only allowed), if the worker thread could not be created on begin.
+			// hard delete all watched directories, and don't wait for the thread to delete them.
+			while (!_validDirectories.empty())
+			{
+				delete *_validDirectories.begin();
+				_validDirectories.erase(_validDirectories.begin());
+			}
+		}
+		else
+		{
+			for (auto it =_watchedDirectoriesMap.begin(); it != _watchedDirectoriesMap.end(); ++it)
+			{
+				if (it->second->deleteOrSetMoribund())
+					_validDirectories.erase(it->second);
+			}
 		}
 	}
+	int count=0;
 	while (!_validDirectories.empty())
-		;
+	{
+		Sleep(50);
+		// emergency exit if deleting directories takes too long (4 seconds). Better safe than sorry.
+		if (count++ > 80)
+		{
+			assert(0);
+			break;
+		}
+
+	}
 	_watchedDirectoriesMap.clear();
 }
 
@@ -270,3 +314,125 @@ bool DirectoryWatcher::enablePrivilege(LPCTSTR privilegeName)
 	return(result);
 }
 
+DirectoryWatcher::WatchedDirectory::WatchedDirectory(const generic_string& dir, HANDLE* hCompletionPort) : _state(starting)
+, _dir(dir)
+, _hDir(INVALID_HANDLE_VALUE)
+, _hCompletionPort(hCompletionPort)
+, _immediate(false)
+{
+	std::wstringstream ss;
+	ss << TEXT("created: 0x") << std::hex << std::setfill(TEXT('0')) << std::setw(8) << (unsigned long) this << TEXT("\n");
+	OutputDebugStringW(ss.str().c_str());
+}
+
+DirectoryWatcher::WatchedDirectory::~WatchedDirectory()
+{
+	std::wstringstream ss;
+	ss << TEXT("deleted: 0x") << std::hex << std::setfill(TEXT('0')) << std::setw(8) << (unsigned long) this << TEXT("\n");
+	OutputDebugStringW(ss.str().c_str());
+	if (_hDir != INVALID_HANDLE_VALUE)
+		CloseHandle(_hDir);
+}
+
+void DirectoryWatcher::WatchedDirectory::addTreeItem(HTREEITEM treeItem)
+{
+	assert(_treeItems.find(treeItem) == _treeItems.end());
+	_treeItems.insert(treeItem);
+}
+
+void DirectoryWatcher::WatchedDirectory::removeTreeItem(HTREEITEM treeItem)
+{
+	assert(_treeItems.find(treeItem) != _treeItems.end());
+	_treeItems.erase(treeItem);
+}
+
+size_t DirectoryWatcher::WatchedDirectory::numTreeItems() const
+{
+	return _treeItems.size();
+}
+
+bool DirectoryWatcher::WatchedDirectory::deleteOrSetMoribund()
+{
+
+	_state = moribund;
+	if (_hDir != INVALID_HANDLE_VALUE)
+	{
+		CloseHandle(_hDir);
+		_hDir = INVALID_HANDLE_VALUE;
+		return false;
+	}
+	else
+	{
+		delete this;
+		return true;
+	}
+}
+
+void DirectoryWatcher::WatchedDirectory::startWatch()
+{
+	_immediate = true;
+	if (!PathFileExists(_dir.c_str()))
+	{
+		if (_state != offline)
+		{
+			CloseHandle(_hDir);
+			_hDir = INVALID_HANDLE_VALUE;
+			_state = offline;
+		}
+		return;
+	}
+	assert(_hDir == INVALID_HANDLE_VALUE);
+	_hDir = CreateFile(_dir.c_str(), FILE_LIST_DIRECTORY, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, NULL);
+	if (_hDir == INVALID_HANDLE_VALUE)
+	{
+		_state = offline;
+		return;
+	}
+
+	*_hCompletionPort = CreateIoCompletionPort(_hDir, *_hCompletionPort, (DWORD)this, 0);
+	if (!_hCompletionPort)
+	{
+		CloseHandle(_hDir);
+		_hDir = INVALID_HANDLE_VALUE;
+		_state = offline;
+		return;
+	}
+	PostQueuedCompletionStatus(*_hCompletionPort, sizeof(WatchedDirectory), (ULONG_PTR)this, &_overlapped);
+	_state = online;
+}
+
+bool DirectoryWatcher::WatchedDirectory::checkOnlineStatusChanged()
+{
+	if (_state != offline && _state != online)
+		return false;
+
+	bool exists = PathFileExists(_dir.c_str()) != 0;
+	bool online = _state != offline;
+	bool stateChanged = online != exists;
+
+	if (stateChanged)
+		startWatch();
+
+	return stateChanged;
+}
+
+bool DirectoryWatcher::WatchedDirectory::invoke()
+{
+
+	_immediate = false;
+
+	if (_state != starting && _state != online)
+		return false;
+
+	// we are not interested in any details, so we always clear the buffer without evaluating it
+	memset(&_overlapped, 0, sizeof(OVERLAPPED));
+	if (!ReadDirectoryChangesW(_hDir, _buffer, READBUFFER_SIZE, FALSE, FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME,
+		&_bufferLength, &_overlapped, NULL))
+	{
+		_state = offline;
+		return false;
+	}
+
+	_state = online;
+	return true;
+}

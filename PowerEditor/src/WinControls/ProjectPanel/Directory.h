@@ -35,12 +35,16 @@
 
 class Directory {
 protected:
-	std::set<generic_string> _dirs;
-	std::set<generic_string> _files;
+	struct comparator {
+		bool operator() (const generic_string& lhs, const generic_string& rhs) const {
+			return lstrcmpi(lhs.c_str(),rhs.c_str()) < 0;
+		}
+	};
+	std::set<generic_string,comparator> _dirs;
+	std::set<generic_string,comparator> _files;
 	bool _exists;
 	generic_string _path;
 
-	FILETIME _lastChanged;
 public:
 	Directory();
 	Directory( const generic_string& path );
@@ -50,15 +54,13 @@ public:
 	void read(const generic_string& path);
 	bool exists() const { return _exists; }
 
-	const std::set<generic_string>& getDirs() const { return _dirs; }
-	const std::set<generic_string>& getFiles() const { return _files; }
+	const std::set<generic_string,comparator>& getDirs() const { return _dirs; }
+	const std::set<generic_string,comparator>& getFiles() const { return _files; }
 
 	bool operator== (const Directory& other) const;
 	bool operator!= (const Directory& other) const;
 
 	bool empty() const { return _dirs.empty() && _files.empty(); }
-
-	bool hasChanged() const;
 
 	// synchronizeTo is basically like a copy constructor, with the difference, that it calls the
 	// following virtual functions onDirAdded(), ...

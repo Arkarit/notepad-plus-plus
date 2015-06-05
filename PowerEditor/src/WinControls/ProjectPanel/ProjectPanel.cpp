@@ -809,8 +809,6 @@ void ProjectPanel::expandOrCollapseMonitorFolder(bool expand, HTREEITEM hItem)
 //		_treeView.addItem( TEXT(""), hItem, INDEX_LEAF_MONITOR, new ProjectPanelFileData(_directoryWatcher, TEXT(""), TEXT(""), nodeType_dummy ));
 	}
 
-	_directoryWatcher->update();
-
 }
 
 void ProjectPanel::removeDummies(HTREEITEM hTreeItem)

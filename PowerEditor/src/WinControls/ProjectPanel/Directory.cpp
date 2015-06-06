@@ -33,6 +33,7 @@ Directory::Directory()
 {
 	_lastChanged.dwLowDateTime = 0;
 	_lastChanged.dwHighDateTime = 0;
+	enablePrivileges();
 }
 
 Directory::Directory(const generic_string& path)
@@ -65,20 +66,20 @@ void Directory::read(const generic_string& path)
 
 		struct _WIN32_FILE_ATTRIBUTE_DATA m_attr;
 		if (!GetFileAttributesExW((path + TEXT("\\") + file).c_str(), GetFileExInfoStandard, &m_attr))
-			goto cont;
-
+		{
+			if (!FindNextFile(hFind, &fd))
+				break;
+			continue;
+		}
 
 		if (m_attr.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 		{
-			if (file == TEXT("."))
+			if (file == TEXT(".") || file == TEXT(".."))
 			{
-				_lastChanged = fd.ftLastWriteTime;
-				goto cont;
+				if (!FindNextFile(hFind, &fd))
+					break;
+				continue;
 			}
-
-			if (file == TEXT(".."))
-				goto cont;
-
 			_dirs.insert(file);
 		}
 		else
@@ -86,46 +87,32 @@ void Directory::read(const generic_string& path)
 			_files.insert(file);
 		}
 
-	cont:
-
 		if (!FindNextFile(hFind, &fd))
 			break;
 	}
 
 	if (hFind != INVALID_HANDLE_VALUE)
 		FindClose(hFind);
+
+	getFiletime(_lastChanged);
+
 }
 
 bool Directory::hasChanged() const
 {
-	if (_path.empty())
-		return false;
+	FILETIME newFiletime;
 
-	// root path? Your'e lost. You don't get the last write time of a root dir. Believe it or not.
-	if (PathIsRoot(_path.c_str()))
+	// if the new filetime can not be determined, return true for sure. The exact differences will be tested later.
+	if (!getFiletime(newFiletime))
 		return true;
 
-	generic_string searchPath(_path+TEXT("\\*.*"));
-
-	WIN32_FIND_DATAW fd;
-	HANDLE hFind = FindFirstFile(searchPath.c_str(), &fd);
-
-	if (hFind == INVALID_HANDLE_VALUE)
-	{
-		return (_lastChanged.dwHighDateTime || _lastChanged.dwLowDateTime);
-	}
-
-	FindClose(hFind);
-
-	// if it was not existing previously, it was changed if it is now existing
+	// we could successfully get the filetime, but before this it was 0 - definitely a change
 	if (!(_lastChanged.dwHighDateTime || _lastChanged.dwLowDateTime))
 		return true;
 
-	const FILETIME& ftWrite = fd.ftLastWriteTime;
-
-	return _lastChanged.dwLowDateTime != ftWrite.dwLowDateTime
-		|| _lastChanged.dwHighDateTime != ftWrite.dwHighDateTime;
-
+	// compare file times
+	return _lastChanged.dwLowDateTime != newFiletime.dwLowDateTime
+		|| _lastChanged.dwHighDateTime != newFiletime.dwHighDateTime;
 
 }
 
@@ -150,6 +137,58 @@ void Directory::synchronizeTo(const Directory& other)
 
 }
 
+bool Directory::getFiletime(FILETIME& filetime) const
+{
+	if (_path.empty())
+	{
+		filetime.dwHighDateTime = 0;
+		filetime.dwLowDateTime = 0;
+		return true;
+	}
+
+	// root directories need a very microsoftoid approach with a "CreateFile" (which does not create a file, but instead opens it) with a gazillion of funny useless parameters
+	// for which you even need "privileges". (Remember, this is not an attempt to do a "format C:" but only to get the LAST WRITE TIME OF A DIRECTORY).
+	// The reason is, that this ingenious company in all of its wisdom does not allow a FindFirstFile on a root directory.
+	// This approach WOULD work for all other directories too, but while the directory is opened, it is also LOCKED, (guess what - FILE_SHARE_DELETE does not work for the directory itself)
+	// So, we don't use this for other directories.
+	// A root directory is not often removed; so locking it for a very short period should not be a problem.
+	// The worst thing which could probably happen, is that a "Safe remove hardware" is denied under very awkward circumstances.
+	if (PathIsRoot(_path.c_str()))
+	{
+		HANDLE hDir = CreateFile(_path.c_str(), FILE_LIST_DIRECTORY, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+		if (hDir != INVALID_HANDLE_VALUE)
+		{
+			FILETIME creationTime, lastAccessTime, lastWriteTime;
+			bool fileTimeResult = GetFileTime( hDir, &creationTime, &lastAccessTime, &lastWriteTime) != 0;
+			CloseHandle(hDir);
+			if (fileTimeResult)
+			{
+				filetime = lastWriteTime;
+				return true;
+			}
+			
+		}
+		return false;
+	}
+
+
+	generic_string searchPath(_path+TEXT("\\."));
+
+	WIN32_FIND_DATAW fd;
+	HANDLE hFind = FindFirstFile(searchPath.c_str(), &fd);
+
+	if (hFind == INVALID_HANDLE_VALUE)
+	{
+		return false;
+	}
+
+	FindClose(hFind);
+
+	filetime = fd.ftLastWriteTime;
+	return true;
+
+}
+
 bool Directory::operator==(const Directory& other) const
 {
 	if (_exists != other._exists
@@ -165,3 +204,36 @@ bool Directory::operator!=(const Directory& other) const
 	return !operator== (other);
 }
 
+
+void Directory::enablePrivileges()
+{
+	static bool privilegesEnabled = false;
+	if (privilegesEnabled)
+		return;
+
+	enablePrivilege(SE_BACKUP_NAME);
+	enablePrivilege(SE_RESTORE_NAME);
+
+	privilegesEnabled = true;
+}
+
+bool Directory::enablePrivilege(LPCTSTR privilegeName)
+{
+
+	bool result = false;
+	HANDLE hToken;
+
+	if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hToken))
+	{
+		TOKEN_PRIVILEGES tokenPrivileges = { 1 };
+
+		if (LookupPrivilegeValue(NULL, privilegeName, &tokenPrivileges.Privileges[0].Luid))
+		{
+			tokenPrivileges.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+			AdjustTokenPrivileges(hToken, FALSE, &tokenPrivileges, sizeof(tokenPrivileges), NULL, NULL);
+			result = (GetLastError() == ERROR_SUCCESS);
+		}
+		CloseHandle(hToken);
+	}
+	return(result);
+}

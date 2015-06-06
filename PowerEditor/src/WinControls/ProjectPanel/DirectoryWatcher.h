@@ -44,8 +44,21 @@
 //
 // It works by polling all directories in a given update frequency.
 // If changes are detected, and DIRECTORYWATCHER_UPDATE have been sent during a cycle, at last a DIRECTORYWATCHER_UPDATE_DONE is sent.
-
-// The main part of this class is a thread, which constantly polls an arbitrary number of directories for changes.
+//
+// The main part of this class is a thread, which periodically polls an arbitrary number of directories for changes.
+// I don't really like polling at all, but I tried out the two other obvious attempts, both of which had severe drawbacks:
+//
+// FindFirstChangeNotification/FindNextChangeNotification: Did not work very good, because a max of ~60 directories per thread
+// can be handled (64 objects limit of WaitForMultipleObjects)
+// To use a FindFirstChangeNotification for a whole tree is also not an option, because I wanted to allow to add root directories as well,
+// and e.g. the continuing changes of C: are insane (think of temp dir, logs etc.)
+//
+// GetQueuedCompletionStatus/ReadDirectoryChangesW: Worked perfect in terms of being notified, BUT locked all open directories against deletion, which is definitely not what we want.
+//
+// The polling is at least done as efficient as possible.
+// The first step is to compare the last write time of the directory.
+// Only if this has changed, the directory is examined more in depth, if any files have been added or removed.
+// Only if this is the case, the message is sent.
 
 class DirectoryWatcher
 {
@@ -71,7 +84,7 @@ class DirectoryWatcher
 	bool _watching;
 public:
 
-	DirectoryWatcher(HWND hWnd, DWORD updateFrequencyMs = 3000);
+	DirectoryWatcher(HWND hWnd, DWORD updateFrequencyMs = 1000);
 	virtual ~DirectoryWatcher();
 
 	// startThread() must be called manually after creation. Throws std::runtime_error if fails to create events/resources (not very likely)

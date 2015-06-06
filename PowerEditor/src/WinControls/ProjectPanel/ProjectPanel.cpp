@@ -772,14 +772,11 @@ void ProjectPanel::treeItemChanged(HTREEITEM hTreeItem, TreeViewData* data)
 		case nodeType_monitorFolderRoot:
 		case nodeType_monitorFolder:
 			rebuildFolderMonitorTree(hTreeItem, tvFileInfo);
-			//_directoryWatcher->setWatching(true);
 			return;
 		default:
-			//_directoryWatcher->setWatching(true);
 			return;
 	}
 	_treeView.setItemImage(hTreeItem, iImg, iImg);
-	//_directoryWatcher->setWatching(true);
 
 }
 

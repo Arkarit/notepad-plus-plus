@@ -35,8 +35,13 @@
 
 class Directory {
 protected:
-	std::set<generic_string> _dirs;
-	std::set<generic_string> _files;
+	struct comparator {
+		bool operator() (const generic_string& lhs, const generic_string& rhs) const {
+			return lstrcmpi(lhs.c_str(),rhs.c_str()) < 0;
+		}
+	};
+	std::set<generic_string,comparator> _dirs;
+	std::set<generic_string,comparator> _files;
 	bool _exists;
 	generic_string _path;
 
@@ -50,8 +55,8 @@ public:
 	void read(const generic_string& path);
 	bool exists() const { return _exists; }
 
-	const std::set<generic_string>& getDirs() const { return _dirs; }
-	const std::set<generic_string>& getFiles() const { return _files; }
+	const std::set<generic_string,comparator>& getDirs() const { return _dirs; }
+	const std::set<generic_string,comparator>& getFiles() const { return _files; }
 
 	bool operator== (const Directory& other) const;
 	bool operator!= (const Directory& other) const;
@@ -66,6 +71,8 @@ public:
 	// Note that the virtual methods are called BEFORE the contents of this directory are really changed.
 	void synchronizeTo(const Directory& other);
 
+	bool getFiletime(FILETIME& filetime) const;
+
 protected:
 
 	virtual void onBeginSynchronize(const Directory&) {}
@@ -74,6 +81,12 @@ protected:
 	virtual void onFileAdded(const generic_string&) {}
 	virtual void onFileRemoved(const generic_string&) {}
 	virtual void onEndSynchronize(const Directory&) {}
+
+private:
+
+	static void enablePrivileges();
+	static bool enablePrivilege(LPCTSTR privName);
+
 
 
 };

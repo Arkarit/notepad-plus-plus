@@ -32,7 +32,10 @@
 #include <set>
 #include <map>
 
-
+// abstract base class for all data assigned to a tree view item.
+// clone() must always be implemented.
+// getExtraDataString() needs to be implemented, if you use the tree state save/restore functions and has to be something,
+// with whitch the node (together with its label) can be identified.
 class TreeViewData {
 public:
 	virtual ~TreeViewData() {}
@@ -40,6 +43,7 @@ public:
 	virtual generic_string getExtraDataString() const { return generic_string(); } 
 };
 
+// save state of a tree node
 struct TreeStateNode {
 	generic_string _label;
 	generic_string _extraData;
@@ -49,16 +53,17 @@ struct TreeStateNode {
 };
 
 
-//ha I suggest to switch off C4100 (unreferenced formal parameter) globally, 
-// because I think it does more harm than good. Optional virtual methods become unreadable with this warning.
+// ha I suggest to switch off C4100 (unreferenced formal parameter) globally, 
+// because I think it does more harm than good. 
+// Optional virtual methods become unreadable with this warning.
 #pragma warning( push )
 #pragma warning( disable : 4100 )
 
+// Tree view listener. Is informed if a tree item is added or removed or when a message arrives.
 class TreeViewListener {
 public:
 	virtual void onTreeItemAdded(bool afterClone, HTREEITEM hItem, TreeViewData* newData) {}
 	virtual void onTreeItemRemoved(HTREEITEM hItem,TreeViewData* data) {}
-	virtual void treeItemChanged(HTREEITEM hItem,TreeViewData* data) {}
 	virtual void onMessage(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {}
 };
 

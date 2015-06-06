@@ -98,10 +98,18 @@ BOOL CALLBACK ProjectPanel::run_dlgProc(UINT message, WPARAM wParam, LPARAM lPar
 			setImageList(IDI_PROJECT_WORKSPACE, IDI_PROJECT_WORKSPACEDIRTY, IDI_PROJECT_PROJECT, IDI_PROJECT_FOLDEROPEN, IDI_PROJECT_FOLDERCLOSE, IDI_PROJECT_FILE, IDI_PROJECT_FILEINVALID, IDI_PROJECT_FOLDERMONITOROPEN, IDI_PROJECT_FOLDERMONITORCLOSE, IDI_PROJECT_FOLDERMONITORINVALID, IDI_PROJECT_FILEMONITOR);
 			_treeView.addCanNotDropInList(INDEX_LEAF);
 			_treeView.addCanNotDropInList(INDEX_LEAF_INVALID);
+			_treeView.addCanNotDropInList(INDEX_OPEN_MONITOR);
+			_treeView.addCanNotDropInList(INDEX_CLOSED_MONITOR);
+			_treeView.addCanNotDropInList(INDEX_INVALID_MONITOR);
+			_treeView.addCanNotDropInList(INDEX_LEAF_MONITOR);
 
 			_treeView.addCanNotDragOutList(INDEX_CLEAN_ROOT);
 			_treeView.addCanNotDragOutList(INDEX_DIRTY_ROOT);
 			_treeView.addCanNotDragOutList(INDEX_PROJECT);
+			_treeView.addCanNotDragOutList(INDEX_OPEN_MONITOR);
+			_treeView.addCanNotDragOutList(INDEX_CLOSED_MONITOR);
+			_treeView.addCanNotDragOutList(INDEX_INVALID_MONITOR);
+			_treeView.addCanNotDragOutList(INDEX_LEAF_MONITOR);
 
 			_treeView.display();
 			if (!openWorkSpace(_workSpaceFilePath.c_str()))

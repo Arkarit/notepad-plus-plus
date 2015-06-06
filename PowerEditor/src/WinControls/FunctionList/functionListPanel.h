@@ -95,12 +95,13 @@ class FunctionListPanelData : public TreeViewData {
 public:
 	generic_string _str;
 
-	FunctionListPanelData(const TCHAR* str, const GUID* guid = NULL) : TreeViewData(guid), _str(str) {}
+	FunctionListPanelData(const TCHAR* str) : TreeViewData(), _str(str) {}
 	virtual ~FunctionListPanelData() {}
 
 	virtual TreeViewData* clone() const {
 		return new FunctionListPanelData(*this);
 	}
+	virtual generic_string getExtraDataString() const { return _str; } 
 
 };
 
@@ -161,7 +162,7 @@ private:
 	size_t getBodyClosePos(size_t begin, const TCHAR *bodyOpenSymbol, const TCHAR *bodyCloseSymbol);
 	void notified(LPNMHDR notification);
 	void addInStateArray(TreeStateNode tree2Update, const TCHAR *searchText, bool isSorted);
-	TreeParams* getFromStateArray(const GUID& id);
+	TreeParams* getFromStateArray(generic_string fullFilePath);
 	BOOL setTreeViewImageList(int root_id, int node_id, int leaf_id);
 	bool openSelection(const TreeView &treeView);
 	bool shouldSort();

@@ -162,7 +162,7 @@ void FunctionListPanel::addInStateArray(TreeStateNode tree2Update, const TCHAR *
 	bool found = false;
 	for (size_t i = 0, len = _treeParams.size(); i < len; ++i)
 	{
-		if (_treeParams[i]._treeState._id == tree2Update._id)
+		if (_treeParams[i]._treeState._label == tree2Update._label)
 		{
 			_treeParams[i]._searchParameters._text2Find = searchText;
 			_treeParams[i]._searchParameters._doSort = isSorted;
@@ -180,11 +180,11 @@ void FunctionListPanel::addInStateArray(TreeStateNode tree2Update, const TCHAR *
 	}
 }
 
-TreeParams* FunctionListPanel::getFromStateArray(const GUID& id)
+TreeParams* FunctionListPanel::getFromStateArray(generic_string fullFilePath)
 {
 	for (size_t i = 0, len = _treeParams.size(); i < len; ++i)
 	{
-		if (_treeParams[i]._treeState._id == id)
+		if (_treeParams[i]._treeState._extraData == fullFilePath)
 			return &_treeParams[i];
 	}
 	return NULL;
@@ -283,7 +283,7 @@ void FunctionListPanel::reload()
 		FunctionListPanelData* data = (FunctionListPanelData*)_treeView.getData(root);
 		data->_str = fullFilePath;
 
-		TreeParams *previousParams = getFromStateArray(data->getId());
+		TreeParams *previousParams = getFromStateArray(fullFilePath);
 		if (!previousParams)
 		{
 			::SendMessage(_hSearchEdit, WM_SETTEXT, 0, (LPARAM)TEXT(""));

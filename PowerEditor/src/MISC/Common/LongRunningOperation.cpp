@@ -25,4 +25,18 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-#include "locking.h"
+
+#include "LongRunningOperation.h"
+#include <mutex>
+
+static std::recursive_mutex _operationMutex;
+
+LongRunningOperation::LongRunningOperation()
+{
+	_operationMutex.lock();
+}
+
+LongRunningOperation::~LongRunningOperation()
+{
+	_operationMutex.unlock();
+}

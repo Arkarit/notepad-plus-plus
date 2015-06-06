@@ -25,4 +25,15 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-#include "locking.h"
+
+#ifndef M30_IDE_LONGRUNNINGOPERATION_h
+#define M30_IDE_LONGRUNNINGOPERATION_h
+
+class LongRunningOperation
+{
+public:
+	LongRunningOperation();
+	~LongRunningOperation();
+};
+
+#endif //M30_IDE_LONGRUNNINGOPERATION_h

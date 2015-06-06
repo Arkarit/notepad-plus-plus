@@ -29,6 +29,9 @@
 #ifndef DIRECTORYWATCHER_H
 #define  DIRECTORYWATCHER_H
 
+#include "Common.h"
+#include <CommCtrl.h>
+
 #include <map>
 #include <set>
 

@@ -26,11 +26,14 @@
 // Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 
-#include "precompiledHeaders.h"
+#include <shlwapi.h>
 #include "ScintillaEditView.h"
 #include "Parameters.h"
+#include "Sorters.h"
 #include "TCHAR.h"
+#include <memory>
 
+using namespace std;
 
 // initialize the static variable
 
@@ -1911,11 +1914,22 @@ void ScintillaEditView::showCallTip(int startPos, const TCHAR * def)
 	execute(SCI_CALLTIPSHOW, startPos, LPARAM(defA));
 }
 
+generic_string ScintillaEditView::getLine(int lineNumber)
+{
+	int lineLen = execute(SCI_LINELENGTH, lineNumber);
+	const int bufSize = lineLen + 1;
+	std::unique_ptr<TCHAR[]> buf = std::make_unique<TCHAR[]>(bufSize);
+	getLine(lineNumber, buf.get(), bufSize);
+	return buf.get();
+}
+
 void ScintillaEditView::getLine(int lineNumber, TCHAR * line, int lineBufferLen)
 {
 	WcharMbcsConvertor *wmc = WcharMbcsConvertor::getInstance();
 	unsigned int cp = execute(SCI_GETCODEPAGE);
 	char *lineA = new char[lineBufferLen];
+	// From Scintilla documentation for SCI_GETLINE: "The buffer is not terminated by a 0 character."
+	memset(lineA, '\0', sizeof(char) * lineBufferLen);
 	execute(SCI_GETLINE, lineNumber, (LPARAM)lineA);
 	const TCHAR *lineW = wmc->char2wchar(lineA, cp);
 	lstrcpyn(line, lineW, lineBufferLen);
@@ -2374,9 +2388,9 @@ void ScintillaEditView::convertSelectedTextTo(bool Case)
 			for (int j = 0 ; j < nbChar ; ++j)
 			{
 				if (Case == UPPERCASE)
-					destStr[j] = (wchar_t)::CharUpperW((LPWSTR)destStr[j]);
+					destStr[j] = (wchar_t)(UINT_PTR)::CharUpperW((LPWSTR)destStr[j]);
 				else
-					destStr[j] = (wchar_t)::CharLowerW((LPWSTR)destStr[j]);
+					destStr[j] = (wchar_t)(UINT_PTR)::CharLowerW((LPWSTR)destStr[j]);
 			}
 			::WideCharToMultiByte(codepage, 0, destStr, len, srcStr, len, NULL, NULL);
 
@@ -2414,9 +2428,9 @@ void ScintillaEditView::convertSelectedTextTo(bool Case)
 		for (int i = 0 ; i < nbChar ; ++i)
 		{
 			if (Case == UPPERCASE)
-				selectedStrW[i] = (WCHAR)::CharUpperW((LPWSTR)selectedStrW[i]);
+				selectedStrW[i] = (WCHAR)(UINT_PTR)::CharUpperW((LPWSTR)selectedStrW[i]);
 			else
-				selectedStrW[i] = (WCHAR)::CharLowerW((LPWSTR)selectedStrW[i]);
+				selectedStrW[i] = (WCHAR)(UINT_PTR)::CharLowerW((LPWSTR)selectedStrW[i]);
 		}
 		::WideCharToMultiByte(codepage, 0, selectedStrW, strWSize, selectedStr, strSize, NULL, NULL);
 
@@ -2969,7 +2983,7 @@ void ScintillaEditView::insertNewLineBelowCurrentLine()
 	execute(SCI_SETEMPTYSELECTION, execute(SCI_POSITIONFROMLINE, current_line + 1));
 }
 
-void ScintillaEditView::sortLines(size_t fromLine, size_t toLine, bool isDescending)
+void ScintillaEditView::sortLines(size_t fromLine, size_t toLine, ISorter *pSort)
 {
 	if (fromLine >= toLine)
 	{
@@ -2990,23 +3004,16 @@ void ScintillaEditView::sortLines(size_t fromLine, size_t toLine, bool isDescend
 		}
 	}
 	assert(toLine - fromLine + 1 == splitText.size());
-	const bool isNumericSort = allLinesAreNumericOrEmpty(splitText);
-	std::vector<generic_string> sortedText;
-	if (isNumericSort)
-	{
-		sortedText = numericSort(splitText, isDescending);
-	}
-	else
-	{
-		sortedText = lexicographicSort(splitText, isDescending);
-	}
+	const std::vector<generic_string> sortedText = pSort->sort(splitText);
 	const generic_string joined = stringJoin(sortedText, getEOLString());
 	if (sortEntireDocument)
 	{
+		assert(joined.length() == text.length());
 		replaceTarget(joined.c_str(), startPos, endPos);
 	}
 	else
 	{
+		assert(joined.length() + getEOLString().length() == text.length());
 		replaceTarget((joined + getEOLString()).c_str(), startPos, endPos);
 	}
 }

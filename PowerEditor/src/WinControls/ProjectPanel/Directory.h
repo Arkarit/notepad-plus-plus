@@ -29,6 +29,7 @@
 #ifndef DIRECTORY_H
 #define DIRECTORY_H
 
+#include "Common.h"
 #include <set>
 
 // a simple basic directory.

@@ -25,12 +25,15 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-
-#include "precompiledHeaders.h"
+#include <Shlobj.h>
+#include <uxtheme.h>
 #include "FindReplaceDlg.h"
 #include "ScintillaEditView.h"
 #include "Notepad_plus_msgs.h"
 #include "UniConversion.h"
+#include "LongRunningOperation.h"
+
+using namespace std;
 
 FindOption * FindReplaceDlg::_env;
 FindOption FindReplaceDlg::_options;
@@ -38,19 +41,22 @@ FindOption FindReplaceDlg::_options;
 #define SHIFTED 0x8000
 
 
-int Searching::convertExtendedToString(const TCHAR * query, TCHAR * result, int length) {	//query may equal to result, since it always gets smaller
+int Searching::convertExtendedToString(const TCHAR * query, TCHAR * result, int length) 
+{	//query may equal to result, since it always gets smaller
 	int i = 0, j = 0;
 	int charLeft = length;
-	bool isGood = true;
 	TCHAR current;
-	while(i < length) {	//because the backslash escape quences always reduce the size of the generic_string, no overflow checks have to be made for target, assuming parameters are correct
+	while (i < length)
+	{	//because the backslash escape quences always reduce the size of the generic_string, no overflow checks have to be made for target, assuming parameters are correct
 		current = query[i];
 		--charLeft;
-		if (current == '\\' && charLeft) {	//possible escape sequence
+		if (current == '\\' && charLeft)
+		{	//possible escape sequence
 			++i;
 			--charLeft;
 			current = query[i];
-			switch(current) {
+			switch(current)
+			{
 				case 'r':
 					result[j] = '\r';
 					break;
@@ -70,38 +76,54 @@ int Searching::convertExtendedToString(const TCHAR * query, TCHAR * result, int 
 				case 'd':
 				case 'o':
 				case 'x':
-				case 'u': {
+				case 'u': 
+				{
 					int size = 0, base = 0;
-					if (current == 'b') {			//11111111
+					if (current == 'b')
+					{	//11111111
 						size = 8, base = 2;
-					} else if (current == 'o') {	//377
+					}
+					else if (current == 'o')
+					{	//377
 						size = 3, base = 8;
-					} else if (current == 'd') {	//255
+					}
+					else if (current == 'd')
+					{	//255
 						size = 3, base = 10;
-					} else if (current == 'x') {	//0xFF
+					}
+					else if (current == 'x')
+					{	//0xFF
 						size = 2, base = 16;
-					} else if (current == 'u') {	//0xCDCD
+					}
+					else if (current == 'u')
+					{	//0xCDCD
 						size = 4, base = 16;
 					}
-					if (charLeft >= size) {
+					
+					if (charLeft >= size) 
+					{
 						int res = 0;
-						if (Searching::readBase(query+(i+1), &res, base, size)) {
+						if (Searching::readBase(query+(i+1), &res, base, size))
+						{
 							result[j] = (TCHAR)res;
-							i+=size;
+							i += size;
 							break;
 						}
 					}
 					//not enough chars to make parameter, use default method as fallback
-					}
-				default: {	//unknown sequence, treat as regular text
+				}
+				
+				default: 
+				{	//unknown sequence, treat as regular text
 					result[j] = '\\';
 					++j;
 					result[j] = current;
-					isGood = false;
 					break;
 				}
 			}
-		} else {
+		}
+		else
+		{
 			result[j] = query[i];
 		}
 		++i;
@@ -542,7 +564,7 @@ void Finder::gotoNextFoundResult(int direction)
 	}
 }
 
-BOOL CALLBACK FindReplaceDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam)
+INT_PTR CALLBACK FindReplaceDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message) 
 	{
@@ -706,6 +728,7 @@ BOOL CALLBACK FindReplaceDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM lP
 
 				case IDREPLACE :
 				{
+					LongRunningOperation op;
 					if (_currentStatus == REPLACE_DLG)
 					{
 						setStatusbarMessage(TEXT(""), FSNoMessage);
@@ -792,6 +815,7 @@ BOOL CALLBACK FindReplaceDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM lP
 
 				case IDD_FINDINFILES_REPLACEINFILES :
 				{
+					LongRunningOperation op;
 					setStatusbarMessage(TEXT(""), FSNoMessage);
 					const int filterSize = 256;
 					TCHAR filters[filterSize];
@@ -832,6 +856,7 @@ BOOL CALLBACK FindReplaceDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM lP
 
 				case IDC_REPLACE_OPENEDFILES :
 				{
+					LongRunningOperation op;
 					if (_currentStatus == REPLACE_DLG)
 					{
 						setStatusbarMessage(TEXT(""), FSNoMessage);
@@ -852,6 +877,7 @@ BOOL CALLBACK FindReplaceDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM lP
 
 				case IDREPLACEALL :
 				{
+					LongRunningOperation op;
 					if (_currentStatus == REPLACE_DLG)
 					{
 						setStatusbarMessage(TEXT(""), FSNoMessage);
@@ -1756,7 +1782,7 @@ void FindReplaceDlg::replaceAllInOpenedDocs()
 
 void FindReplaceDlg::findAllIn(InWhat op)
 {
-	bool doSetMarkingStruct = false;
+	bool justCreated = false;
 	if (!_pFinder)
 	{
 		_pFinder = new Finder();
@@ -1800,11 +1826,13 @@ void FindReplaceDlg::findAllIn(InWhat op)
 
 		_pFinder->_scintView.display();
 		_pFinder->display();
-		doSetMarkingStruct = true;
+		::SendMessage(_hParent, NPPM_DMMHIDE, 0, (LPARAM)_pFinder->getHSelf());
+		::UpdateWindow(_hParent);
+		justCreated = true;
 	}
 	_pFinder->setFinderStyle();
 
-	if (doSetMarkingStruct)
+	if (justCreated)
 	{
 		// Send the address of _MarkingsStruct to the lexer
 		char ptrword[sizeof(void*)*2+1];
@@ -2477,6 +2505,75 @@ void Finder::openAll()
 	}
 }
 
+bool Finder::isLineActualSearchResult(int line) const
+{
+	const int foldLevel = _scintView.execute(SCI_GETFOLDLEVEL, line) & SC_FOLDLEVELNUMBERMASK;
+	return foldLevel == SC_FOLDLEVELBASE + 3;
+}
+
+generic_string Finder::prepareStringForClipboard(generic_string s) const
+{
+	// Input: a string like "\tLine 3: search result".
+	// Output: "search result"
+	s = stringReplace(s, TEXT("\r"), TEXT(""));
+	s = stringReplace(s, TEXT("\n"), TEXT(""));
+	const unsigned int firstColon = s.find(TEXT(':'));
+	if (firstColon == std::string::npos)
+	{
+		// Should never happen.
+		assert(false);
+		return s;
+	}
+	else
+	{
+		// Plus 2 in order to deal with ": ".
+		return s.substr(2 + firstColon);
+	}
+}
+
+void Finder::copy()
+{
+	size_t fromLine, toLine;
+	{
+		const int selStart = _scintView.execute(SCI_GETSELECTIONSTART);
+		const int selEnd = _scintView.execute(SCI_GETSELECTIONEND);
+		const bool hasSelection = selStart != selEnd;
+		const pair<int, int> lineRange = _scintView.getSelectionLinesRange();
+		if (hasSelection && lineRange.first != lineRange.second)
+		{
+			fromLine = lineRange.first;
+			toLine = lineRange.second;
+		}
+		else
+		{
+			// Abuse fold levels to find out which lines to copy to clipboard.
+			// We get the current line and then the next line which has a smaller fold level (SCI_GETLASTCHILD).
+			// Then we loop all lines between them and determine which actually contain search results.
+			fromLine = _scintView.getCurrentLineNumber();
+			const int selectedLineFoldLevel = _scintView.execute(SCI_GETFOLDLEVEL, fromLine) & SC_FOLDLEVELNUMBERMASK;
+			toLine = _scintView.execute(SCI_GETLASTCHILD, fromLine, selectedLineFoldLevel);
+		}
+	}
+
+	std::vector<generic_string> lines;
+	for (size_t line = fromLine; line <= toLine; ++line)
+	{
+		if (isLineActualSearchResult(line))
+		{
+			lines.push_back(prepareStringForClipboard(_scintView.getLine(line)));
+		}
+	}
+	const generic_string toClipboard = stringJoin(lines, TEXT("\r\n"));
+	if (!toClipboard.empty())
+	{
+		if (!str2Clipboard(toClipboard.c_str(), _hSelf))
+		{
+			assert(false);
+			::MessageBox(NULL, TEXT("Error placing text in clipboard."), TEXT("Notepad++"), MB_ICONINFORMATION);
+		}
+	}
+}
+
 void Finder::beginNewFilesSearch()
 {
 	//_scintView.execute(SCI_SETLEXER, SCLEX_NULL);
@@ -2567,7 +2664,7 @@ void Finder::setFinderStyle()
 	_scintView.execute(SCI_COLOURISE, 0, -1);
 }
 
-BOOL CALLBACK Finder::run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam)
+INT_PTR CALLBACK Finder::run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message) 
 	{
@@ -2589,7 +2686,7 @@ BOOL CALLBACK Finder::run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam)
 
 				case NPPM_INTERNAL_SCINTILLAFINFERCOPY :
 				{
-					_scintView.execute(SCI_COPY);
+					copy();
 					return TRUE;
 				}
 
@@ -2630,10 +2727,10 @@ BOOL CALLBACK Finder::run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam)
 				tmp.push_back(MenuItemUnit(NPPM_INTERNAL_SCINTILLAFINFERUNCOLLAPSE, TEXT("Uncollapse all")));
 				tmp.push_back(MenuItemUnit(0, TEXT("Separator")));
 				tmp.push_back(MenuItemUnit(NPPM_INTERNAL_SCINTILLAFINFERCOPY, TEXT("Copy")));
-				tmp.push_back(MenuItemUnit(NPPM_INTERNAL_SCINTILLAFINFERSELECTALL, TEXT("Select All")));
-				tmp.push_back(MenuItemUnit(NPPM_INTERNAL_SCINTILLAFINFERCLEARALL, TEXT("Clear All")));
+				tmp.push_back(MenuItemUnit(NPPM_INTERNAL_SCINTILLAFINFERSELECTALL, TEXT("Select all")));
+				tmp.push_back(MenuItemUnit(NPPM_INTERNAL_SCINTILLAFINFERCLEARALL, TEXT("Clear all")));
 				tmp.push_back(MenuItemUnit(0, TEXT("Separator")));
-				tmp.push_back(MenuItemUnit(NPPM_INTERNAL_SCINTILLAFINFEROPENALL, TEXT("Open All")));
+				tmp.push_back(MenuItemUnit(NPPM_INTERNAL_SCINTILLAFINFEROPENALL, TEXT("Open all")));
 
 				scintillaContextmenu.create(_hSelf, tmp);
 
@@ -2698,7 +2795,7 @@ void FindIncrementDlg::display(bool toShow) const
 	_pRebar->setIDVisible(_rbBand.wID, toShow);
 }
 
-BOOL CALLBACK FindIncrementDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam)
+INT_PTR CALLBACK FindIncrementDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message)
 	{
@@ -2915,7 +3012,7 @@ const int Progress::cBTNheight = 25;
 volatile LONG Progress::refCount = 0;
 
 
-Progress::Progress(HINSTANCE hInst) : _hwnd(NULL)
+Progress::Progress(HINSTANCE hInst) : _hwnd(NULL), _hCallerWnd(NULL)
 {
 	if (::InterlockedIncrement(&refCount) == 1)
 	{
@@ -2953,25 +3050,27 @@ Progress::~Progress()
 }
 
 
-HWND Progress::open(HWND hOwner, const TCHAR* header)
+HWND Progress::open(HWND hCallerWnd, const TCHAR* header)
 {
 	if (_hwnd)
 		return _hwnd;
-
-	_hOwner = hOwner;
-
-	if (header)
-		_tcscpy_s(_header, _countof(_header), header);
-	else
-		_tcscpy_s(_header, _countof(_header), cDefaultHeader);
 
 	// Create manually reset non-signaled event
 	_hActiveState = ::CreateEvent(NULL, TRUE, FALSE, NULL);
 	if (!_hActiveState)
 		return NULL;
 
-	_hThread = ::CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)threadFunc,
-		(LPVOID)this, 0, NULL);
+	_hCallerWnd = hCallerWnd;
+
+	for (HWND hwnd = _hCallerWnd; hwnd; hwnd = ::GetParent(hwnd))
+		::UpdateWindow(hwnd);
+
+	if (header)
+		_tcscpy_s(_header, _countof(_header), header);
+	else
+		_tcscpy_s(_header, _countof(_header), cDefaultHeader);
+
+	_hThread = ::CreateThread(NULL, 0, threadFunc, this, 0, NULL);
 	if (!_hThread)
 	{
 		::CloseHandle(_hActiveState);
@@ -2993,24 +3092,6 @@ HWND Progress::open(HWND hOwner, const TCHAR* header)
 }
 
 
-bool Progress::isCancelled() const
-{
-	if (_hwnd)
-		return (::WaitForSingleObject(_hActiveState, 0) != WAIT_OBJECT_0);
-	return false;
-}
-
-
-void Progress::setPercent(unsigned percent, const TCHAR *fileName) const
-{
-	if (_hwnd)
-	{
-		::SendNotifyMessage(_hPBar, PBM_SETPOS, (WPARAM)percent, 0);
-		::SendMessage(_hPText, WM_SETTEXT, 0, (LPARAM)fileName);
-	}
-}
-
-
 void Progress::close()
 {
 	if (_hwnd)
@@ -3018,8 +3099,33 @@ void Progress::close()
 		::SendMessage(_hwnd, WM_CLOSE, 0, 0);
 		_hwnd = NULL;
 		::WaitForSingleObject(_hThread, INFINITE);
+
 		::CloseHandle(_hThread);
 		::CloseHandle(_hActiveState);
+	}
+}
+
+
+void Progress::setPercent(unsigned percent, const TCHAR *fileName) const
+{
+	if (_hwnd)
+	{
+		::PostMessage(_hPBar, PBM_SETPOS, (WPARAM)percent, 0);
+		::SendMessage(_hPText, WM_SETTEXT, 0, (LPARAM)fileName);
+	}
+}
+
+
+void Progress::flushCallerUserInput() const
+{
+	MSG msg;
+	for (HWND hwnd = _hCallerWnd; hwnd; hwnd = ::GetParent(hwnd))
+	{
+		if (::PeekMessage(&msg, hwnd, 0, 0, PM_QS_INPUT | PM_REMOVE))
+		{
+			while (::PeekMessage(&msg, hwnd, 0, 0, PM_QS_INPUT | PM_REMOVE));
+			::UpdateWindow(hwnd);
+		}
 	}
 }
 
@@ -3052,14 +3158,11 @@ int Progress::thread()
 
 int Progress::createProgressWindow()
 {
-	DWORD styleEx = WS_EX_OVERLAPPEDWINDOW;
-	if (_hOwner)
-		styleEx |= WS_EX_TOOLWINDOW;
-
-	_hwnd = ::CreateWindowEx(styleEx,
+	_hwnd = ::CreateWindowEx(
+		WS_EX_TOOLWINDOW | WS_EX_OVERLAPPEDWINDOW | WS_EX_TOPMOST,
 		cClassName, _header, WS_POPUP | WS_CAPTION,
 		CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
-		_hOwner, NULL, _hInst, (LPVOID)this);
+		NULL, NULL, _hInst, (LPVOID)this);
 	if (!_hwnd)
 		return -1;
 
@@ -3074,7 +3177,7 @@ int Progress::createProgressWindow()
 	height = win.bottom - win.top;
 
 	_hPText = ::CreateWindowEx(0, TEXT("STATIC"), TEXT(""),
-		WS_CHILD | WS_VISIBLE | BS_TEXT,
+		WS_CHILD | WS_VISIBLE | BS_TEXT | SS_PATHELLIPSIS,
 		5, 5,
 		width - 10, 20, _hwnd, NULL, _hInst, NULL);
 	HFONT hf = (HFONT)::GetStockObject(DEFAULT_GUI_FONT);
@@ -3092,7 +3195,6 @@ int Progress::createProgressWindow()
 		(width - cBTNwidth) / 2, height - cBTNheight - 5,
 		cBTNwidth, cBTNheight, _hwnd, NULL, _hInst, NULL);
 
-	
 	if (hf)
 		::SendMessage(_hBtn, WM_SETFONT, (WPARAM)hf, MAKELPARAM(TRUE, 0));
 
@@ -3105,10 +3207,25 @@ int Progress::createProgressWindow()
 
 RECT Progress::adjustSizeAndPos(int width, int height)
 {
-	RECT win, maxWin;
-
+	RECT maxWin;
 	::GetWindowRect(::GetDesktopWindow(), &maxWin);
-	win = maxWin;
+
+	POINT center;
+
+	if (_hCallerWnd)
+	{
+		RECT biasWin;
+		::GetWindowRect(_hCallerWnd, &biasWin);
+		center.x = (biasWin.left + biasWin.right) / 2;
+		center.y = (biasWin.top + biasWin.bottom) / 2;
+	}
+	else
+	{
+		center.x = (maxWin.left + maxWin.right) / 2;
+		center.y = (maxWin.top + maxWin.bottom) / 2;
+	}
+
+	RECT win = maxWin;
 	win.right = win.left + width;
 	win.bottom = win.top + height;
 
@@ -3120,7 +3237,9 @@ RECT Progress::adjustSizeAndPos(int width, int height)
 
 	if (width < maxWin.right - maxWin.left)
 	{
-		win.left = (maxWin.left + maxWin.right - width) / 2;
+		win.left = center.x - width / 2;
+		if (win.left < 0)
+			win.left = 0;
 		win.right = win.left + width;
 	}
 	else
@@ -3129,9 +3248,11 @@ RECT Progress::adjustSizeAndPos(int width, int height)
 		win.right = maxWin.right;
 	}
 
-	if (height < maxWin.right - maxWin.left)
+	if (height < maxWin.bottom - maxWin.top)
 	{
-		win.top = (maxWin.top + maxWin.bottom - height) / 2;
+		win.top = center.y - height / 2;
+		if (win.top < 0)
+			win.top = 0;
 		win.bottom = win.top + height;
 	}
 	else
@@ -3171,6 +3292,7 @@ LRESULT APIENTRY Progress::wndProc(HWND hwnd, UINT umsg, WPARAM wparam, LPARAM l
 					(::GetWindowLongPtr(hwnd, GWLP_USERDATA)));
 				::ResetEvent(pw->_hActiveState);
 				::EnableWindow(pw->_hBtn, FALSE);
+				pw->setInfo(TEXT("Cancelling operation, please wait..."));
 				return 0;
 			}
 			break;

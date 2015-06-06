@@ -26,13 +26,15 @@
 // Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 
-#include "precompiledHeaders.h"
+
 #include "Notepad_plus_Window.h"
 #include "xmlMatchedTagsHighlighter.h"
 #include "VerticalFileSwitcher.h"
 #include "ProjectPanel.h"
 #include "documentMap.h"
 #include <stack>
+
+using namespace std;
 
 BOOL Notepad_plus::notify(SCNotification *notification)
 {
@@ -860,15 +862,14 @@ BOOL Notepad_plus::notify(SCNotification *notification)
 		if (_rebarBottom.getHSelf() == lpnm->hdr.hwndFrom)
 			notifRebar = &_rebarBottom;
 		//If N++ ID, use proper object
-		switch(lpnm->wID) {
-			case REBAR_BAR_TOOLBAR: {
-				POINT pt;
-				pt.x = lpnm->rc.left;
-				pt.y = lpnm->rc.bottom;
-				ClientToScreen(notifRebar->getHSelf(), &pt);
-				_toolBar.doPopop(pt);
-				return TRUE;
-				break; }
+		if (lpnm->wID == REBAR_BAR_TOOLBAR) 
+		{
+			POINT pt;
+			pt.x = lpnm->rc.left;
+			pt.y = lpnm->rc.bottom;
+			ClientToScreen(notifRebar->getHSelf(), &pt);
+			_toolBar.doPopop(pt);
+			return TRUE;
 		}
 		//Else forward notification to window of rebarband
 		REBARBANDINFO rbBand;

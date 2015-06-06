@@ -29,9 +29,13 @@
 #ifndef CONTROLS_TAB_H
 #define CONTROLS_TAB_H
 
+
 #ifndef TAB_BAR_H
 #include "TabBar.h"
 #endif //TAB_BAR_H
+
+#include "window.h"
+#include "Common.h"
 
 struct DlgInfo {
     Window *_dlg;
@@ -53,7 +57,7 @@ public :
 		_isVertical = isVertical;
 		TabBar::init(hInst, hwnd, false, isTraditional, isMultiLine);
 	};
-	void ControlsTab::createTabs(WindowVector & winVector);
+	void createTabs(WindowVector & winVector);
 
 	void destroy() {
 		TabBar::destroy();

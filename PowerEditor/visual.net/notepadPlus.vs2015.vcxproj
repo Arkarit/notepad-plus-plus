@@ -19,13 +19,13 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Unicode Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
-    <PlatformToolset>v120_xp</PlatformToolset>
+    <PlatformToolset>v140_xp</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Unicode Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
-    <PlatformToolset>v120_xp</PlatformToolset>
+    <PlatformToolset>v140_xp</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -58,7 +58,7 @@
       <Optimization>Disabled</Optimization>
       <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
       <AdditionalIncludeDirectories>..\src\WinControls\AboutDlg;..\..\scintilla\include;..\include;..\src\WinControls;..\src\WinControls\ImageListSet;..\src\WinControls\OpenSaveFileDialog;..\src\WinControls\SplitterContainer;..\src\WinControls\StaticDialog;..\src\WinControls\TabBar;..\src\WinControls\ToolBar;..\src\MISC\Process;..\src\ScitillaComponent;..\src\MISC;..\src\MISC\SysMsg;..\src\WinControls\StatusBar;..\src;..\src\WinControls\StaticDialog\RunDlg;..\src\tinyxml;..\src\WinControls\ColourPicker;..\src\Win32Explr;..\src\MISC\RegExt;..\src\WinControls\TrayIcon;..\src\WinControls\shortcut;..\src\WinControls\Grid;..\src\WinControls\ContextMenu;..\src\MISC\PluginsManager;..\src\WinControls\Preference;..\src\WinControls\WindowsDlg;..\src\WinControls\TaskList;..\src\WinControls\DockingWnd;..\src\WinControls\ToolTip;..\src\MISC\Exception;..\src\MISC\Common;..\src\tinyxml\tinyXmlA;..\src\WinControls\AnsiCharPanel;..\src\WinControls\ClipboardHistory;..\src\WinControls\FindCharsInRange;..\src\WinControls\VerticalFileSwitcher;..\src\WinControls\ProjectPanel;..\src\WinControls\DocumentMap;..\src\WinControls\FunctionList;..\src\uchardet;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_WIN32_WINNT=0x0501;_WINDOWS;_USE_64BIT_TIME_T;TIXML_USE_STL;TIXMLA_USE_STL;_CRT_NONSTDC_NO_DEPRECATE;_CRT_SECURE_NO_WARNINGS;_CRT_NON_CONFORMING_SWPRINTFS=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_WIN32_WINNT=0x0501;_WINDOWS;_USE_64BIT_TIME_T;TIXML_USE_STL;TIXMLA_USE_STL;_CRT_NONSTDC_NO_DEPRECATE;_CRT_SECURE_NO_WARNINGS;_CRT_NON_CONFORMING_SWPRINTFS=1;_CRT_NON_CONFORMING_WCSTOK;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Async</ExceptionHandling>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -66,6 +66,7 @@
       <TreatWarningAsError>true</TreatWarningAsError>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DisableSpecificWarnings>4091;4456;4457;4459</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <AdditionalOptions>/fixed:no %(AdditionalOptions)</AdditionalOptions>
@@ -95,7 +96,7 @@
       <OmitFramePointers>false</OmitFramePointers>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <AdditionalIncludeDirectories>..\src\WinControls\AboutDlg;..\..\scintilla\include;..\include;..\src\WinControls;..\src\WinControls\ImageListSet;..\src\WinControls\OpenSaveFileDialog;..\src\WinControls\SplitterContainer;..\src\WinControls\StaticDialog;..\src\WinControls\TabBar;..\src\WinControls\ToolBar;..\src\MISC\Process;..\src\ScitillaComponent;..\src\MISC;..\src\MISC\SysMsg;..\src\WinControls\StatusBar;..\src;..\src\WinControls\StaticDialog\RunDlg;..\src\tinyxml;..\src\WinControls\ColourPicker;..\src\Win32Explr;..\src\MISC\RegExt;..\src\WinControls\TrayIcon;..\src\WinControls\shortcut;..\src\WinControls\Grid;..\src\WinControls\ContextMenu;..\src\MISC\PluginsManager;..\src\WinControls\Preference;..\src\WinControls\WindowsDlg;..\src\WinControls\TaskList;..\src\WinControls\DockingWnd;..\src\WinControls\ToolTip;..\src\MISC\Exception;..\src\MISC\Common;..\src\tinyxml\tinyXmlA;..\src\WinControls\AnsiCharPanel;..\src\WinControls\ClipboardHistory;..\src\WinControls\FindCharsInRange;..\src\WinControls\VerticalFileSwitcher;..\src\WinControls\ProjectPanel;..\src\WinControls\DocumentMap;..\src\WinControls\FunctionList;..\src\uchardet;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_WIN32_WINNT=0x0501;NDEBUG;_WINDOWS;_USE_64BIT_TIME_T;TIXML_USE_STL;TIXMLA_USE_STL;_CRT_NONSTDC_NO_DEPRECATE;_CRT_SECURE_NO_WARNINGS;_CRT_NON_CONFORMING_SWPRINTFS=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_WIN32_WINNT=0x0501;NDEBUG;_WINDOWS;_USE_64BIT_TIME_T;TIXML_USE_STL;TIXMLA_USE_STL;_CRT_NONSTDC_NO_DEPRECATE;_CRT_SECURE_NO_WARNINGS;_CRT_NON_CONFORMING_SWPRINTFS=1;_CRT_NON_CONFORMING_WCSTOK;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessToFile>false</PreprocessToFile>
       <PreprocessSuppressLineNumbers>false</PreprocessSuppressLineNumbers>
       <StringPooling>true</StringPooling>
@@ -107,6 +108,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <EnableEnhancedInstructionSet>NoExtensions</EnableEnhancedInstructionSet>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DisableSpecificWarnings>4091;4456;4457;4459</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <AdditionalDependencies>comctl32.lib;shlwapi.lib;shell32.lib;Oleacc.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -152,9 +154,6 @@ copy ..\src\contextMenu.xml ..\bin\contextMenu.xml
     <ClCompile Include="..\src\ScitillaComponent\columnEditor.cpp" />
     <ClCompile Include="..\src\MISC\Common\Common.cpp" />
     <ClCompile Include="..\src\WinControls\ContextMenu\ContextMenu.cpp" />
-    <ClCompile Include="..\src\WinControls\ProjectPanel\Directory.cpp" />
-    <ClCompile Include="..\src\WinControls\ProjectPanel\DirectoryWatcher.cpp" />
-    <ClCompile Include="..\src\WinControls\ProjectPanel\Locking.cpp" />
     <ClCompile Include="..\src\WinControls\TabBar\ControlsTab.cpp" />
     <ClCompile Include="..\src\WinControls\DockingWnd\DockingCont.cpp" />
     <ClCompile Include="..\src\WinControls\DockingWnd\DockingManager.cpp" />
@@ -267,9 +266,6 @@ copy ..\src\contextMenu.xml ..\bin\contextMenu.xml
   <ItemGroup>
     <Image Include="..\src\icons\allChars_off.ico" />
     <Image Include="..\src\icons\allChars_on.ico" />
-    <Image Include="..\src\icons\asciiPanel.ico" />
-    <Image Include="..\src\icons\chameleon.ico" />
-    <Image Include="..\src\icons\clipboardPanel.ico" />
     <Image Include="..\src\icons\closeAll.bmp" />
     <Image Include="..\src\icons\closefile.bmp" />
     <Image Include="..\src\icons\closeTabButton.bmp" />
@@ -285,9 +281,6 @@ copy ..\src\contextMenu.xml ..\bin\contextMenu.xml
     <Image Include="..\src\default_new.ico" />
     <Image Include="..\src\default_open.ico" />
     <Image Include="..\src\icons\delete.ico" />
-    <Image Include="..\src\icons\docMap.bmp" />
-    <Image Include="..\src\icons\docMap.ico" />
-    <Image Include="..\src\icons\docSwitcher.ico" />
     <Image Include="..\src\icons\dupli_dis.ico" />
     <Image Include="..\src\icons\dupli_off.ico" />
     <Image Include="..\src\icons\dupli_on.ico" />
@@ -301,12 +294,6 @@ copy ..\src\contextMenu.xml ..\bin\contextMenu.xml
     <Image Include="..\src\hot_close.ico" />
     <Image Include="..\src\hot_new.ico" />
     <Image Include="..\src\hot_open.ico" />
-    <Image Include="..\src\icons\funcList_leaf.bmp" />
-    <Image Include="..\src\icons\funcList_node.bmp" />
-    <Image Include="..\src\icons\funclstReload.bmp" />
-    <Image Include="..\src\icons\funclstSort.bmp" />
-    <Image Include="..\src\icons\functionList.bmp" />
-    <Image Include="..\src\icons\functionList.ico" />
     <Image Include="..\src\icons\icon10.ico" />
     <Image Include="..\src\icons\imp_off.ico" />
     <Image Include="..\src\icons\imprim_off.ico" />
@@ -335,17 +322,6 @@ copy ..\src\contextMenu.xml ..\bin\contextMenu.xml
     <Image Include="..\src\icons\playrecord_off.ico" />
     <Image Include="..\src\icons\playrecord_on.ico" />
     <Image Include="..\src\icons\print.bmp" />
-    <Image Include="..\src\icons\projectPanel.ico" />
-    <Image Include="..\src\icons\project_file.bmp" />
-    <Image Include="..\src\icons\project_file_invalid.bmp" />
-    <Image Include="..\src\icons\project_foldermonitor_close.bmp" />
-    <Image Include="..\src\icons\project_foldermonitor_invalid.bmp" />
-    <Image Include="..\src\icons\project_foldermonitor_open.bmp" />
-    <Image Include="..\src\icons\project_folder_close.bmp" />
-    <Image Include="..\src\icons\project_folder_open.bmp" />
-    <Image Include="..\src\icons\project_root.bmp" />
-    <Image Include="..\src\icons\project_work_space.bmp" />
-    <Image Include="..\src\icons\project_work_space_dirty.bmp" />
     <Image Include="..\src\icons\readonly.ico" />
     <Image Include="..\src\icons\redo.bmp" />
     <Image Include="..\src\icons\redo_dis.ico" />
@@ -401,9 +377,6 @@ copy ..\src\contextMenu.xml ..\bin\contextMenu.xml
     <Image Include="..\src\icons\zoomOut.bmp" />
     <Image Include="..\src\icons\zoomOut_off.ico" />
     <Image Include="..\src\icons\zoomOut_on.ico" />
-    <Image Include="icons\project_foldermonitor_close.bmp" />
-    <Image Include="icons\project_foldermonitor_invalid.bmp" />
-    <Image Include="icons\project_foldermonitor_open.bmp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\src\WinControls\AnsiCharPanel\ansiCharPanel.rc" />
@@ -432,7 +405,6 @@ copy ..\src\contextMenu.xml ..\bin\contextMenu.xml
   <ItemGroup>
     <None Include="..\src\cursors\drag.cur" />
     <None Include="..\src\cursors\drag_interdit.cur" />
-    <None Include="..\src\cursors\drag_out.cur" />
     <None Include="..\src\cursors\drag_plus.cur" />
     <None Include="..\src\WinControls\ColourPicker\rt_manif.bin" />
     <None Include="..\src\cursors\up.cur" />
@@ -446,9 +418,6 @@ copy ..\src\contextMenu.xml ..\bin\contextMenu.xml
     <ClInclude Include="..\src\WinControls\Grid\BabyGrid.h" />
     <ClInclude Include="..\src\WinControls\Grid\BabyGridWrapper.h" />
     <ClInclude Include="..\src\ScitillaComponent\Buffer.h" />
-    <ClInclude Include="..\src\WinControls\ProjectPanel\Directory.h" />
-    <ClInclude Include="..\src\WinControls\ProjectPanel\DirectoryWatcher.h" />
-    <ClInclude Include="..\src\WinControls\ProjectPanel\Locking.h" />
     <ClInclude Include="..\uchardet\CharDistribution.h" />
     <ClInclude Include="..\src\WinControls\ClipboardHistory\clipboardHistoryPanel.h" />
     <ClInclude Include="..\src\WinControls\ClipboardHistory\clipboardHistoryPanel_rc.h" />

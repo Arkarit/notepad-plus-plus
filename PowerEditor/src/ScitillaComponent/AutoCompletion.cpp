@@ -25,12 +25,13 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-
-#include "precompiledHeaders.h"
-
+#include <algorithm>
+#include <locale>
+#include <shlwapi.h>
 #include "AutoCompletion.h"
 #include "Notepad_plus_msgs.h"
-#include <locale>
+
+using namespace std;
 
 static bool isInList(generic_string word, const vector<generic_string> & wordArray)
 {
@@ -222,7 +223,6 @@ static bool getPathsForPathCompletion(generic_string input, generic_string &rawP
 	}
 	else
 	{
-		locale loc;
 		size_t last_occurrence = rawPath.rfind(L"\\");
 		if(last_occurrence == std::string::npos) // No match.
 			return false;
@@ -346,7 +346,6 @@ bool AutoCompletion::showWordComplete(bool autoInsert)
 			words += TEXT(" ");
 	}
 
-	// UNICODE TO DO
 	_pEditView->execute(SCI_AUTOCSETSEPARATOR, WPARAM(' '));
 	_pEditView->execute(SCI_AUTOCSETIGNORECASE, _ignoreCase);
 	_pEditView->showAutoComletion(curPos - startPos, words.c_str());
@@ -765,10 +764,10 @@ bool AutoCompletion::setLanguage(LangType language) {
 		//Cache the keywords
 		//Iterate through all keywords
 		TiXmlElement *funcNode = _pXmlKeyword;
-		const TCHAR * name = NULL;
+
 		for (; funcNode; funcNode = funcNode->NextSiblingElement(TEXT("KeyWord")) )
 		{
-			name = funcNode->Attribute(TEXT("name"));
+			const TCHAR *name = funcNode->Attribute(TEXT("name"));
 			if (name)
 			{
 				size_t len = lstrlen(name);

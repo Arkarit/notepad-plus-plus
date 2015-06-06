@@ -29,9 +29,6 @@
 
 #include "TreeView.h"
 
-#define IF_LISTENER_THEN if(_listener) _listener
-
-
 #define CY_ITEMHEIGHT     18
 
 void TreeView::init(HINSTANCE hInst, HWND parent, int treeViewID)
@@ -67,7 +64,8 @@ void TreeView::destroy()
 
 LRESULT TreeView::runProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	IF_LISTENER_THEN->onMessage(hwnd, message, wParam, lParam);
+	if (_listener)
+		_listener->onMessage(hwnd, message, wParam, lParam);
 	return ::CallWindowProc(_defaultProc, hwnd, message, wParam, lParam);
 }
 
@@ -107,7 +105,8 @@ HTREEITEM TreeView::addItem(const TCHAR *itemName, HTREEITEM hParentItem, int iI
 	HTREEITEM newItem = (HTREEITEM)::SendMessage(_hSelf, TVM_INSERTITEM, 0, (LPARAM)(LPTVINSERTSTRUCT)&tvInsertStruct);
 	_validHandles.insert(newItem);
 
-	IF_LISTENER_THEN->onTreeItemAdded(false,newItem,data);
+	if (_listener)
+		_listener->onTreeItemAdded(false,newItem,data);
 
 	return newItem;
 }
@@ -124,7 +123,8 @@ void TreeView::removeItem(HTREEITEM hTreeItem)
 	tvItem.hItem = hTreeItem;
 	tvItem.mask = TVIF_PARAM;
 	SendMessage(_hSelf, TVM_GETITEM, 0,(LPARAM)&tvItem);
-	IF_LISTENER_THEN->onTreeItemRemoved(hTreeItem,(TreeViewData*) tvItem.lParam);
+	if (_listener)
+		_listener->onTreeItemRemoved(hTreeItem,(TreeViewData*) tvItem.lParam);
 
 	// remove from valid handles
 	_validHandles.erase(hTreeItem);
@@ -180,7 +180,8 @@ void TreeView::dupTree(HTREEITEM hTree2Dup, HTREEITEM hParentItem)
 		HTREEITEM hTreeParent = (HTREEITEM)::SendMessage(_hSelf, TVM_INSERTITEM, 0, (LPARAM)(LPTVINSERTSTRUCT)&tvInsertStruct);
 		_validHandles.insert(hTreeParent);
 
-		IF_LISTENER_THEN->onTreeItemAdded(true, hTreeParent,(TreeViewData*)tvItem.lParam);
+		if (_listener)
+			_listener->onTreeItemAdded(true, hTreeParent,(TreeViewData*)tvItem.lParam);
 
 		dupTree(hItem, hTreeParent);
 	}
@@ -222,7 +223,8 @@ void TreeView::cleanSubEntries(HTREEITEM hTreeItem)
 		tvItem.hItem = hItem;
 		tvItem.mask = TVIF_PARAM;
 		SendMessage(_hSelf, TVM_GETITEM, 0,(LPARAM)&tvItem);
-		IF_LISTENER_THEN->onTreeItemRemoved(hItem,(TreeViewData*)(tvItem.lParam));
+		if (_listener)
+			_listener->onTreeItemRemoved(hItem,(TreeViewData*)(tvItem.lParam));
 		_validHandles.erase(hItem);
 		delete (TreeViewData*)(tvItem.lParam);
 		cleanSubEntries(hItem);
@@ -385,7 +387,8 @@ void TreeView::moveTreeViewItem(HTREEITEM draggedItem, HTREEITEM targetItem)
 
 	HTREEITEM hTreeParent = (HTREEITEM)::SendMessage(_hSelf, TVM_INSERTITEM, 0, (LPARAM)(LPTVINSERTSTRUCT)&tvInsertStruct);
 	_validHandles.insert(hTreeParent);
-	IF_LISTENER_THEN->onTreeItemAdded(true, hTreeParent, (TreeViewData*) tvDraggingItem.lParam);
+	if (_listener)
+		_listener->onTreeItemAdded(true, hTreeParent, (TreeViewData*) tvDraggingItem.lParam);
 
 	dupTree(draggedItem, hTreeParent);
 	removeItem(draggedItem);
@@ -449,7 +452,8 @@ bool TreeView::swapTreeViewItem(HTREEITEM itemGoDown, HTREEITEM itemGoUp)
 	tvInsertUp.hParent = parentGoUp;
 	HTREEITEM hTreeParent1stInserted = (HTREEITEM)::SendMessage(_hSelf, TVM_INSERTITEM, 0, (LPARAM)(LPTVINSERTSTRUCT)&tvInsertUp);
 	_validHandles.insert(hTreeParent1stInserted);
-	IF_LISTENER_THEN->onTreeItemAdded(true, hTreeParent1stInserted, (TreeViewData*) tvUpItem.lParam);
+	if (_listener)
+		_listener->onTreeItemAdded(true, hTreeParent1stInserted, (TreeViewData*) tvUpItem.lParam);
 	dupTree(itemGoUp, hTreeParent1stInserted);
 
 	TVINSERTSTRUCT tvInsertDown;
@@ -458,7 +462,8 @@ bool TreeView::swapTreeViewItem(HTREEITEM itemGoDown, HTREEITEM itemGoUp)
 	tvInsertDown.hParent = parentGoDown;
 	HTREEITEM hTreeParent2ndInserted = (HTREEITEM)::SendMessage(_hSelf, TVM_INSERTITEM, 0, (LPARAM)(LPTVINSERTSTRUCT)&tvInsertDown);
 	_validHandles.insert(hTreeParent2ndInserted);
-	IF_LISTENER_THEN->onTreeItemAdded(true, hTreeParent2ndInserted, (TreeViewData*) tvDownItem.lParam);
+	if (_listener)
+		_listener->onTreeItemAdded(true, hTreeParent2ndInserted, (TreeViewData*) tvDownItem.lParam);
 	dupTree(itemGoDown, hTreeParent2ndInserted);
 
 	// remove 2 old items
@@ -551,7 +556,8 @@ bool TreeView::searchLeafRecusivelyAndBuildTree(HTREEITEM tree2Build, const gene
 			tvInsertStruct.hParent = tree2Build;
 			HTREEITEM hInsertedItem = (HTREEITEM)::SendMessage(_hSelf, TVM_INSERTITEM, 0, (LPARAM)(LPTVINSERTSTRUCT)&tvInsertStruct);
 			_validHandles.insert(hInsertedItem);
-			IF_LISTENER_THEN->onTreeItemAdded(true, hInsertedItem, (TreeViewData*) tvItem.lParam);
+			if (_listener)
+				_listener->onTreeItemAdded(true, hInsertedItem, (TreeViewData*) tvItem.lParam);
 		}
 	}
 

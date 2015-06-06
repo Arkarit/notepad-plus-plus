@@ -33,7 +33,6 @@
 #include "window.h"
 #include "Common.h"
 #include <set>
-#include <map>
 
 // abstract base class for all data assigned to a tree view item.
 // clone() must always be implemented.
@@ -55,22 +54,13 @@ struct TreeStateNode {
 	std::vector<TreeStateNode> _children;
 };
 
-
-// ha I suggest to switch off C4100 (unreferenced formal parameter) globally, 
-// because I think it does more harm than good. 
-// Optional virtual methods become unreadable with this warning.
-#pragma warning( push )
-#pragma warning( disable : 4100 )
-
 // Tree view listener. Is informed if a tree item is added or removed or when a message arrives.
 class TreeViewListener {
 public:
-	virtual void onTreeItemAdded(bool afterClone, HTREEITEM hItem, TreeViewData* newData) {}
-	virtual void onTreeItemRemoved(HTREEITEM hItem,TreeViewData* data) {}
-	virtual void onMessage(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {}
+	virtual void onTreeItemAdded(bool afterClone, HTREEITEM hItem, TreeViewData* newData) { afterClone; hItem; newData; }
+	virtual void onTreeItemRemoved(HTREEITEM hItem,TreeViewData* data) { hItem; data; }
+	virtual void onMessage(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) { hwnd; message; wParam; lParam; }
 };
-
-#pragma warning( pop )
 
 class TreeView;
 

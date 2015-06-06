@@ -163,7 +163,7 @@ void FunctionListPanel::addInStateArray(TreeStateNode tree2Update, const TCHAR *
 	bool found = false;
 	for (size_t i = 0, len = _treeParams.size(); i < len; ++i)
 	{
-		if (_treeParams[i]._treeState._label == tree2Update._label)
+		if (_treeParams[i]._treeState._extraData == tree2Update._extraData)
 		{
 			_treeParams[i]._searchParameters._text2Find = searchText;
 			_treeParams[i]._searchParameters._doSort = isSorted;
@@ -360,10 +360,9 @@ bool FunctionListPanel::openSelection(const TreeView & treeView)
 	{
 		return false;
 	}
-	FunctionListPanelData* data = (FunctionListPanelData*) tvItem.lParam;
-	const generic_string& posStr = data->_str;
 
-	int pos = generic_atoi(posStr.c_str());
+	FunctionListPanelData* data = (FunctionListPanelData*) tvItem.lParam;
+	int pos = generic_atoi(data->_str.c_str());
 	if (pos == -1)
 		return false;
 

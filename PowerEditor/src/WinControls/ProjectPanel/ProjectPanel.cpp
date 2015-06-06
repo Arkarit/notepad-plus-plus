@@ -51,16 +51,12 @@
 #define GET_X_LPARAM(lp)                        ((int)(short)LOWORD(lp))
 #define GET_Y_LPARAM(lp)                        ((int)(short)HIWORD(lp))
 
-#pragma warning( push )
-#pragma warning( disable : 4100 )
-
 INT_PTR CALLBACK ProjectPanel::run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
     {
         case WM_INITDIALOG :
         {
-
 			ProjectPanel::initMenus();
 
 			// Create toolbar menu
@@ -94,7 +90,19 @@ INT_PTR CALLBACK ProjectPanel::run_dlgProc(UINT message, WPARAM wParam, LPARAM l
 			_directoryWatcher = new DirectoryWatcher(_treeView.getHSelf());
 			_directoryWatcher->startThread();
 
-			setImageList(IDI_PROJECT_WORKSPACE, IDI_PROJECT_WORKSPACEDIRTY, IDI_PROJECT_PROJECT, IDI_PROJECT_FOLDEROPEN, IDI_PROJECT_FOLDERCLOSE, IDI_PROJECT_FILE, IDI_PROJECT_FILEINVALID, IDI_PROJECT_FOLDERMONITOROPEN, IDI_PROJECT_FOLDERMONITORCLOSE, IDI_PROJECT_FOLDERMONITORINVALID, IDI_PROJECT_FILEMONITOR);
+			setImageList(IDI_PROJECT_WORKSPACE, 
+			             IDI_PROJECT_WORKSPACEDIRTY, 
+						 IDI_PROJECT_PROJECT, 
+						 IDI_PROJECT_FOLDEROPEN, 
+						 IDI_PROJECT_FOLDERCLOSE, 
+						 IDI_PROJECT_FILE, 
+						 IDI_PROJECT_FILEINVALID, 
+						 IDI_PROJECT_FOLDERMONITOROPEN, 
+						 IDI_PROJECT_FOLDERMONITORCLOSE, 
+						 IDI_PROJECT_FOLDERMONITORINVALID, 
+						 IDI_PROJECT_FILEMONITOR
+						 );
+
 			_treeView.addCanNotDropInList(INDEX_LEAF);
 			_treeView.addCanNotDropInList(INDEX_LEAF_INVALID);
 			_treeView.addCanNotDropInList(INDEX_OPEN_MONITOR);
@@ -185,8 +193,8 @@ static HTREEITEM treeviewInsertFunc(TreeView* treeView, HTREEITEM hParent, const
 //return TVI_LAST;
 
 
-	const ProjectPanelFileData* parentData = (const ProjectPanelFileData*) parentTVData;
-	const ProjectPanelFileData* toInsertData = (const ProjectPanelFileData*) toInsertTVData;
+	const ProjectPanelData* parentData = (const ProjectPanelData*) parentTVData;
+	const ProjectPanelData* toInsertData = (const ProjectPanelData*) toInsertTVData;
 
 	if( !parentData->isFolderMonitor() && !parentData->isFolderMonitorRoot() )
 		return TVI_LAST;
@@ -200,7 +208,7 @@ static HTREEITEM treeviewInsertFunc(TreeView* treeView, HTREEITEM hParent, const
 		tvItem.mask = TVIF_PARAM;
 		tvItem.hItem = hItem;
 		SendMessage(treeView->getHSelf(), TVM_GETITEM, 0,(LPARAM)&tvItem);
-		ProjectPanelFileData* itemData = (ProjectPanelFileData*) tvItem.lParam;
+		ProjectPanelData* itemData = (ProjectPanelData*) tvItem.lParam;
 
 		// folders always before files
 		if( itemData->isFolderMonitor() && !toInsertData->isFolderMonitor() )
@@ -317,7 +325,18 @@ void ProjectPanel::initMenus()
 }
 
 
-BOOL ProjectPanel::setImageList(int root_clean_id, int root_dirty_id, int project_id, int open_node_id, int closed_node_id, int leaf_id, int ivalid_leaf_id, int open_monitor_id, int closed_monitor_id, int invalid_monitor_id, int file_monitor_id) 
+BOOL ProjectPanel::setImageList(int root_clean_id, 
+                                int root_dirty_id, 
+								int project_id, 
+								int open_node_id, 
+								int closed_node_id, 
+								int leaf_id, 
+								int ivalid_leaf_id, 
+								int open_monitor_id, 
+								int closed_monitor_id, 
+								int invalid_monitor_id, 
+								int file_monitor_id
+								) 
 {
 	HBITMAP hbmp;
 	COLORREF maskColour = RGB(192, 192, 192);
@@ -437,12 +456,12 @@ bool ProjectPanel::openWorkSpace(const TCHAR *projectFileName)
 
 	NativeLangSpeaker *pNativeSpeaker = (NppParameters::getInstance())->getNativeLangSpeaker();
 	generic_string workspace = pNativeSpeaker->getAttrNameStr(PM_WORKSPACEROOTNAME, "ProjectManager", "WorkspaceRootName");
-	HTREEITEM rootItem = _treeView.addItem(workspace.c_str(), TVI_ROOT, INDEX_CLEAN_ROOT, new ProjectPanelFileData(_directoryWatcher, workspace.c_str(), NULL, nodeType_root));
+	HTREEITEM rootItem = _treeView.addItem(workspace.c_str(), TVI_ROOT, INDEX_CLEAN_ROOT, new ProjectPanelData(_directoryWatcher, workspace.c_str(), NULL, nodeType_root));
 
 	for ( ; childNode ; childNode = childNode->NextSibling(TEXT("Project")))
 	{
 		const TCHAR* name = (childNode->ToElement())->Attribute(TEXT("name"));
-		HTREEITEM projectItem = _treeView.addItem(name, rootItem, INDEX_PROJECT, new ProjectPanelFileData(_directoryWatcher, name, NULL, nodeType_project));
+		HTREEITEM projectItem = _treeView.addItem(name, rootItem, INDEX_PROJECT, new ProjectPanelData(_directoryWatcher, name, NULL, nodeType_project));
 		buildTreeFrom(childNode, projectItem);
 	}
 	setWorkSpaceDirty(false);
@@ -456,7 +475,7 @@ void ProjectPanel::newWorkSpace()
 {
 	NativeLangSpeaker *pNativeSpeaker = (NppParameters::getInstance())->getNativeLangSpeaker();
 	generic_string workspace = pNativeSpeaker->getAttrNameStr(PM_WORKSPACEROOTNAME, "ProjectManager", "WorkspaceRootName");
-	_treeView.addItem(workspace.c_str(), TVI_ROOT, INDEX_CLEAN_ROOT, new ProjectPanelFileData(_directoryWatcher, workspace.c_str(), NULL, nodeType_root));
+	_treeView.addItem(workspace.c_str(), TVI_ROOT, INDEX_CLEAN_ROOT, new ProjectPanelData(_directoryWatcher, workspace.c_str(), NULL, nodeType_root));
 	setWorkSpaceDirty(false);
 	_workSpaceFilePath = TEXT("");
 }
@@ -524,17 +543,17 @@ void ProjectPanel::buildProjectXml(TiXmlNode *node, HTREEITEM hItem, const TCHAR
 	{
 		tvItem.hItem = hItemNode;
 		SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0,(LPARAM)&tvItem);
-		ProjectPanelFileData& tvFileInfo = *(ProjectPanelFileData*) tvItem.lParam;
+		ProjectPanelData& projectPanelData = *(ProjectPanelData*) tvItem.lParam;
 
-		if (tvFileInfo.isFile())
+		if (projectPanelData.isFile())
 		{
-			generic_string newFn = getRelativePath(tvFileInfo._filePath, fn2write);
+			generic_string newFn = getRelativePath(projectPanelData._filePath, fn2write);
 			TiXmlNode *fileLeaf = node->InsertEndChild(TiXmlElement(TEXT("File")));
 			fileLeaf->ToElement()->SetAttribute(TEXT("name"), newFn.c_str());
 		}
-		else if (tvFileInfo.isFolderMonitorRoot())
+		else if (projectPanelData.isFolderMonitorRoot())
 		{
-			generic_string newFn = getRelativePath(tvFileInfo._filePath, fn2write);
+			generic_string newFn = getRelativePath(projectPanelData._filePath, fn2write);
 			TiXmlNode *fileLeaf = node->InsertEndChild(TiXmlElement(TEXT("FolderMonitor")));
 			fileLeaf->ToElement()->SetAttribute(TEXT("name"), newFn.c_str());
 		}
@@ -572,7 +591,7 @@ bool ProjectPanel::buildTreeFrom(TiXmlNode *projectRoot, HTREEITEM hParentItem)
 		if (lstrcmp(TEXT("Folder"), v) == 0)
 		{
 			const TCHAR* name =(childNode->ToElement())->Attribute(TEXT("name"));
-			HTREEITEM addedItem = _treeView.addItem(name, hParentItem, INDEX_CLOSED_NODE, new ProjectPanelFileData(_directoryWatcher, name, NULL, nodeType_folder));
+			HTREEITEM addedItem = _treeView.addItem(name, hParentItem, INDEX_CLOSED_NODE, new ProjectPanelData(_directoryWatcher, name, NULL, nodeType_folder));
 			if (!childNode->NoChildren())
 			{
 				bool isOK = buildTreeFrom(childNode, addedItem);
@@ -605,13 +624,13 @@ bool ProjectPanel::buildTreeFrom(TiXmlNode *projectRoot, HTREEITEM hParentItem)
 			generic_string fullPath = getAbsoluteFilePath(strValue);
 			TCHAR *strValueLabel = ::PathFindFileName(strValue);
 			int iImage = ::PathFileExists(fullPath.c_str())?INDEX_LEAF:INDEX_LEAF_INVALID;
-			_treeView.addItem(strValueLabel, hParentItem, iImage, new ProjectPanelFileData(_directoryWatcher, strValueLabel, fullPath.c_str(), nodeType_file));
+			_treeView.addItem(strValueLabel, hParentItem, iImage, new ProjectPanelData(_directoryWatcher, strValueLabel, fullPath.c_str(), nodeType_file));
 		}
 	}
 	return true;
 }
 
-void ProjectPanel::rebuildFolderMonitorTree(HTREEITEM hParentItem, const ProjectPanelFileData& tvFileInfo)
+void ProjectPanel::rebuildFolderMonitorTree(HTREEITEM hParentItem, const ProjectPanelData& projectPanelData)
 {
 	TVITEM tvItem;
 	tvItem.mask = TVIF_PARAM;
@@ -619,9 +638,9 @@ void ProjectPanel::rebuildFolderMonitorTree(HTREEITEM hParentItem, const Project
 	::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0, (LPARAM)&tvItem);
 
 	int iImg;
-	if (tvFileInfo._nodeType == nodeType_monitorFolderRoot)
+	if (projectPanelData._nodeType == nodeType_monitorFolderRoot)
 	{
-		if (!::PathFileExists(tvFileInfo._filePath.c_str()))
+		if (!::PathFileExists(projectPanelData._filePath.c_str()))
 		{
 			iImg = INDEX_INVALID_MONITOR;
 			_treeView.removeAllChildren(hParentItem);
@@ -631,9 +650,9 @@ void ProjectPanel::rebuildFolderMonitorTree(HTREEITEM hParentItem, const Project
 			iImg = (tvItem.state & TVIS_EXPANDED) ? INDEX_OPEN_MONITOR : INDEX_CLOSED_MONITOR;
 		}
 	}
-	else if (tvFileInfo._nodeType == nodeType_monitorFolder)
+	else if (projectPanelData._nodeType == nodeType_monitorFolder)
 	{
-		if (!::PathFileExists(tvFileInfo._filePath.c_str()))
+		if (!::PathFileExists(projectPanelData._filePath.c_str()))
 		{
 			_treeView.removeItem(hParentItem);
 			return;
@@ -651,7 +670,7 @@ void ProjectPanel::rebuildFolderMonitorTree(HTREEITEM hParentItem, const Project
 
 	removeDummies(hParentItem);
 	ProjectPanelDirectory currDir( this, hParentItem );
-	Directory newDir(tvFileInfo._filePath);
+	Directory newDir(projectPanelData._filePath);
 	currDir.synchronizeTo(newDir);
 
 	_treeView.setItemImage(hParentItem, iImg, iImg);
@@ -678,16 +697,16 @@ void ProjectPanel::openSelectFile()
 	::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0,(LPARAM)&tvItem);
 
 	NodeType nType = getNodeType(tvItem.hItem);
-	ProjectPanelFileData& tvFileInfo = *(ProjectPanelFileData*)tvItem.lParam;
+	ProjectPanelData& projectPanelData = *(ProjectPanelData*)tvItem.lParam;
 
-	if ((nType == nodeType_file || nType == nodeType_monitorFile) && (tvFileInfo.isFile() || tvFileInfo.isFileMonitor()))
+	if ((nType == nodeType_file || nType == nodeType_monitorFile) && (projectPanelData.isFile() || projectPanelData.isFileMonitor()))
 	{
 		tvItem.mask = TVIF_IMAGE | TVIF_SELECTEDIMAGE;
-		if (::PathFileExists(tvFileInfo._filePath.c_str()))
+		if (::PathFileExists(projectPanelData._filePath.c_str()))
 		{
-			::SendMessage(_hParent, NPPM_DOOPEN, 0, (LPARAM)(tvFileInfo._filePath.c_str()));
-			tvItem.iImage = tvFileInfo.isFileMonitor() ? INDEX_LEAF_MONITOR : INDEX_LEAF;
-			tvItem.iSelectedImage = tvFileInfo.isFileMonitor() ? INDEX_LEAF_MONITOR : INDEX_LEAF;
+			::SendMessage(_hParent, NPPM_DOOPEN, 0, (LPARAM)(projectPanelData._filePath.c_str()));
+			tvItem.iImage = projectPanelData.isFileMonitor() ? INDEX_LEAF_MONITOR : INDEX_LEAF;
+			tvItem.iSelectedImage = projectPanelData.isFileMonitor() ? INDEX_LEAF_MONITOR : INDEX_LEAF;
 		}
 		else
 		{
@@ -721,7 +740,9 @@ HMENU ProjectPanel::getContextMenu(HTREEITEM hTreeItem) const
 
 void ProjectPanel::onTreeItemAdded(bool afterClone, HTREEITEM hItem, TreeViewData* newData)
 {
-	ProjectPanelFileData* tvInfo = getInfo(newData);
+	afterClone;
+
+	ProjectPanelData* tvInfo = getData(newData);
 	tvInfo->setItem( hItem );
 	if (tvInfo->isFolderMonitorRoot())
 		tvInfo->watchDir(true);
@@ -729,6 +750,8 @@ void ProjectPanel::onTreeItemAdded(bool afterClone, HTREEITEM hItem, TreeViewDat
 
 void ProjectPanel::onMessage(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	wParam;
+
 	switch (message)
 	{
 		case DIRECTORYWATCHER_UPDATE:
@@ -757,9 +780,9 @@ void ProjectPanel::treeItemChanged(HTREEITEM hTreeItem, TreeViewData* data)
 	tvItem.hItem = hTreeItem;
 	::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0, (LPARAM)&tvItem);
 
-	ProjectPanelFileData& tvFileInfo = *getInfo(data);
+	ProjectPanelData& projectPanelData = *getData(data);
 	int iImg;
-	switch (tvFileInfo._nodeType)
+	switch (projectPanelData._nodeType)
 	{
 		case nodeType_root:
 			iImg = _isDirty ? INDEX_DIRTY_ROOT : INDEX_CLEAN_ROOT;
@@ -771,14 +794,14 @@ void ProjectPanel::treeItemChanged(HTREEITEM hTreeItem, TreeViewData* data)
 			iImg = (tvItem.state & TVIS_EXPANDED) ? INDEX_OPEN_NODE : INDEX_CLOSED_NODE;
 			break;
 		case nodeType_file:
-			iImg = ::PathFileExists(tvFileInfo._filePath.c_str()) ? INDEX_LEAF : INDEX_LEAF_INVALID;
+			iImg = ::PathFileExists(projectPanelData._filePath.c_str()) ? INDEX_LEAF : INDEX_LEAF_INVALID;
 			break;
 		case nodeType_monitorFile:
 			iImg = INDEX_LEAF_MONITOR;
 			break;
 		case nodeType_monitorFolderRoot:
 		case nodeType_monitorFolder:
-			rebuildFolderMonitorTree(hTreeItem, tvFileInfo);
+			rebuildFolderMonitorTree(hTreeItem, projectPanelData);
 			return;
 		default:
 			return;
@@ -794,21 +817,21 @@ void ProjectPanel::expandOrCollapseMonitorFolder(bool expand, HTREEITEM hItem)
 	tvItem.mask = TVIF_PARAM;
 	tvItem.hItem = hItem;
 	::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0, (LPARAM)&tvItem);
-	ProjectPanelFileData& tvFileInfo = *(ProjectPanelFileData*)(tvItem.lParam);
-	if (!(tvFileInfo.isFolderMonitor() || tvFileInfo.isFolderMonitorRoot()) )
+	ProjectPanelData& projectPanelData = *(ProjectPanelData*)(tvItem.lParam);
+	if (!(projectPanelData.isFolderMonitor() || projectPanelData.isFolderMonitorRoot()) )
 		return;
 
 	if (expand)
 	{
 		removeDummies(hItem);
 //		_treeView.removeAllChildren(hItem);
-		if (tvFileInfo.isFolderMonitor())
-			tvFileInfo.watchDir(true);
+		if (projectPanelData.isFolderMonitor())
+			projectPanelData.watchDir(true);
 	}
 	else
 	{
-		if (tvFileInfo.isFolderMonitor())
-			tvFileInfo.watchDir(false);
+		if (projectPanelData.isFolderMonitor())
+			projectPanelData.watchDir(false);
 //		_treeView.removeAllChildren(hItem);
 //		_treeView.addItem( TEXT(""), hItem, INDEX_LEAF_MONITOR, new ProjectPanelFileData(_directoryWatcher, TEXT(""), TEXT(""), nodeType_dummy ));
 	}
@@ -827,9 +850,9 @@ void ProjectPanel::removeDummies(HTREEITEM hTreeItem)
 	tvItem.mask = TVIF_PARAM;
 	tvItem.hItem = hItemNode;
 	::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0, (LPARAM)&tvItem);
-	ProjectPanelFileData& tvFileInfo = *(ProjectPanelFileData*)(tvItem.lParam);
+	ProjectPanelData& projectPanelData = *(ProjectPanelData*)(tvItem.lParam);
 
-	if (tvFileInfo.isDummy())
+	if (projectPanelData.isDummy())
 		_treeView.removeAllChildren(hTreeItem);
 
 }
@@ -860,10 +883,10 @@ void ProjectPanel::notified(LPNMHDR notification)
 				if (getNodeType(tvnotif->item.hItem) == nodeType_root)
 					return;
 
-				ProjectPanelFileData& tvFileInfo = *(ProjectPanelFileData*)tvnotif->item.lParam;
+				ProjectPanelData& projectPanelData = *(ProjectPanelData*)tvnotif->item.lParam;
 
 				// Processing for only File case
-				if (tvFileInfo.isFile()) 
+				if (projectPanelData.isFile()) 
 				{
 					// Get the old label
 					tvItem.hItem = _treeView.getSelection();
@@ -871,7 +894,7 @@ void ProjectPanel::notified(LPNMHDR notification)
 					size_t len = lstrlen(tvItem.pszText);
 
 					// Find the position of old label in File path
-					generic_string &filePath = tvFileInfo._filePath;
+					generic_string &filePath = projectPanelData._filePath;
 					size_t found = filePath.rfind(tvItem.pszText);
 
 					// If found the old label, replace it with the modified one
@@ -882,8 +905,8 @@ void ProjectPanel::notified(LPNMHDR notification)
 					tvItem.mask = TVIF_IMAGE | TVIF_SELECTEDIMAGE;
 					if (::PathFileExists(filePath.c_str()))
 					{
-						tvItem.iImage = tvFileInfo.isFileMonitor() ? INDEX_LEAF_MONITOR : INDEX_LEAF;
-						tvItem.iSelectedImage = tvFileInfo.isFileMonitor() ? INDEX_LEAF_MONITOR : INDEX_LEAF;
+						tvItem.iImage = projectPanelData.isFileMonitor() ? INDEX_LEAF_MONITOR : INDEX_LEAF;
+						tvItem.iSelectedImage = projectPanelData.isFileMonitor() ? INDEX_LEAF_MONITOR : INDEX_LEAF;
 					}
 					else
 					{
@@ -910,7 +933,7 @@ void ProjectPanel::notified(LPNMHDR notification)
 				}
 				else
 				{
-					str = &((ProjectPanelFileData *)lpGetInfoTip->lParam)->_filePath;
+					str = &((ProjectPanelData *)lpGetInfoTip->lParam)->_filePath;
 					if (str->empty())
 						return;
 				}
@@ -1021,8 +1044,8 @@ NodeType ProjectPanel::getNodeType(HTREEITEM hItem) const
 	tvItem.hItem = hItem;
 	tvItem.mask = TVIF_PARAM;
 	SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0,(LPARAM)&tvItem);
-	ProjectPanelFileData& tvFileInfo = *(ProjectPanelFileData*)tvItem.lParam;
-	return tvFileInfo._nodeType;
+	ProjectPanelData& projectPanelData = *(ProjectPanelData*)tvItem.lParam;
+	return projectPanelData._nodeType;
 }
 
 void ProjectPanel::showContextMenu(int x, int y)
@@ -1061,12 +1084,12 @@ POINT ProjectPanel::getMenuDisplyPoint(int iButton)
 	return p;
 }
 
-HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, bool virtl, bool root, const TCHAR *monitorPath, bool sortIn)
+HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, bool monitored, bool root, const TCHAR *monitorPath, bool sortIn)
 {
 	NodeType nodeType(nodeType_folder);
 	int iconindex = INDEX_CLOSED_NODE;
 
-	if (virtl)
+	if (monitored)
 	{
 		if (root)
 		{
@@ -1081,10 +1104,10 @@ HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, 
 	}
 
 
-	HTREEITEM addedItem = _treeView.addItem(folderName, hTreeItem, iconindex, new ProjectPanelFileData(_directoryWatcher, folderName, monitorPath, nodeType), sortIn ? treeviewInsertFunc : NULL);
+	HTREEITEM addedItem = _treeView.addItem(folderName, hTreeItem, iconindex, new ProjectPanelData(_directoryWatcher, folderName, monitorPath, nodeType), sortIn ? treeviewInsertFunc : NULL);
 
-	if (virtl)
-		_treeView.addItem( TEXT(""), addedItem, INDEX_LEAF_MONITOR, new ProjectPanelFileData(_directoryWatcher,TEXT(""), TEXT(""), nodeType_dummy ));
+	if (monitored)
+		_treeView.addItem( TEXT(""), addedItem, INDEX_LEAF_MONITOR, new ProjectPanelData(_directoryWatcher,TEXT(""), TEXT(""), nodeType_dummy ));
 
 	if (getNodeType(hTreeItem) != nodeType_monitorFolderRoot && getNodeType(hTreeItem) != nodeType_monitorFolder)
 	{
@@ -1137,7 +1160,7 @@ void ProjectPanel::popupMenuCmd(int cmdID)
 
 			NativeLangSpeaker *pNativeSpeaker = (NppParameters::getInstance())->getNativeLangSpeaker();
 			generic_string newProjectLabel = pNativeSpeaker->getAttrNameStr(PM_NEWPROJECTNAME, "ProjectManager", "NewProjectName");
-			HTREEITEM addedItem = _treeView.addItem(newProjectLabel.c_str(),  root, INDEX_PROJECT, new ProjectPanelFileData(_directoryWatcher, newProjectLabel.c_str(), NULL, nodeType_project));
+			HTREEITEM addedItem = _treeView.addItem(newProjectLabel.c_str(),  root, INDEX_PROJECT, new ProjectPanelData(_directoryWatcher, newProjectLabel.c_str(), NULL, nodeType_project));
 			setWorkSpaceDirty(true);
 			_treeView.expand(hTreeItem);
 			TreeView_EditLabel(_treeView.getHSelf(), addedItem);
@@ -1342,20 +1365,20 @@ void ProjectPanel::popupMenuCmd(int cmdID)
 			tvItem.cchTextMax = MAX_PATH;
 			
 			SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0,(LPARAM)&tvItem);
-			ProjectPanelFileData& tvFileInfo = *(ProjectPanelFileData*)tvItem.lParam;
-			if (!tvFileInfo.isFile())
+			ProjectPanelData& projectPanelData = *(ProjectPanelData*)tvItem.lParam;
+			if (!projectPanelData.isFile())
 				return;
 
-			if (fileRelocalizerDlg.doDialog(tvFileInfo._filePath.c_str()) == 0)
+			if (fileRelocalizerDlg.doDialog(projectPanelData._filePath.c_str()) == 0)
 			{
 				generic_string newValue = fileRelocalizerDlg.getFullFilePath();
-				if (tvFileInfo._filePath == newValue)
+				if (projectPanelData._filePath == newValue)
 					return;
 
-				tvFileInfo._filePath = newValue;
-				TCHAR *strValueLabel = ::PathFindFileName(tvFileInfo._filePath.c_str());
+				projectPanelData._filePath = newValue;
+				TCHAR *strValueLabel = ::PathFindFileName(projectPanelData._filePath.c_str());
 				lstrcpy(textBuffer, strValueLabel);
-				int iImage = ::PathFileExists(tvFileInfo._filePath.c_str()) ? INDEX_LEAF : INDEX_LEAF_INVALID;
+				int iImage = ::PathFileExists(projectPanelData._filePath.c_str()) ? INDEX_LEAF : INDEX_LEAF_INVALID;
 				tvItem.iImage = tvItem.iSelectedImage = iImage;
 				SendMessage(_treeView.getHSelf(), TVM_SETITEM, 0,(LPARAM)&tvItem);
 				setWorkSpaceDirty(true);
@@ -1394,14 +1417,14 @@ void ProjectPanel::addFiles(HTREEITEM hTreeItem)
 		for (size_t i = 0 ; i < sz ; ++i)
 		{
 			TCHAR *strValueLabel = ::PathFindFileName(pfns->at(i).c_str());
-			_treeView.addItem(strValueLabel, hTreeItem, INDEX_LEAF, new ProjectPanelFileData(_directoryWatcher, strValueLabel, pfns->at(i).c_str(), nodeType_file));
+			_treeView.addItem(strValueLabel, hTreeItem, INDEX_LEAF, new ProjectPanelData(_directoryWatcher, strValueLabel, pfns->at(i).c_str(), nodeType_file));
 		}
 		_treeView.expand(hTreeItem);
 		setWorkSpaceDirty(true);
 	}
 }
 
-void ProjectPanel::recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTreeItem, bool virtl, bool recursive)
+void ProjectPanel::recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTreeItem, bool monitored, bool recursive)
 {
 	bool isInHiddenDir = false;
 	generic_string dirFilter(folderPath);
@@ -1433,8 +1456,8 @@ void ProjectPanel::recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTre
 						pathDir += TEXT("\\");
 					pathDir += foundData.cFileName;
 					pathDir += TEXT("\\");
-					HTREEITEM addedItem = addFolder(hTreeItem, foundData.cFileName, virtl, false, virtl ? folderPath : NULL);
-					recursiveAddFilesFrom(pathDir.c_str(), addedItem, virtl, true);
+					HTREEITEM addedItem = addFolder(hTreeItem, foundData.cFileName, monitored, false, monitored ? folderPath : NULL);
+					recursiveAddFilesFrom(pathDir.c_str(), addedItem, monitored, true);
 				}
 			}
 		}
@@ -1450,13 +1473,13 @@ void ProjectPanel::recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTre
 		if (folderPath[lstrlen(folderPath)-1] != '\\')
 			pathFile += TEXT("\\");
 		pathFile += files[i];
-		_treeView.addItem(files[i].c_str(), hTreeItem, virtl ? INDEX_LEAF_MONITOR : INDEX_LEAF, new ProjectPanelFileData(_directoryWatcher, files[i].c_str(), pathFile.c_str(), virtl ? nodeType_monitorFile : nodeType_file ), treeviewInsertFunc);
+		_treeView.addItem(files[i].c_str(), hTreeItem, monitored ? INDEX_LEAF_MONITOR : INDEX_LEAF, new ProjectPanelData(_directoryWatcher, files[i].c_str(), pathFile.c_str(), monitored ? nodeType_monitorFile : nodeType_file ), treeviewInsertFunc);
 	}
 
 	::FindClose(hFile);
 }
 
-void ProjectPanel::addFilesFromDirectory(HTREEITEM hTreeItem, bool virtl)
+void ProjectPanel::addFilesFromDirectory(HTREEITEM hTreeItem, bool monitored)
 {
 	if (_selDirOfFilesFromDirDlg == TEXT("") && _workSpaceFilePath != TEXT(""))
 	{
@@ -1473,7 +1496,7 @@ void ProjectPanel::addFilesFromDirectory(HTREEITEM hTreeItem, bool virtl)
 
 	if (dirPath != TEXT(""))
 	{
-		if (virtl)
+		if (monitored)
 		{
 			generic_string newFolderLabel(dirPath);
 			const size_t lastSlashIdx = newFolderLabel.find_last_of(TEXT("\\/"));
@@ -1489,8 +1512,8 @@ void ProjectPanel::addFilesFromDirectory(HTREEITEM hTreeItem, bool virtl)
 			hTreeItem = addFolder(hTreeItem, newFolderLabel.c_str(), true, true, dirPath.c_str());
 		}
 
-		recursiveAddFilesFrom(dirPath.c_str(), hTreeItem, virtl, !virtl);
-		if (!virtl)
+		recursiveAddFilesFrom(dirPath.c_str(), hTreeItem, monitored, !monitored);
+		if (!monitored)
 			_treeView.expand(hTreeItem);
 		setWorkSpaceDirty(true);
 		_selDirOfFilesFromDirDlg = dirPath;
@@ -1563,13 +1586,13 @@ ProjectPanelDirectory::ProjectPanelDirectory(ProjectPanel* projectPanel, HTREEIT
 
 	tvItem.hItem = hItem;
 	SendMessage(_treeView->getHSelf(), TVM_GETITEM, 0,(LPARAM)&tvItem);
-	ProjectPanelFileData& tvFileInfo = *(ProjectPanelFileData*) tvItem.lParam;
-	assert (tvFileInfo.isFolderMonitorRoot() || tvFileInfo.isFolderMonitor());
-	if (!tvFileInfo.isFolderMonitorRoot() && !tvFileInfo.isFolderMonitor())
+	ProjectPanelData& projectPanelData = *(ProjectPanelData*) tvItem.lParam;
+	assert (projectPanelData.isFolderMonitorRoot() || projectPanelData.isFolderMonitor());
+	if (!projectPanelData.isFolderMonitorRoot() && !projectPanelData.isFolderMonitor())
 		return;
-	_exists = PathFileExists(tvFileInfo._filePath.c_str()) != 0;
+	_exists = PathFileExists(projectPanelData._filePath.c_str()) != 0;
 	if (_exists)
-		_path = tvFileInfo._filePath;
+		_path = projectPanelData._filePath;
 
     for (HTREEITEM hItemNode = _treeView->getChildFrom(hItem);
 		hItemNode != NULL;
@@ -1577,19 +1600,19 @@ ProjectPanelDirectory::ProjectPanelDirectory(ProjectPanel* projectPanel, HTREEIT
 	{
 		tvItem.hItem = hItemNode;
 		SendMessage(_treeView->getHSelf(), TVM_GETITEM, 0,(LPARAM)&tvItem);
-		ProjectPanelFileData& tvFileInfo = *(ProjectPanelFileData*) tvItem.lParam;
+		ProjectPanelData& projectPanelData = *(ProjectPanelData*) tvItem.lParam;
 
-		generic_string filename(tvFileInfo._filePath);
+		generic_string filename(projectPanelData._filePath);
 		const size_t lastSlashIdx = filename.find_last_of(TEXT("\\/"));
 		if (std::string::npos != lastSlashIdx)
 			filename.erase(0, lastSlashIdx + 1);
 
-		if (tvFileInfo.isFileMonitor())
+		if (projectPanelData.isFileMonitor())
 		{
 			_files.insert(filename);
 			_fileMap[filename] = hItemNode;
 		}
-		else if (tvFileInfo.isFolderMonitorRoot() || tvFileInfo.isFolderMonitor())
+		else if (projectPanelData.isFolderMonitorRoot() || projectPanelData.isFolderMonitor())
 		{
 			_dirs.insert(filename);
 			_dirMap[filename] = hItemNode;
@@ -1605,6 +1628,7 @@ ProjectPanelDirectory::ProjectPanelDirectory(ProjectPanel* projectPanel, HTREEIT
 
 void ProjectPanelDirectory::onBeginSynchronize(const Directory& other)
 {
+	other;
 	_wasInitiallyEmpty = empty();
 }
 
@@ -1621,7 +1645,7 @@ void ProjectPanelDirectory::onDirRemoved(const generic_string& name)
 
 void ProjectPanelDirectory::onFileAdded(const generic_string& name)
 {
-	_treeView->addItem(name.c_str(), _hItem, INDEX_LEAF_MONITOR, new ProjectPanelFileData(_projectPanel->_directoryWatcher, name.c_str(), (_path + TEXT("\\") + name).c_str(), nodeType_monitorFile ), _wasInitiallyEmpty ? NULL : treeviewInsertFunc);
+	_treeView->addItem(name.c_str(), _hItem, INDEX_LEAF_MONITOR, new ProjectPanelData(_projectPanel->_directoryWatcher, name.c_str(), (_path + TEXT("\\") + name).c_str(), nodeType_monitorFile ), _wasInitiallyEmpty ? NULL : treeviewInsertFunc);
 
 }
 
@@ -1629,6 +1653,4 @@ void ProjectPanelDirectory::onFileRemoved(const generic_string& name)
 {
 	_treeView->removeItem(_fileMap[name]);
 }
-
-#pragma warning( pop )
 

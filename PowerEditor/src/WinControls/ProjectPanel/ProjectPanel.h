@@ -73,7 +73,7 @@ enum NodeType {
 
 class TiXmlNode;
 
-class ProjectPanelFileData : public TreeViewData {
+class ProjectPanelData : public TreeViewData {
 public:
 	generic_string _name;
 	generic_string _filePath;
@@ -82,7 +82,7 @@ public:
 	HTREEITEM _hItem;
 	bool _watch;
 
-	ProjectPanelFileData(DirectoryWatcher* directoryWatcher, const TCHAR* name, const TCHAR* filePath, NodeType nodeType) 
+	ProjectPanelData(DirectoryWatcher* directoryWatcher, const TCHAR* name, const TCHAR* filePath, NodeType nodeType) 
 		: TreeViewData()
 		, _name(name)
 		, _nodeType(nodeType)
@@ -94,7 +94,7 @@ public:
 			_filePath = filePath;
 	}
 
-	virtual ~ProjectPanelFileData() {
+	virtual ~ProjectPanelData() {
 		setItem(NULL);
 	}
 
@@ -150,12 +150,12 @@ public:
 	}
 
 	virtual TreeViewData* clone() const {
-		return new ProjectPanelFileData(_directoryWatcher, _name.c_str(), _filePath.c_str(), _nodeType);
+		return new ProjectPanelData(_directoryWatcher, _name.c_str(), _filePath.c_str(), _nodeType);
 	}
 
 private:
-	ProjectPanelFileData(const ProjectPanelFileData&) {}
-	ProjectPanelFileData& operator= (const ProjectPanelFileData&) {}
+	ProjectPanelData(const ProjectPanelData&) {}
+	ProjectPanelData& operator= (const ProjectPanelData&) {}
 };
 
 
@@ -263,9 +263,9 @@ protected:
 	void destroyMenus();
 	BOOL setImageList(int root_clean_id, int root_dirty_id, int project_id, int open_node_id, int closed_node_id, int leaf_id, int ivalid_leaf_id, int open_monitor_id, int closed_monitor_id, int invalid_monitor_id, int file_monitor_id);
 	void addFiles(HTREEITEM hTreeItem);
-	void addFilesFromDirectory(HTREEITEM hTreeItem, bool virtl);
-	void recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTreeItem, bool virtl, bool recursive);
-	HTREEITEM addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, bool virtl = false, bool root = false, const TCHAR *monitorPath = NULL, bool sortIn = false );
+	void addFilesFromDirectory(HTREEITEM hTreeItem, bool monitored);
+	void recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTreeItem, bool monitored, bool recursive);
+	HTREEITEM addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, bool monitored = false, bool root = false, const TCHAR *monitorPath = NULL, bool sortIn = false );
 
 	bool writeWorkSpace(TCHAR *projectFileName = NULL);
 	generic_string getRelativePath(const generic_string & fn, const TCHAR *workSpaceFileName);
@@ -276,7 +276,7 @@ protected:
 	POINT getMenuDisplyPoint(int iButton);
 	virtual INT_PTR CALLBACK run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam);
 	bool buildTreeFrom(TiXmlNode *projectRoot, HTREEITEM hParentItem);
-	void rebuildFolderMonitorTree(HTREEITEM hParentItem, const ProjectPanelFileData& data);
+	void rebuildFolderMonitorTree(HTREEITEM hParentItem, const ProjectPanelData& data);
 	void notified(LPNMHDR notification);
 	void showContextMenu(int x, int y);
 	generic_string getAbsoluteFilePath(const TCHAR * relativePath);
@@ -288,22 +288,17 @@ protected:
 
 	void treeItemChanged(HTREEITEM hItem,TreeViewData* data);
 
-#pragma warning( push )
-#pragma warning( disable : 4100 )
-
-	// TreeViewController
+	// TreeViewListener
 	virtual void onTreeItemAdded(bool afterClone, HTREEITEM hItem, TreeViewData* newData);
-	virtual void onTreeItemRemoved(HTREEITEM hItem,TreeViewData* data) {}
 	virtual void onMessage(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
+	//
 
-	static ProjectPanelFileData* getInfo(TreeViewData* data) {
-		return (ProjectPanelFileData*) data;
+	static ProjectPanelData* getData(TreeViewData* data) {
+		return (ProjectPanelData*) data;
 	}
-	static const ProjectPanelFileData* getInfo( const TreeViewData* data ) {
-		return (ProjectPanelFileData*) data;
+	static const ProjectPanelData* getData( const TreeViewData* data ) {
+		return (ProjectPanelData*) data;
 	}
-
-#pragma warning( pop )
 };
 
 class FileRelocalizerDlg : public StaticDialog

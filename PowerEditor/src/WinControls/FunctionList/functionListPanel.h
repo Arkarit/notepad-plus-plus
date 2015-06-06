@@ -95,7 +95,7 @@ class FunctionListPanelData : public TreeViewData {
 public:
 	generic_string _str;
 
-	FunctionListPanelData(const TCHAR* str) : TreeViewData(), _str(str) {}
+	FunctionListPanelData(const TCHAR* str, const GUID* guid = NULL) : TreeViewData(guid), _str(str) {}
 	virtual ~FunctionListPanelData() {}
 
 	virtual TreeViewData* clone() const {

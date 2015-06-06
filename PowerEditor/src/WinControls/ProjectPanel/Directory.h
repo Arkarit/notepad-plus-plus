@@ -45,7 +45,7 @@ protected:
 	bool _exists;
 	generic_string _path;
 
-	FILETIME _lastChanged;
+	FILETIME _lastWriteTime;
 public:
 	Directory();
 	Directory( const generic_string& path );
@@ -53,6 +53,8 @@ public:
 
 	const generic_string& getPath() const { return _path; }
 	void read(const generic_string& path);
+
+	// false when not initialized.
 	bool exists() const { return _exists; }
 
 	const std::set<generic_string,comparator>& getDirs() const { return _dirs; }
@@ -71,7 +73,8 @@ public:
 	// Note that the virtual methods are called BEFORE the contents of this directory are really changed.
 	void synchronizeTo(const Directory& other);
 
-	bool getFiletime(FILETIME& filetime) const;
+
+	bool readLastWriteTime(FILETIME& filetime) const;
 
 protected:
 

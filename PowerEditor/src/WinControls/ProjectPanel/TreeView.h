@@ -30,42 +30,115 @@
 
 #include "window.h"
 #include <set>
+#include <map>
 
 struct TreeStateNode {
-	generic_string _label;
-	GUID _id;
+
+	// necessary to wrap GUID, because it has no < operator, which is needed by std::map
+	struct Guid : public GUID
+	{
+		bool empty;
+		Guid() { memset(this, 0, sizeof(Guid)); empty = true; }
+		Guid(const GUID& id) : empty(false), GUID(id) {}
+		Guid(const Guid& other) : empty(other.empty), GUID(other) {}
+		bool operator < (const GUID &other) const {
+			if(Data1!=other.Data1) {
+				return Data1 < other.Data1;
+			}
+			if(Data2!=other.Data2) {
+				return Data2 < other.Data2;
+			}
+			if(Data3!=other.Data3) {
+				return Data3 < other.Data3;
+			}
+			for(int i=0;i<8;i++) {
+				if(Data4[i]!=other.Data4[i]) {
+					return Data4[i] < other.Data4[i];
+				}
+			}
+			return false;
+		}
+	};
+
+
+	TreeStateNode( const GUID& id, bool isExpanded, bool isSelected)
+		: _id(id)
+		, _isExpanded(isExpanded)
+		, _isSelected(isSelected)
+	{}
+	TreeStateNode() { 
+	}
+
+	TreeStateNode& operator= (const TreeStateNode& other)
+	{
+		if (this == &other)
+			return *this;
+		_id = other._id;
+		_isExpanded = other._isExpanded;
+		_isSelected = other._isSelected;
+		for (auto it=_children.begin(); it != _children.end(); ++it)
+			delete it->second;
+		_children.clear();
+
+		for (auto it=other._children.begin(); it != other._children.end(); ++it)
+		{
+			const TreeStateNode& currOtherChild = *it->second;
+			_children[currOtherChild._id] = new TreeStateNode(currOtherChild);
+		}
+		return *this;
+	}
+	TreeStateNode(const TreeStateNode& other)
+	{
+		if (this == &other)
+			return;
+		*this = other;
+	}
+
+	~TreeStateNode() {
+		for (auto it=_children.begin(); it != _children.end(); ++it)
+			delete it->second;
+		_children.clear();
+	}
+
+	bool isEmpty() const { return _id.empty; }
+
+	Guid _id;
 	bool _isExpanded;
 	bool _isSelected;
-	std::vector<TreeStateNode> _children;
+	std::map<Guid,TreeStateNode*> _children;
 };
 
 class TreeViewData {
 protected:
-	GUID _id;
+	GUID _guid;
 public:
-	TreeViewData() {
-		CoCreateGuid(&_id);
+	TreeViewData(const GUID* guid=NULL) {
+		if (guid)
+			_guid = *guid;
+		else
+			CoCreateGuid(&_guid);
 	}
 	virtual ~TreeViewData() {}
 
 	virtual const GUID& getId() const {
-		return _id;
+		return _guid;
 	}
 
 	virtual TreeViewData* clone() const = 0;
 
 };
 
-//ha I suggest to switch off C4100 (unreferenced formal parameter) globally, because it does more harm than good. Optional virtual methods become unreadable with this warning.
+//ha I suggest to switch off C4100 (unreferenced formal parameter) globally, 
+// because I think it does more harm than good. Optional virtual methods become unreadable with this warning.
 #pragma warning( push )
 #pragma warning( disable : 4100 )
 
 class TreeViewListener {
 public:
 	virtual void onTreeItemAdded(bool afterClone, HTREEITEM hItem, TreeViewData* newData) {}
-	virtual void onTreeItemRemoved(HTREEITEM hItem,TreeViewData* data){}
-	virtual void treeItemChanged(HTREEITEM hItem,TreeViewData* data){}
-	virtual void onMessage(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam){}
+	virtual void onTreeItemRemoved(HTREEITEM hItem,TreeViewData* data) {}
+	virtual void treeItemChanged(HTREEITEM hItem,TreeViewData* data) {}
+	virtual void onMessage(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {}
 };
 
 #pragma warning( pop )
@@ -186,6 +259,7 @@ protected:
 		return (((TreeView *)(::GetWindowLongPtr(hwnd, GWL_USERDATA)))->runProc(hwnd, Message, wParam, lParam));
 	};
 	void cleanSubEntries(HTREEITEM hTreeItem);
+	void dupTreeWithFolding(HTREEITEM hTree2Dup, HTREEITEM hParentItem);
 	void dupTree(HTREEITEM hTree2Dup, HTREEITEM hParentItem);
 	bool searchLeafRecusivelyAndBuildTree(HTREEITEM tree2Build, const generic_string & text2Search, int index2Search, HTREEITEM tree2Search);
 

@@ -170,16 +170,16 @@ int DirectoryWatcher::thread()
 		DWORD waitresult = WaitForMultipleObjects(2, events, FALSE, _updateFrequencyMs);
 		switch (waitresult)
 		{
-			case WAIT_OBJECT_0:
-				return 0;
-			case WAIT_FAILED:
+			case WAIT_FAILED:			// error
 				return -1;
-			case WAIT_OBJECT_0+1:
+			case WAIT_OBJECT_0:			// stop event
+				return 0;
+			case WAIT_OBJECT_0+1:		// update instantly
 				ResetEvent(_hUpdateEvent);
 				break;
-			case WAIT_TIMEOUT:
+			case WAIT_TIMEOUT:			// timeout - normal polling frequency
 				break;
-			default:
+			default:					// should not happen
 				assert(0);
 				break;
 		}
@@ -204,6 +204,7 @@ bool DirectoryWatcher::post(HTREEITEM item, UINT message)
 	return smResult != 0;
 }
 
+// main function to iterate the directories. Still optimization options.
 void DirectoryWatcher::iterateDirs()
 {
 	std::map<generic_string,bool> changedMap;

@@ -159,6 +159,14 @@ void TreeView::removeAllChildren(HTREEITEM hParent)
 	}
 }
 
+void TreeView::dupTreeWithFolding(HTREEITEM hTree2Dup, HTREEITEM hParentItem)
+{
+	TreeStateNode treeState;
+	retrieveFoldingStateTo(treeState, hTree2Dup);
+	dupTree(hTree2Dup, hParentItem);
+	restoreFoldingStateFrom(treeState, hParentItem);
+}
+
 void TreeView::dupTree(HTREEITEM hTree2Dup, HTREEITEM hParentItem)
 {
 	for (HTREEITEM hItem = getChildFrom(hTree2Dup); hItem != NULL; hItem = getNextSibling(hItem))
@@ -184,6 +192,7 @@ void TreeView::dupTree(HTREEITEM hTree2Dup, HTREEITEM hParentItem)
 
 		dupTree(hItem, hTreeParent);
 	}
+
 }
 
 HTREEITEM TreeView::searchSubItemByName(const TCHAR *itemName, HTREEITEM hParentItem)
@@ -386,7 +395,7 @@ void TreeView::moveTreeViewItem(HTREEITEM draggedItem, HTREEITEM targetItem)
 	_validHandles.insert(hTreeParent);
 	IF_LISTENER_THEN->onTreeItemAdded(true, hTreeParent, (TreeViewData*) tvDraggingItem.lParam);
 
-	dupTree(draggedItem, hTreeParent);
+	dupTreeWithFolding(draggedItem, hTreeParent);
 	removeItem(draggedItem);
 }
 
@@ -449,7 +458,7 @@ bool TreeView::swapTreeViewItem(HTREEITEM itemGoDown, HTREEITEM itemGoUp)
 	HTREEITEM hTreeParent1stInserted = (HTREEITEM)::SendMessage(_hSelf, TVM_INSERTITEM, 0, (LPARAM)(LPTVINSERTSTRUCT)&tvInsertUp);
 	_validHandles.insert(hTreeParent1stInserted);
 	IF_LISTENER_THEN->onTreeItemAdded(true, hTreeParent1stInserted, (TreeViewData*) tvUpItem.lParam);
-	dupTree(itemGoUp, hTreeParent1stInserted);
+	dupTreeWithFolding(itemGoUp, hTreeParent1stInserted);
 
 	TVINSERTSTRUCT tvInsertDown;
 	tvInsertDown.item = tvDownItem;
@@ -458,7 +467,7 @@ bool TreeView::swapTreeViewItem(HTREEITEM itemGoDown, HTREEITEM itemGoUp)
 	HTREEITEM hTreeParent2ndInserted = (HTREEITEM)::SendMessage(_hSelf, TVM_INSERTITEM, 0, (LPARAM)(LPTVINSERTSTRUCT)&tvInsertDown);
 	_validHandles.insert(hTreeParent2ndInserted);
 	IF_LISTENER_THEN->onTreeItemAdded(true, hTreeParent2ndInserted, (TreeViewData*) tvDownItem.lParam);
-	dupTree(itemGoDown, hTreeParent2ndInserted);
+	dupTreeWithFolding(itemGoDown, hTreeParent2ndInserted);
 
 	// remove 2 old items
 	removeItem(itemGoUp);
@@ -572,26 +581,37 @@ bool TreeView::retrieveFoldingStateTo(TreeStateNode & treeState2Construct, HTREE
 	if (!treeviewNode)
 		return false;
 
-	TCHAR textBuffer[MAX_PATH];
-	TVITEM tvItem;
-	tvItem.hItem = treeviewNode;
-	tvItem.pszText = textBuffer;
-	tvItem.cchTextMax = MAX_PATH;
-	tvItem.mask = TVIF_TEXT | TVIF_PARAM | TVIF_STATE;
-	SendMessage(_hSelf, TVM_GETITEM, 0,(LPARAM)&tvItem);
-	
-	treeState2Construct._label = textBuffer;
-	treeState2Construct._isExpanded = (tvItem.state & TVIS_EXPANDED) != 0;
-	treeState2Construct._isSelected = (tvItem.state & TVIS_SELECTED) != 0;
+	if (treeState2Construct.isEmpty())
+	{
+		TVITEM tvItem;
+		tvItem.hItem = treeviewNode;
+		tvItem.mask = TVIF_PARAM | TVIF_STATE;
+		SendMessage(_hSelf, TVM_GETITEM, 0,(LPARAM)&tvItem);
 
-	treeState2Construct._id = ((TreeViewData *)tvItem.lParam)->getId();
+		GUID guid=((TreeViewData *)tvItem.lParam)->getId();
 
-	int i = 0;
+		treeState2Construct._id = guid;
+		treeState2Construct._isExpanded = (tvItem.state & TVIS_EXPANDED) != 0;
+		treeState2Construct._isSelected = (tvItem.state & TVIS_SELECTED) != 0;
+	}
+
 	for (HTREEITEM hItem = getChildFrom(treeviewNode); hItem != NULL; hItem = getNextSibling(hItem))
 	{
-		treeState2Construct._children.push_back(TreeStateNode());
-		retrieveFoldingStateTo(treeState2Construct._children.at(i), hItem);
-		++i;
+		TVITEM tvItem;
+		tvItem.hItem = hItem;
+		tvItem.mask = TVIF_PARAM | TVIF_STATE;
+		SendMessage(_hSelf, TVM_GETITEM, 0,(LPARAM)&tvItem);
+
+		GUID guid=((TreeViewData *)tvItem.lParam)->getId();
+
+		// may happen on duplicated trees. Avoid leaks.
+		if (treeState2Construct._children.find(guid) != treeState2Construct._children.end())
+			continue;
+
+		TreeStateNode* newChild = new TreeStateNode( guid, (tvItem.state & TVIS_EXPANDED) != 0, (tvItem.state & TVIS_SELECTED) != 0);
+
+		treeState2Construct._children[guid] = newChild;
+		retrieveFoldingStateTo(*newChild, hItem);
 	}
 	return true;
 }
@@ -601,38 +621,43 @@ bool TreeView::restoreFoldingStateFrom(const TreeStateNode & treeState2Compare, 
 	if (!treeviewNode)
 		return false;
 
-	TCHAR textBuffer[MAX_PATH];
 	TVITEM tvItem;
 	tvItem.hItem = treeviewNode;
-	tvItem.pszText = textBuffer;
-	tvItem.cchTextMax = MAX_PATH;
-	tvItem.mask = TVIF_TEXT | TVIF_PARAM | TVIF_STATE;
+	tvItem.mask = TVIF_PARAM | TVIF_STATE;
 	SendMessage(_hSelf, TVM_GETITEM, 0,(LPARAM)&tvItem);
-	
-	if (treeState2Compare._label != textBuffer)
+
+	GUID guid=((TreeViewData *)tvItem.lParam)->getId();
+
+	if (treeState2Compare._id != guid)
 		return false;
 
-	if (treeState2Compare._id != ((TreeViewData *)tvItem.lParam)->getId())
-		return false;
-
-	if (treeState2Compare._isExpanded) //= (tvItem.state & TVIS_EXPANDED) != 0;
+	if (treeState2Compare._isExpanded)
 		expand(treeviewNode);
 	else
 		fold(treeviewNode);
 
-	if (treeState2Compare._isSelected) //= (tvItem.state & TVIS_SELECTED) != 0;
+	if (treeState2Compare._isSelected)
 		selectItem(treeviewNode);
 
-	size_t i = 0;
+
 	bool isOk = true;
 	for (HTREEITEM hItem = getChildFrom(treeviewNode); hItem != NULL; hItem = getNextSibling(hItem))
 	{
-		if (i >= treeState2Compare._children.size())
-			return false;
-		isOk = restoreFoldingStateFrom(treeState2Compare._children.at(i), hItem);
+
+		TVITEM tvItem;
+		tvItem.hItem = hItem;
+		tvItem.mask = TVIF_PARAM | TVIF_STATE;
+		SendMessage(_hSelf, TVM_GETITEM, 0,(LPARAM)&tvItem);
+
+		GUID guid=((TreeViewData *)tvItem.lParam)->getId();
+
+		auto it=treeState2Compare._children.find(guid);
+		if (it == treeState2Compare._children.end())
+			continue;
+
+		isOk = restoreFoldingStateFrom(*it->second, hItem);
 		if (!isOk)
 			break;
-		++i;
 	}
 	return isOk;
 }

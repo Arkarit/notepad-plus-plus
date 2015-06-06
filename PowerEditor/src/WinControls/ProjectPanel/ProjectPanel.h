@@ -82,8 +82,8 @@ public:
 	HTREEITEM _hItem;
 	bool _watch;
 
-	ProjectPanelFileData(DirectoryWatcher* directoryWatcher, const TCHAR* name, const TCHAR* filePath, NodeType nodeType) 
-		: TreeViewData()
+	ProjectPanelFileData(DirectoryWatcher* directoryWatcher, const TCHAR* name, const TCHAR* filePath, NodeType nodeType, const GUID* guid=NULL) 
+		: TreeViewData(guid)
 		, _name(name)
 		, _nodeType(nodeType)
 		, _directoryWatcher(directoryWatcher)
@@ -150,12 +150,12 @@ public:
 	}
 
 	virtual TreeViewData* clone() const {
-		return new ProjectPanelFileData(_directoryWatcher, _name.c_str(), _filePath.c_str(), _nodeType);
+		return new ProjectPanelFileData(_directoryWatcher, _name.c_str(), _filePath.c_str(), _nodeType, &_guid);
 	}
 
 private:
-	ProjectPanelFileData(const ProjectPanelFileData&) = delete;
-	ProjectPanelFileData& operator= (const ProjectPanelFileData&) = delete;
+	ProjectPanelFileData(const ProjectPanelFileData&) {}
+	ProjectPanelFileData& operator= (const ProjectPanelFileData&) {}
 };
 
 

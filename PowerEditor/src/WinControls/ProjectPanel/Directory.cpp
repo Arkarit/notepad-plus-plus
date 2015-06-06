@@ -31,8 +31,8 @@
 Directory::Directory()
 	: _exists(false)
 {
-	_lastChanged.dwLowDateTime = 0;
-	_lastChanged.dwHighDateTime = 0;
+	_lastWriteTime.dwLowDateTime = 0;
+	_lastWriteTime.dwHighDateTime = 0;
 	enablePrivileges();
 }
 
@@ -45,8 +45,8 @@ void Directory::read(const generic_string& path)
 {
 	_path = path;
 	_exists = false;
-	_lastChanged.dwLowDateTime = 0;
-	_lastChanged.dwHighDateTime = 0;
+	_lastWriteTime.dwLowDateTime = 0;
+	_lastWriteTime.dwHighDateTime = 0;
 	_files.clear();
 	_dirs.clear();
 
@@ -94,7 +94,7 @@ void Directory::read(const generic_string& path)
 	if (hFind != INVALID_HANDLE_VALUE)
 		FindClose(hFind);
 
-	getFiletime(_lastChanged);
+	readLastWriteTime(_lastWriteTime);
 
 }
 
@@ -103,16 +103,16 @@ bool Directory::hasChanged() const
 	FILETIME newFiletime;
 
 	// if the new filetime can not be determined, return true for sure. The exact differences will be tested later.
-	if (!getFiletime(newFiletime))
+	if (!readLastWriteTime(newFiletime))
 		return true;
 
 	// we could successfully get the filetime, but before this it was 0 - definitely a change
-	if (!(_lastChanged.dwHighDateTime || _lastChanged.dwLowDateTime))
+	if (!(_lastWriteTime.dwHighDateTime || _lastWriteTime.dwLowDateTime))
 		return true;
 
 	// compare file times
-	return _lastChanged.dwLowDateTime != newFiletime.dwLowDateTime
-		|| _lastChanged.dwHighDateTime != newFiletime.dwHighDateTime;
+	return _lastWriteTime.dwLowDateTime != newFiletime.dwLowDateTime
+		|| _lastWriteTime.dwHighDateTime != newFiletime.dwHighDateTime;
 
 }
 
@@ -137,7 +137,7 @@ void Directory::synchronizeTo(const Directory& other)
 
 }
 
-bool Directory::getFiletime(FILETIME& filetime) const
+bool Directory::readLastWriteTime(FILETIME& filetime) const
 {
 	if (_path.empty())
 	{

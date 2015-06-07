@@ -34,10 +34,19 @@ Directory::Directory()
 	_lastWriteTime.dwLowDateTime = 0;
 	_lastWriteTime.dwHighDateTime = 0;
 	enablePrivileges();
+	_filters.push_back(generic_string(TEXT("*.*")));
 }
 
-Directory::Directory(const generic_string& path)
+Directory::Directory(const generic_string& path, const std::vector<generic_string>& filters)
+	: _filters(filters)
 {
+//_filters.clear();
+//_filters.push_back(TEXT("*.js"));
+//_filters.push_back(TEXT("*.jpg"));
+
+	if (_filters.empty())
+		_filters.push_back(TEXT("*.*"));
+
 	read(path);
 }
 
@@ -50,7 +59,23 @@ void Directory::read(const generic_string& path)
 	_files.clear();
 	_dirs.clear();
 
-	generic_string searchPath = _path + TEXT("\\*.*");
+	// first, read directories, never filtered.
+	append(_path, TEXT("*.*"), true);
+
+	// then read files, by each filter
+	for (size_t i=0; i<_filters.size(); ++i)
+		append(_path, _filters[i], false);
+
+
+	readLastWriteTime(_lastWriteTime);
+
+}
+
+void Directory::append(const generic_string& path, const generic_string& filter, bool readDirs)
+{
+	bool readFiles = !readDirs;
+
+	generic_string searchPath = _path + TEXT("\\") + filter;
 
 	WIN32_FIND_DATAW fd;
 	HANDLE hFind = FindFirstFile(searchPath.c_str(), &fd);
@@ -80,11 +105,13 @@ void Directory::read(const generic_string& path)
 					break;
 				continue;
 			}
-			_dirs.insert(file);
+			if (readDirs)
+				_dirs.insert(file);
 		}
 		else
 		{
-			_files.insert(file);
+			if (readFiles)
+				_files.insert(file);
 		}
 
 		if (!FindNextFile(hFind, &fd))
@@ -94,7 +121,6 @@ void Directory::read(const generic_string& path)
 	if (hFind != INVALID_HANDLE_VALUE)
 		FindClose(hFind);
 
-	readLastWriteTime(_lastWriteTime);
 
 }
 
@@ -114,6 +140,21 @@ bool Directory::hasChanged() const
 	return _lastWriteTime.dwLowDateTime != newFiletime.dwLowDateTime
 		|| _lastWriteTime.dwHighDateTime != newFiletime.dwHighDateTime;
 
+}
+
+void Directory::setFilters(const std::vector<generic_string>& filters)
+{
+	if (_filters != filters)
+	{
+		if (filters.empty())
+		{
+			_filters.clear();
+			_filters.push_back(generic_string(TEXT("*.*")));
+		}
+		else
+			_filters = filters; 
+		read();
+	}
 }
 
 void Directory::synchronizeTo(const Directory& other)

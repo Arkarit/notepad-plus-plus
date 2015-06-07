@@ -43,17 +43,21 @@ protected:
 	};
 	std::set<generic_string,comparator> _dirs;
 	std::set<generic_string,comparator> _files;
+	
+	std::vector<generic_string> _filters;
+
 	bool _exists;
 	generic_string _path;
 
 	FILETIME _lastWriteTime;
 public:
 	Directory();
-	Directory( const generic_string& path );
+	Directory(const generic_string& path, const std::vector<generic_string>& filters = std::vector<generic_string>());
 	virtual ~Directory() {}
 
 	const generic_string& getPath() const { return _path; }
 	void read(const generic_string& path);
+	void read() { read(_path); }
 
 	// false when not initialized.
 	bool exists() const { return _exists; }
@@ -67,6 +71,9 @@ public:
 	bool empty() const { return _dirs.empty() && _files.empty(); }
 
 	bool hasChanged() const;
+
+	void setFilters(const std::vector<generic_string>& filters = std::vector<generic_string>());
+	const std::vector<generic_string>& getFilters() const { return _filters; }
 
 	// synchronizeTo is basically like a copy constructor, with the difference, that it calls the
 	// following virtual functions onDirAdded(), ...
@@ -90,6 +97,7 @@ private:
 
 	static void enablePrivileges();
 	static bool enablePrivilege(LPCTSTR privName);
+	void append(const generic_string& path, const generic_string& filter, bool readDirs);
 
 
 

@@ -271,6 +271,7 @@ void ProjectPanel::initMenus()
 	generic_string edit_addfilesRecursive = pNativeSpeaker->getProjectPanelLangMenuStr("ProjectMenu", IDM_PROJECT_ADDFILESRECUSIVELY, PM_EDITADDFILESRECUSIVELY);
 	generic_string edit_addfolderMonitor = pNativeSpeaker->getProjectPanelLangMenuStr("ProjectMenu", IDM_PROJECT_EDITADDFOLDERMONITOR, PM_EDITADDFOLDERMONITOR);
 	generic_string edit_remove = pNativeSpeaker->getProjectPanelLangMenuStr("ProjectMenu", IDM_PROJECT_DELETEFOLDER, PM_EDITREMOVE);
+	generic_string edit_setfilter = pNativeSpeaker->getProjectPanelLangMenuStr("ProjectMenu", IDM_PROJECT_SETFILTERS, PM_SETFILTERS);
 
 	_hProjectMenu = ::CreatePopupMenu();
 	::InsertMenu(_hProjectMenu, 0, MF_BYCOMMAND, IDM_PROJECT_MOVEUP, edit_moveup.c_str());
@@ -321,6 +322,7 @@ void ProjectPanel::initMenus()
 	::InsertMenu(_hFolderMonitorMenu, 0, MF_BYCOMMAND, IDM_PROJECT_MOVEUP, edit_moveup.c_str());
 	::InsertMenu(_hFolderMonitorMenu, 0, MF_BYCOMMAND, IDM_PROJECT_MOVEDOWN, edit_movedown.c_str());
 	::InsertMenu(_hFolderMonitorMenu, 0, MF_BYCOMMAND, IDM_PROJECT_DELETEFILE, edit_remove.c_str());
+	::InsertMenu(_hFolderMonitorMenu, 0, MF_BYCOMMAND, IDM_PROJECT_SETFILTERS, edit_setfilter.c_str());
 
 }
 
@@ -1359,6 +1361,16 @@ void ProjectPanel::popupMenuCmd(int cmdID)
 		}
 		break;
 
+		case IDM_PROJECT_SETFILTERS :
+		{
+			FilterDlg filterDlg;
+			filterDlg.init(_hInst, _hParent);
+			if (filterDlg.doDialog())
+			{
+			}
+		}
+		break;
+
 		case IDM_PROJECT_MODIFYFILEPATH :
 		{
 			FileRelocalizerDlg fileRelocalizerDlg;
@@ -1576,6 +1588,52 @@ int FileRelocalizerDlg::doDialog(const TCHAR *fn, bool isRTL)
 		return result;
 	}
 	return ::DialogBoxParam(_hInst, MAKEINTRESOURCE(IDD_FILERELOCALIZER_DIALOG), _hParent,  dlgProc, (LPARAM)this);
+}
+
+INT_PTR CALLBACK FilterDlg::run_dlgProc(UINT Message, WPARAM wParam, LPARAM) 
+{
+	switch (Message)
+	{
+		case WM_INITDIALOG :
+		{
+			goToCenter();
+			return TRUE;
+		}
+		case WM_COMMAND : 
+		{
+			switch (wParam)
+			{
+				case IDOK :
+				{
+					::EndDialog(_hSelf, 0);
+				}
+				return TRUE;
+
+				case IDCANCEL :
+					::EndDialog(_hSelf, -1);
+				return TRUE;
+
+				default:
+					return FALSE;
+			}
+		}
+		default :
+			return FALSE;
+	}
+}
+
+int FilterDlg::doDialog(bool isRTL /*= false*/)
+{
+	if (isRTL)
+	{
+		DLGTEMPLATE *pMyDlgTemplate = NULL;
+		HGLOBAL hMyDlgTemplate = makeRTLResource(IDD_PROJECTPANEL_FILTERDIALOG, &pMyDlgTemplate);
+		int result = ::DialogBoxIndirectParam(_hInst, pMyDlgTemplate, _hParent,  dlgProc, (LPARAM)this);
+		::GlobalFree(hMyDlgTemplate);
+		return result;
+	}
+	return ::DialogBoxParam(_hInst, MAKEINTRESOURCE(IDD_PROJECTPANEL_FILTERDIALOG), _hParent,  dlgProc, (LPARAM)this);
+
 }
 
 ProjectPanelDirectory::ProjectPanelDirectory(ProjectPanel* projectPanel, HTREEITEM hItem) 

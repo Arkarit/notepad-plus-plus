@@ -60,6 +60,7 @@
 #define PM_EDITADDFOLDERMONITOR    TEXT("Add Folder Monitor...")
 #define PM_EDITREMOVE              TEXT("Remove\tDEL")
 #define PM_EDITMODIFYFILE          TEXT("Modify File Path")
+#define PM_SETFILTERS              TEXT("Set Filters...")
 
 #define PM_WORKSPACEMENUENTRY      TEXT("Workspace")
 #define PM_EDITMENUENTRY           TEXT("Edit")
@@ -117,7 +118,7 @@ public:
 
 		if (_hItem)
 			if (watch && (_nodeType == nodeType_monitorFolderRoot || _nodeType == nodeType_monitorFolder))
-				_directoryWatcher->addDir(_filePath,_hItem);
+				_directoryWatcher->addOrChangeDir(_filePath,_hItem);
 			else
 				return true;
 
@@ -323,6 +324,27 @@ protected :
 
 private :
 	generic_string _fullFilePath;
+
+};
+
+class FilterDlg : public StaticDialog
+{
+public :
+	FilterDlg() : StaticDialog() {};
+	void init(HINSTANCE hInst, HWND parent){
+		Window::init(hInst, parent);
+	};
+
+	int doDialog(bool isRTL = false);
+
+    virtual void destroy() {
+    };
+
+
+protected :
+	virtual INT_PTR CALLBACK run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam);
+
+private :
 
 };
 

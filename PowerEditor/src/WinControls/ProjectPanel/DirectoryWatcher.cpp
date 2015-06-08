@@ -50,9 +50,15 @@ DirectoryWatcher::~DirectoryWatcher()
 	removeAllDirs();
 }
 
-void DirectoryWatcher::addDir(const generic_string& path, HTREEITEM treeItem, const std::vector<generic_string>& filters)
+void DirectoryWatcher::addOrChangeDir(const generic_string& path, HTREEITEM treeItem, const std::vector<generic_string>& filters)
 {
 	Scopelock lock(_lock);
+	
+	// remove a probably previously existing item
+	// to easily change the filters.
+	_dirItemsToRemove.insert(treeItem);
+
+	// each newly added item gets a forced update message.
 	_forcedUpdateToAdd.insert(treeItem);
 	_dirItemsToAdd.push_back(new InsertStruct(path,treeItem,filters));
 }
@@ -163,6 +169,7 @@ int DirectoryWatcher::thread()
 			case WAIT_FAILED:			// error
 				return -1;
 			case WAIT_OBJECT_0:			// stop event
+				ResetEvent(_hStopEvent);
 				return 0;
 			case WAIT_OBJECT_0+1:		// update instantly
 				ResetEvent(_hUpdateEvent);
@@ -194,7 +201,7 @@ bool DirectoryWatcher::post(HTREEITEM item, UINT message)
 	return smResult != 0;
 }
 
-// main function to iterate the directories. Still optimization options.
+// main function to iterate the directories.
 void DirectoryWatcher::iterateDirs()
 {
 
@@ -211,8 +218,6 @@ void DirectoryWatcher::iterateDirs()
 		auto itAlreadyChanged = changedMap.find(dir);
 		if (itAlreadyChanged != changedMap.end())
 		{
-			// yes, we have checked already.
-
 			bool wasChanged = itAlreadyChanged->second;
 
 			// if it was changed or inform is forced, inform tree item.
@@ -250,13 +255,11 @@ void DirectoryWatcher::updateDirs()
 	{
 		const HTREEITEM& hTreeItem = *itToRemove;
 
-		// get the directory by treeItem
+		// get the directory by treeItem. 
+		// Non-existing ones are silently ignored, because each item, which is added, is also deleted previously.
 		auto itDir = _dirItems.find(hTreeItem);
 		if (itDir == _dirItems.end())
-		{
-			//TODO: log erroneously deleted item
 			continue;
-		}
 
 		Directory* dir = itDir->second;
 		_dirItems.erase(hTreeItem);
@@ -291,7 +294,8 @@ void DirectoryWatcher::updateDirs()
 	for (auto itToInsert = _dirItemsToAdd.begin(); itToInsert != _dirItemsToAdd.end(); ++itToInsert)
 	{
 		const InsertStruct* insertStruct = *itToInsert;
-		
+	
+		// try to find an already existing watch dir, which matches this request.
 		Directory* currentWatchdir = NULL;
 
 		for (auto itWatchdir=_watchdirs.begin(); itWatchdir != _watchdirs.end(); ++itWatchdir)
@@ -304,14 +308,17 @@ void DirectoryWatcher::updateDirs()
 			}
 		}
 
+		// if this fails, create a new one.
 		if (!currentWatchdir)
 		{
 			currentWatchdir = new Directory(insertStruct->_path, insertStruct->_filters);
 			_watchdirs.insert(currentWatchdir);
 		}
 
+		// insert the tree item pointing to the watchdir
 		_dirItems[insertStruct->_hTreeItem] = currentWatchdir;
 
+		// set the reference watch counter
 		auto itRefCount = _dirItemReferenceCount.find(currentWatchdir);
 		if (itRefCount == _dirItemReferenceCount.end())
 			_dirItemReferenceCount[currentWatchdir] = 1;

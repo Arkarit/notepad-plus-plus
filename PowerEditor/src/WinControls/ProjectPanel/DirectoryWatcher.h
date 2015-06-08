@@ -107,7 +107,7 @@ public:
 	// stopThread() is called automatically on destruction
 	void stopThread();
 
-	void addDir(const generic_string& path, HTREEITEM treeItem, const std::vector<generic_string>& filters = std::vector<generic_string>());
+	void addOrChangeDir(const generic_string& path, HTREEITEM treeItem, const std::vector<generic_string>& filters = std::vector<generic_string>());
 	void removeDir(HTREEITEM treeItem);
 	void removeAllDirs();
 

@@ -45,34 +45,41 @@ DirectoryWatcher::DirectoryWatcher(HWND hWnd, DWORD updateFrequencyMs)
 
 DirectoryWatcher::~DirectoryWatcher()
 {
+	Scopelock lock(_lock);
 	stopThread();
 	removeAllDirs();
 }
 
-void DirectoryWatcher::addDir(const generic_string& path, HTREEITEM treeItem)
+void DirectoryWatcher::addDir(const generic_string& path, HTREEITEM treeItem, const std::vector<generic_string>& filters)
 {
 	Scopelock lock(_lock);
 	_forcedUpdateToAdd.insert(treeItem);
-	_dirItemsToAdd.insert(std::pair<generic_string,HTREEITEM>(path,treeItem));
+	_dirItemsToAdd.push_back(new InsertStruct(path,treeItem,filters));
 }
 
-void DirectoryWatcher::removeDir(const generic_string& path, HTREEITEM treeItem)
+void DirectoryWatcher::removeDir(HTREEITEM treeItem)
 {
 	Scopelock lock(_lock);
-	_dirItemsToRemove.insert(std::pair<generic_string,HTREEITEM>(path,treeItem));
+	_dirItemsToRemove.insert(treeItem);
 }
 
 void DirectoryWatcher::removeAllDirs()
 {
 	Scopelock lock(_lock);
-	for( auto it=_watchdirs.begin(); it != _watchdirs.end(); ++it )
-		delete it->second;
-
+	for (auto it=_watchdirs.begin(); it != _watchdirs.end(); ++it)
+		delete *it;
 	_watchdirs.clear();
+
 	_dirItems.clear();
+	_dirItemReferenceCount.clear();
+	_forcedUpdate.clear();
+
+	for (auto it=_dirItemsToAdd.begin(); it != _dirItemsToAdd.end(); ++it)
+		delete *it;
 	_dirItemsToAdd.clear();
 	_dirItemsToRemove.clear();
-
+	_forcedUpdateToAdd.clear();
+	
 }
 
 void DirectoryWatcher::update()
@@ -190,19 +197,18 @@ bool DirectoryWatcher::post(HTREEITEM item, UINT message)
 // main function to iterate the directories. Still optimization options.
 void DirectoryWatcher::iterateDirs()
 {
-	std::map<generic_string,bool> changedMap;
+
+	std::map<Directory*,bool> changedMap;
+
 	_changeOccurred = false;
 
 	for (auto it=_dirItems.begin(); it!=_dirItems.end(); ++it)
 	{
-		const generic_string& path = it->first;
-		const HTREEITEM& treeItem = it->second;
+		HTREEITEM hTreeItem = it->first;
+		Directory* dir = it->second;
+		bool forced = _forcedUpdate.find(hTreeItem) != _forcedUpdate.end();
 
-		bool forced = _forcedUpdate.find(treeItem) != _forcedUpdate.end();
-
-		// first, look if we already checked if the current directory has been changed
-		// this may happen, because dirItems is a multimap, and there might be the same directory with multiple tree nodes assigned to it
-		auto itAlreadyChanged = changedMap.find(path);
+		auto itAlreadyChanged = changedMap.find(dir);
 		if (itAlreadyChanged != changedMap.end())
 		{
 			// yes, we have checked already.
@@ -211,68 +217,20 @@ void DirectoryWatcher::iterateDirs()
 
 			// if it was changed or inform is forced, inform tree item.
 			if (wasChanged || forced)
-				if (!post(treeItem))
+				if (!post(hTreeItem))
 					return;
 			continue;
 		}
 
-		// find the matching watchdir
-		auto itWatchdirs = _watchdirs.find(path);
+		bool changed = dir->readIfChanged();
 
-		if (itWatchdirs == _watchdirs.end())
-		{
-			if (!post(treeItem))
-				return;
-			// there is no matching watchdir, because the dir has been freshly added. Create a new one.
-			_watchdirs[path] = new Directory(path);
-			// always inform, when a new directory was posted, and always set change to true.
-			changedMap[path] = true;
-			continue;
-		}
-
-		// fetch the old dir state
-		Directory* oldDirState = itWatchdirs->second;
-		// if the last write time has not changed,
-		if (!oldDirState->hasChanged())
-		{
-			// only post if forced and continue
-			if (forced)
-				post(treeItem);
-			continue;
-		}
-
-		// read in the current state of the directory
-		Directory* newDirState = new Directory(path);
-		// check if the old state and the new state are not the same
-		bool changed = *oldDirState != *newDirState;
-		// store this comparison for future comparisons
-		changedMap[path] = changed;
-
-		// delete the old dir state
-		delete oldDirState;
-		// and set the new one. Have to do this always, because at least the last write time is different.
-		_watchdirs[path] = newDirState;
+		changedMap[dir] = changed;
 
 		if(changed || forced)
-			post(treeItem);
-
-	}
-
-	// at last, remove all watchdirs, which are not used anymore.
-
-	std::vector<std::map<generic_string,Directory*>::iterator> deleteCandidates;
-	deleteCandidates.reserve(_watchdirs.size());
-
-	for (auto it=_watchdirs.begin(); it !=_watchdirs.end(); ++it)
-	{
-		if (_dirItems.find(it->first) == _dirItems.end())
-			deleteCandidates.push_back(it);
-	}
-
-	for (size_t i=0; i<deleteCandidates.size(); i++ )
-	{
-		delete deleteCandidates[i]->second;
-		_watchdirs.erase( deleteCandidates[i] );
+		{
+			post(hTreeItem);
+			_changeOccurred = true;
+		}
 	}
 	
 	_forcedUpdate.clear();
@@ -290,17 +248,39 @@ void DirectoryWatcher::updateDirs()
 	// first, remove all dir items
 	for (auto itToRemove = _dirItemsToRemove.begin(); itToRemove != _dirItemsToRemove.end(); ++itToRemove)
 	{
-		const generic_string& path = itToRemove->first;
-		const HTREEITEM& treeItem = itToRemove->second;
+		const HTREEITEM& hTreeItem = *itToRemove;
 
-		for (auto itDirItems = _dirItems.find(path); itDirItems != _dirItems.end(); ++itDirItems )
+		// get the directory by treeItem
+		auto itDir = _dirItems.find(hTreeItem);
+		if (itDir == _dirItems.end())
 		{
-			if (itDirItems->second == treeItem)
+			//TODO: log erroneously deleted item
+			continue;
+		}
+
+		Directory* dir = itDir->second;
+		_dirItems.erase(hTreeItem);
+
+		// decrease the dirItem/reference counter
+		assert(_dirItemReferenceCount.find(dir) != _dirItemReferenceCount.end());
+
+		// if this was the last reference
+		if (--_dirItemReferenceCount[dir] <= 0)
+		{
+			// remove it from the reference count
+			_dirItemReferenceCount.erase(dir);
+
+			// get the directory watch matching to this path
+			auto itWatchdir = _watchdirs.find(dir);
+			assert(itWatchdir != _watchdirs.end());
+			if (itWatchdir != _watchdirs.end())
 			{
-				_dirItems.erase(itDirItems);
-				break;
+				// and delete it
+				delete *itWatchdir;
+				_watchdirs.erase(itWatchdir);
 			}
 		}
+		
 	}
 	_dirItemsToRemove.clear();
 
@@ -308,9 +288,40 @@ void DirectoryWatcher::updateDirs()
 	_forcedUpdateToAdd.clear();
 
 	// last, enter the new items.
-	_dirItems.insert(_dirItemsToAdd.begin(),_dirItemsToAdd.end());
-	_dirItemsToAdd.clear();
+	for (auto itToInsert = _dirItemsToAdd.begin(); itToInsert != _dirItemsToAdd.end(); ++itToInsert)
+	{
+		const InsertStruct* insertStruct = *itToInsert;
 		
+		Directory* currentWatchdir = NULL;
+
+		for (auto itWatchdir=_watchdirs.begin(); itWatchdir != _watchdirs.end(); ++itWatchdir)
+		{
+			Directory* dir = *itWatchdir;
+			if (dir->getPath() == insertStruct->_path && dir->getFilters() == insertStruct->_filters)
+			{
+				currentWatchdir = dir;
+				break;
+			}
+		}
+
+		if (!currentWatchdir)
+		{
+			currentWatchdir = new Directory(insertStruct->_path, insertStruct->_filters);
+			_watchdirs.insert(currentWatchdir);
+		}
+
+		_dirItems[insertStruct->_hTreeItem] = currentWatchdir;
+
+		auto itRefCount = _dirItemReferenceCount.find(currentWatchdir);
+		if (itRefCount == _dirItemReferenceCount.end())
+			_dirItemReferenceCount[currentWatchdir] = 1;
+		else
+			itRefCount->second += 1;
+
+		delete insertStruct;
+	}
+	_dirItemsToAdd.clear();
+	
 
 }
 

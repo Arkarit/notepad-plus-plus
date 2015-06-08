@@ -44,9 +44,6 @@ Directory::Directory(const generic_string& path, const std::vector<generic_strin
 //_filters.push_back(TEXT("*.js"));
 //_filters.push_back(TEXT("*.jpg"));
 
-	if (_filters.empty())
-		_filters.push_back(TEXT("*.*"));
-
 	read(path);
 }
 
@@ -63,12 +60,28 @@ void Directory::read(const generic_string& path)
 	append(_path, TEXT("*.*"), true);
 
 	// then read files, by each filter
-	for (size_t i=0; i<_filters.size(); ++i)
-		append(_path, _filters[i], false);
+	if (_filters.empty())
+		append(_path, TEXT("*.*"), false);
+	else
+		for (size_t i=0; i<_filters.size(); ++i)
+			append(_path, _filters[i], false);
 
 
 	readLastWriteTime(_lastWriteTime);
 
+}
+
+bool Directory::readIfChanged()
+{
+	if (!writeTimeHasChanged())
+		return false;
+	Directory cmp(_path,_filters);
+	if (*this != cmp)
+	{
+		*this = cmp;
+		return true;
+	}
+	return false;
 }
 
 void Directory::append(const generic_string& path, const generic_string& filter, bool readDirs)
@@ -124,7 +137,7 @@ void Directory::append(const generic_string& path, const generic_string& filter,
 
 }
 
-bool Directory::hasChanged() const
+bool Directory::writeTimeHasChanged() const
 {
 	FILETIME newFiletime;
 
@@ -146,13 +159,7 @@ void Directory::setFilters(const std::vector<generic_string>& filters)
 {
 	if (_filters != filters)
 	{
-		if (filters.empty())
-		{
-			_filters.clear();
-			_filters.push_back(generic_string(TEXT("*.*")));
-		}
-		else
-			_filters = filters; 
+		_filters = filters; 
 		read();
 	}
 }

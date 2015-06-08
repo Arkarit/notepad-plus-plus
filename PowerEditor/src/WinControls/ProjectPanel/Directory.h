@@ -58,6 +58,7 @@ public:
 	const generic_string& getPath() const { return _path; }
 	void read(const generic_string& path);
 	void read() { read(_path); }
+	bool readIfChanged();
 
 	// false when not initialized.
 	bool exists() const { return _exists; }
@@ -70,7 +71,7 @@ public:
 
 	bool empty() const { return _dirs.empty() && _files.empty(); }
 
-	bool hasChanged() const;
+	bool writeTimeHasChanged() const;
 
 	void setFilters(const std::vector<generic_string>& filters = std::vector<generic_string>());
 	const std::vector<generic_string>& getFilters() const { return _filters; }

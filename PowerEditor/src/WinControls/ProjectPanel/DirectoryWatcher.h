@@ -65,14 +65,26 @@
 
 class DirectoryWatcher
 {
-	generic_string _filePath;
+	struct InsertStruct {
+		HTREEITEM _hTreeItem;
+		generic_string _path;
+		std::vector<generic_string> _filters;
+
+		InsertStruct(generic_string path, HTREEITEM hTreeItem, const std::vector<generic_string>& filters)
+			: _path(path)
+			, _hTreeItem(hTreeItem)
+			, _filters(filters)
+		{}
+	};
+
 	HANDLE _hThread;
 	HANDLE _hRunningEvent, _hStopEvent, _hUpdateEvent;
 	bool _running;
 	HWND _hWnd;
 
-	std::map<generic_string,Directory*> _watchdirs;
-	std::multimap<generic_string,HTREEITEM> _dirItems;
+	std::set<Directory*> _watchdirs;
+	std::map<HTREEITEM, Directory*> _dirItems;
+	std::map<Directory*, int> _dirItemReferenceCount;
 	std::set<HTREEITEM> _forcedUpdate;
 
 	DWORD _updateFrequencyMs;
@@ -80,8 +92,8 @@ class DirectoryWatcher
 
 	Lock _lock;
 
-	std::multimap<generic_string,HTREEITEM> _dirItemsToAdd;
-	std::multimap<generic_string,HTREEITEM> _dirItemsToRemove;
+	std::vector<InsertStruct*> _dirItemsToAdd;
+	std::set<HTREEITEM> _dirItemsToRemove;
 	std::set<HTREEITEM> _forcedUpdateToAdd;
 
 	bool _watching;
@@ -95,8 +107,8 @@ public:
 	// stopThread() is called automatically on destruction
 	void stopThread();
 
-	void addDir(const generic_string& path, HTREEITEM treeItem);
-	void removeDir(const generic_string& path, HTREEITEM treeItem);
+	void addDir(const generic_string& path, HTREEITEM treeItem, const std::vector<generic_string>& filters = std::vector<generic_string>());
+	void removeDir(HTREEITEM treeItem);
 	void removeAllDirs();
 
 	bool getWatching() const { return _watching; }
@@ -109,7 +121,6 @@ private:
 	static DWORD threadFunc(LPVOID data);
 	bool post(HTREEITEM item, UINT message = DIRECTORYWATCHER_UPDATE);
 	void iterateDirs();
-	void updateWatchdirs();
 	void updateDirs();
 
 	// noncopyable

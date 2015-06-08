@@ -109,7 +109,7 @@ public:
 	{
 		if (_hItem && _watch)
 			if (_nodeType == nodeType_monitorFolderRoot || _nodeType == nodeType_monitorFolder)
-				_directoryWatcher->removeDir(_filePath,_hItem);
+				_directoryWatcher->removeDir(_hItem);
 
 		_watch = watch;
 		if( !watch)

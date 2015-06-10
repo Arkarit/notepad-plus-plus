@@ -329,6 +329,8 @@ private :
 
 class FilterDlg : public StaticDialog
 {
+	std::vector<generic_string> _filters;
+
 public :
 	FilterDlg() : StaticDialog() {};
 	void init(HINSTANCE hInst, HWND parent){
@@ -337,6 +339,9 @@ public :
 
 	int doDialog(bool isRTL = false);
 
+	const std::vector<generic_string>& getFilters() const { return _filters; }
+
+
     virtual void destroy() {
     };
 
@@ -344,7 +349,14 @@ public :
 protected :
 	virtual INT_PTR CALLBACK run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam);
 
-private :
+	void addText2Combo(const TCHAR * txt2add, HWND hCombo);
+	generic_string getTextFromCombo(HWND hCombo, bool) const;
+	void fillComboHistory(int id, const std::vector<generic_string> & strings);
+	int saveComboHistory(int id, int maxcount, std::vector<generic_string> & strings);
+private:
+	//TODO: place this into a basic support lib
+	static generic_string& trim(generic_string & str);
+	static std::vector<generic_string> split(const generic_string & str, TCHAR delim);
 
 };
 

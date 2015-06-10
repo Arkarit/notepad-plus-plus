@@ -51,6 +51,9 @@
 #define GET_X_LPARAM(lp)                        ((int)(short)LOWORD(lp))
 #define GET_Y_LPARAM(lp)                        ((int)(short)HIWORD(lp))
 
+#define PROJECTPANEL_FILTERS_MAXLENGTH 2048
+
+
 INT_PTR CALLBACK ProjectPanel::run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
@@ -1605,6 +1608,15 @@ INT_PTR CALLBACK FilterDlg::run_dlgProc(UINT Message, WPARAM wParam, LPARAM)
 			{
 				case IDOK :
 				{
+					_filters.clear();
+					const int filterSize = 256;
+					TCHAR tfilters[filterSize + 1];
+					tfilters[filterSize] = '\0';
+					::GetDlgItemText(_hSelf, IDD_PROJECTPANEL_FILTERS_COMBO, tfilters, filterSize);
+					addText2Combo(tfilters, ::GetDlgItem(_hSelf, IDD_PROJECTPANEL_FILTERS_COMBO));
+
+					_filters = split(tfilters, TEXT(';'));
+
 					::EndDialog(_hSelf, 0);
 				}
 				return TRUE;
@@ -1622,6 +1634,103 @@ INT_PTR CALLBACK FilterDlg::run_dlgProc(UINT Message, WPARAM wParam, LPARAM)
 	}
 }
 
+void FilterDlg::addText2Combo(const TCHAR * txt2add, HWND hCombo)
+{
+	if (!hCombo) return;
+	if (!lstrcmp(txt2add, TEXT(""))) return;
+
+	int i = 0;
+
+	i = ::SendMessage(hCombo, CB_FINDSTRINGEXACT, (WPARAM)-1, (LPARAM)txt2add);
+	if (i != CB_ERR) // found
+	{
+		::SendMessage(hCombo, CB_DELETESTRING, i, 0);
+	}
+
+	i = ::SendMessage(hCombo, CB_INSERTSTRING, 0, (LPARAM)txt2add);
+
+	::SendMessage(hCombo, CB_SETCURSEL, i, 0);
+}
+
+generic_string FilterDlg::getTextFromCombo(HWND hCombo, bool) const
+{
+	TCHAR str[PROJECTPANEL_FILTERS_MAXLENGTH];
+	::SendMessage(hCombo, WM_GETTEXT, PROJECTPANEL_FILTERS_MAXLENGTH - 1, (LPARAM)str);
+	return generic_string(str);
+}
+
+
+
+void FilterDlg::fillComboHistory(int id, const std::vector<generic_string> & strings)
+{
+	HWND hCombo = ::GetDlgItem(_hSelf, id);
+
+	for (std::vector<generic_string>::const_reverse_iterator i = strings.rbegin(); i != strings.rend(); ++i)
+	{
+		addText2Combo(i->c_str(), hCombo);
+	}
+	::SendMessage(hCombo, CB_SETCURSEL, 0, 0); // select first item
+}
+
+int FilterDlg::saveComboHistory(int id, int maxcount, std::vector<generic_string> & strings)
+{
+	TCHAR text[PROJECTPANEL_FILTERS_MAXLENGTH];
+	HWND hCombo = ::GetDlgItem(_hSelf, id);
+	int count = ::SendMessage(hCombo, CB_GETCOUNT, 0, 0);
+	count = min(count, maxcount);
+
+	if (count == CB_ERR) return 0;
+
+	if (count)
+		strings.clear();
+
+	for (int i = 0; i < count; ++i)
+	{
+		::SendMessage(hCombo, CB_GETLBTEXT, i, (LPARAM)text);
+		strings.push_back(generic_string(text));
+	}
+	return count;
+}
+
+
+generic_string& FilterDlg::trim(generic_string & str)
+{
+	generic_string::size_type pos = str.find_last_not_of(' ');
+
+	if (pos != generic_string::npos)
+	{
+		str.erase(pos + 1);
+		pos = str.find_first_not_of(' ');
+		if (pos != generic_string::npos) str.erase(0, pos);
+	}
+	else str.erase(str.begin(), str.end());
+	return str;
+}
+
+std::vector<generic_string> FilterDlg::split(const generic_string & str, TCHAR delim)
+{
+	std::vector<generic_string> result;
+
+	if (!str.empty())
+	{
+		size_t start = 0;
+		size_t pos = str.find(delim, start);
+
+		while (pos != generic_string::npos)
+		{
+			generic_string t(str.substr(start, pos - start));
+			result.push_back(trim(t));
+			start = pos + 1;
+			pos = str.find(delim, start);
+		}
+		generic_string t(str.substr(start, pos - start));
+		result.push_back(trim(t));
+	}
+
+	return result;
+
+}
+
 int FilterDlg::doDialog(bool isRTL /*= false*/)
 {
 	if (isRTL)
@@ -1632,7 +1741,17 @@ int FilterDlg::doDialog(bool isRTL /*= false*/)
 		::GlobalFree(hMyDlgTemplate);
 		return result;
 	}
-	return ::DialogBoxParam(_hInst, MAKEINTRESOURCE(IDD_PROJECTPANEL_FILTERDIALOG), _hParent,  dlgProc, (LPARAM)this);
+
+	NppParameters *nppParams = NppParameters::getInstance();
+	FindHistory & findHistory = nppParams->getFindHistory();
+
+	fillComboHistory(IDD_PROJECTPANEL_FILTERS_COMBO, findHistory._findHistoryFilters);
+
+	int result = ::DialogBoxParam(_hInst, MAKEINTRESOURCE(IDD_PROJECTPANEL_FILTERDIALOG), _hParent,  dlgProc, (LPARAM)this);
+
+	saveComboHistory(IDD_PROJECTPANEL_FILTERS_COMBO, findHistory._nbMaxFindHistoryFilter, findHistory._findHistoryFilters);
+
+	return result;
 
 }
 

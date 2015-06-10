@@ -867,9 +867,6 @@ void ProjectPanel::setFilters(const std::vector<generic_string>& filters, HTREEI
 	{
 		setFilters(filters,hItemNode);
 	}
-
-
-
 }
 
 void ProjectPanel::removeDummies(HTREEITEM hTreeItem)
@@ -1123,6 +1120,22 @@ POINT ProjectPanel::getMenuDisplyPoint(int iButton)
 	return p;
 }
 
+
+const std::vector<generic_string>* ProjectPanel::getFilters(HTREEITEM hItem)
+{
+	TVITEM tvItem;
+	tvItem.mask = TVIF_PARAM;
+	tvItem.hItem = hItem;
+	::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0, (LPARAM)&tvItem);
+	ProjectPanelData& projectPanelData = *(ProjectPanelData*)(tvItem.lParam);
+
+	if (projectPanelData.isFolderMonitorRoot())
+		return &projectPanelData._filters;
+	else if (projectPanelData.isFolderMonitor())
+		return getFilters(_treeView.getParent(hItem));
+	else return NULL;
+}
+
 HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, bool monitored, bool root, const TCHAR *monitorPath, bool sortIn)
 {
 	NodeType nodeType(nodeType_folder);
@@ -1142,8 +1155,13 @@ HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, 
 		}
 	}
 
+	const std::vector<generic_string> dummy;
+	const std::vector<generic_string>* filters = getFilters(hTreeItem);
+	if (filters == nullptr)
+		filters = &dummy;
+	
 
-	HTREEITEM addedItem = _treeView.addItem(folderName, hTreeItem, iconindex, new ProjectPanelData(_directoryWatcher, folderName, monitorPath, nodeType), sortIn ? treeviewInsertFunc : NULL);
+	HTREEITEM addedItem = _treeView.addItem(folderName, hTreeItem, iconindex, new ProjectPanelData(_directoryWatcher, folderName, monitorPath, nodeType, *filters), sortIn ? treeviewInsertFunc : NULL);
 
 	if (monitored)
 		_treeView.addItem( TEXT(""), addedItem, INDEX_LEAF_MONITOR, new ProjectPanelData(_directoryWatcher,TEXT(""), TEXT(""), nodeType_dummy ));

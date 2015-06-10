@@ -84,13 +84,14 @@ public:
 	HTREEITEM _hItem;
 	bool _watch;
 
-	ProjectPanelData(DirectoryWatcher* directoryWatcher, const TCHAR* name, const TCHAR* filePath, NodeType nodeType) 
+	ProjectPanelData(DirectoryWatcher* directoryWatcher, const TCHAR* name, const TCHAR* filePath, NodeType nodeType, const std::vector<generic_string> filters = std::vector<generic_string>()) 
 		: TreeViewData()
 		, _name(name)
 		, _nodeType(nodeType)
 		, _directoryWatcher(directoryWatcher)
 		, _hItem(NULL)
 		, _watch(false)
+		, _filters(filters)
 	{
 		if (filePath != NULL)
 			_filePath = filePath;
@@ -278,6 +279,7 @@ protected:
 	void setWorkSpaceDirty(bool isDirty);
 	void popupMenuCmd(int cmdID);
 	POINT getMenuDisplyPoint(int iButton);
+	const std::vector<generic_string>* getFilters(HTREEITEM hItem);
 	virtual INT_PTR CALLBACK run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam);
 	bool buildTreeFrom(TiXmlNode *projectRoot, HTREEITEM hParentItem);
 	void rebuildFolderMonitorTree(HTREEITEM hParentItem, const ProjectPanelData& data);

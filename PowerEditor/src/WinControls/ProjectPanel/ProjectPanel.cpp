@@ -675,7 +675,7 @@ void ProjectPanel::rebuildFolderMonitorTree(HTREEITEM hParentItem, const Project
 
 	removeDummies(hParentItem);
 	ProjectPanelDirectory currDir( this, hParentItem );
-	Directory newDir(projectPanelData._filePath);
+	Directory newDir(projectPanelData._filePath, projectPanelData._filters);
 	currDir.synchronizeTo(newDir);
 
 	_treeView.setItemImage(hParentItem, iImg, iImg);
@@ -842,6 +842,33 @@ void ProjectPanel::expandOrCollapseMonitorFolder(bool expand, HTREEITEM hItem)
 	}
 
 	_directoryWatcher->update();
+
+}
+
+void ProjectPanel::setFilters(const std::vector<generic_string>& filters, HTREEITEM hItem)
+{
+	TVITEM tvItem;
+	tvItem.mask = TVIF_PARAM;
+	tvItem.hItem = hItem;
+	::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0, (LPARAM)&tvItem);
+	ProjectPanelData& projectPanelData = *(ProjectPanelData*)(tvItem.lParam);
+
+	if (projectPanelData.isFolderMonitor() || projectPanelData.isFolderMonitorRoot())
+		projectPanelData._filters = filters;
+
+	if (projectPanelData.isWatching())
+	{
+		projectPanelData.watchDir(true);
+	}
+
+	for (HTREEITEM hItemNode = _treeView.getChildFrom(hItem);
+		hItemNode != NULL;
+		hItemNode = _treeView.getNextSibling(hItemNode))
+	{
+		setFilters(filters,hItemNode);
+	}
+
+
 
 }
 
@@ -1368,8 +1395,9 @@ void ProjectPanel::popupMenuCmd(int cmdID)
 		{
 			FilterDlg filterDlg;
 			filterDlg.init(_hInst, _hParent);
-			if (filterDlg.doDialog())
+			if (filterDlg.doDialog() == 0)
 			{
+				setFilters(filterDlg.getFilters(), hTreeItem);
 			}
 		}
 		break;

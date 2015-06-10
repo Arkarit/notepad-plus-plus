@@ -78,6 +78,7 @@ class ProjectPanelData : public TreeViewData {
 public:
 	generic_string _name;
 	generic_string _filePath;
+	std::vector<generic_string> _filters;
 	NodeType _nodeType;
 	DirectoryWatcher* _directoryWatcher;
 	HTREEITEM _hItem;
@@ -99,16 +100,14 @@ public:
 		setItem(NULL);
 	}
 
-	void setItem(HTREEITEM hItem)
-	{
+	void setItem(HTREEITEM hItem) {
 		if (_hItem && _hItem != hItem && _watch)
 			watchDir(false);
 		_hItem = hItem;
 	}
 
-	bool watchDir(bool watch)
-	{
-		if (_hItem && _watch)
+	bool watchDir(bool watch) {
+		if (_hItem && _watch && !watch)
 			if (_nodeType == nodeType_monitorFolderRoot || _nodeType == nodeType_monitorFolder)
 				_directoryWatcher->removeDir(_hItem);
 
@@ -118,11 +117,15 @@ public:
 
 		if (_hItem)
 			if (watch && (_nodeType == nodeType_monitorFolderRoot || _nodeType == nodeType_monitorFolder))
-				_directoryWatcher->addOrChangeDir(_filePath,_hItem);
+				_directoryWatcher->addOrChangeDir(_filePath,_hItem,_filters);
 			else
 				return true;
 
 		return !(_nodeType == nodeType_monitorFolderRoot || _nodeType == nodeType_monitorFolder);
+	}
+
+	bool isWatching() const {
+		return (_nodeType == nodeType_monitorFolderRoot || _nodeType == nodeType_monitorFolder) && _watch;
 	}
 
 	bool isRoot() const {
@@ -284,6 +287,8 @@ protected:
 	void openSelectFile();
 	HMENU getContextMenu(HTREEITEM hTreeItem) const;
 	void expandOrCollapseMonitorFolder(bool expand, HTREEITEM hItem);
+
+	void setFilters(const std::vector<generic_string>& filters, HTREEITEM hItem);
 
 	void removeDummies(HTREEITEM hTreeItem);
 

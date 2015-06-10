@@ -51,13 +51,23 @@ protected:
 
 	FILETIME _lastWriteTime;
 public:
+	// default directory - does not exist by default
 	Directory();
-	Directory(const generic_string& path, const std::vector<generic_string>& filters = std::vector<generic_string>());
+	// directory with path - is instantly read in ctor
+	Directory(const generic_string& path, const std::vector<generic_string>& filters = std::vector<generic_string>(), bool autoread=true );
+
 	virtual ~Directory() {}
 
 	const generic_string& getPath() const { return _path; }
-	void read(const generic_string& path);
-	void read() { read(_path); }
+
+	// read the directory. Returns true, if the read directory exists.
+	bool read(const generic_string& path, const std::vector<generic_string>& filters);
+	bool read(const generic_string& path) { return read(path,_filters); }
+	bool read() { return read(_path, _filters); }
+
+	// re-read the current directory, but only if it was changed.
+	// returns true, if directory was re-read, false if directory has not changed.
+	// Caution, in opposite to the other read() functions this is independent of the existence of the read directory!
 	bool readIfChanged();
 
 	// false when not initialized.
@@ -73,6 +83,7 @@ public:
 
 	bool writeTimeHasChanged() const;
 
+	// setFilters automatically re-reads the directory
 	void setFilters(const std::vector<generic_string>& filters = std::vector<generic_string>());
 	const std::vector<generic_string>& getFilters() const { return _filters; }
 
@@ -82,8 +93,6 @@ public:
 	// Note that the virtual methods are called BEFORE the contents of this directory are really changed.
 	void synchronizeTo(const Directory& other);
 
-
-	bool readLastWriteTime(FILETIME& filetime) const;
 
 protected:
 
@@ -99,6 +108,7 @@ private:
 	static void enablePrivileges();
 	static bool enablePrivilege(LPCTSTR privName);
 	void append(const generic_string& path, const generic_string& filter, bool readDirs);
+	bool readLastWriteTime(FILETIME& filetime) const;
 
 
 

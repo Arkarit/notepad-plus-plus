@@ -37,17 +37,18 @@ Directory::Directory()
 	_filters.push_back(generic_string(TEXT("*.*")));
 }
 
-Directory::Directory(const generic_string& path, const std::vector<generic_string>& filters)
+Directory::Directory(const generic_string& path, const std::vector<generic_string>& filters, bool autoread)
 	: _filters(filters)
 {
 //_filters.clear();
 //_filters.push_back(TEXT("*.js"));
 //_filters.push_back(TEXT("*.jpg"));
 
-	read(path);
+	if (autoread)
+		read(path);
 }
 
-void Directory::read(const generic_string& path)
+bool Directory::read(const generic_string& path, const std::vector<generic_string>& filters)
 {
 	_path = path;
 	_exists = false;
@@ -55,6 +56,8 @@ void Directory::read(const generic_string& path)
 	_lastWriteTime.dwHighDateTime = 0;
 	_files.clear();
 	_dirs.clear();
+	if (&_filters != &filters)
+		_filters = filters;
 
 	// first, read directories, never filtered.
 	append(_path, TEXT("*.*"), true);
@@ -68,6 +71,8 @@ void Directory::read(const generic_string& path)
 
 
 	readLastWriteTime(_lastWriteTime);
+
+	return _exists;
 
 }
 

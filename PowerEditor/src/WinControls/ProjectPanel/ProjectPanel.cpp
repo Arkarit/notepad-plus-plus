@@ -565,6 +565,8 @@ void ProjectPanel::buildProjectXml(TiXmlNode *node, HTREEITEM hItem, const TCHAR
 			generic_string filters = combine(projectPanelData._filters, TCHAR(';'));
 			if (!filters.empty())
 				fileLeaf->ToElement()->SetAttribute(TEXT("filters"), filters.c_str());
+			if (!projectPanelData._label.empty())
+				fileLeaf->ToElement()->SetAttribute(TEXT("label"), projectPanelData._label.c_str());
 		}
 		else
 		{
@@ -611,18 +613,29 @@ bool ProjectPanel::buildTreeFrom(TiXmlNode *projectRoot, HTREEITEM hParentItem)
 		if (lstrcmp(TEXT("FolderMonitor"), v) == 0)
 		{
 
+			const TCHAR *strLabel = (childNode->ToElement())->Attribute(TEXT("label"));
+			generic_string newFolderLabel;
+			
 			const TCHAR *strValue = (childNode->ToElement())->Attribute(TEXT("name"));
 			generic_string fullPath = getAbsoluteFilePath(strValue);
 
-			generic_string newFolderLabel(fullPath);
-			const size_t lastSlashIdx = newFolderLabel.find_last_of(TEXT("\\/"));
-			if (std::string::npos != lastSlashIdx)
+			if (strLabel)
 			{
-				newFolderLabel.erase(0, lastSlashIdx + 1);
-				if( newFolderLabel.empty() ) // drive
+				newFolderLabel = strLabel;
+			}
+			else
+			{
+
+				newFolderLabel = fullPath;
+				const size_t lastSlashIdx = newFolderLabel.find_last_of(TEXT("\\/"));
+				if (std::string::npos != lastSlashIdx)
 				{
-					newFolderLabel = fullPath;
-					newFolderLabel.erase(lastSlashIdx);
+					newFolderLabel.erase(0, lastSlashIdx + 1);
+					if( newFolderLabel.empty() ) // drive
+					{
+						newFolderLabel = fullPath;
+						newFolderLabel.erase(lastSlashIdx);
+					}
 				}
 			}
 
@@ -633,6 +646,7 @@ bool ProjectPanel::buildTreeFrom(TiXmlNode *projectRoot, HTREEITEM hParentItem)
 				generic_string filter(strFilters);
 				filters = split(filter, TEXT(';'));
 			}
+
 			addFolder(hParentItem, newFolderLabel.c_str(), true, true, fullPath.c_str(), false, &filters);
 		}
 		else if (lstrcmp(TEXT("File"), v) == 0)
@@ -924,16 +938,16 @@ void ProjectPanel::notified(LPNMHDR notification)
 			case TVN_ENDLABELEDIT:
 			{
 				LPNMTVDISPINFO tvnotif = (LPNMTVDISPINFO)notification;
-				if (!tvnotif->item.pszText)
-					return;
 				NodeType nt = getNodeType(tvnotif->item.hItem);
-				if (nt == nodeType_root || nt == nodeType_monitorFile || nt == nodeType_monitorFolder || nt == nodeType_monitorFolderRoot)
+				if (!tvnotif->item.pszText && nt != nodeType_monitorFolderRoot)
+					return;
+				if (nt == nodeType_root || nt == nodeType_monitorFile || nt == nodeType_monitorFolder)
 					return;
 
 				ProjectPanelData& projectPanelData = *(ProjectPanelData*)tvnotif->item.lParam;
 
 				// Processing for only File case
-				if (projectPanelData.isFile()) 
+				if (nt == nodeType_file) 
 				{
 					// Get the old label
 					tvItem.hItem = _treeView.getSelection();
@@ -961,6 +975,37 @@ void ProjectPanel::notified(LPNMHDR notification)
 						tvItem.iSelectedImage = INDEX_LEAF_INVALID;
 					}
 					TreeView_SetItem(_treeView.getHSelf(), &tvItem);
+				}
+				else if (nt == nodeType_monitorFolderRoot)
+				{
+					tvItem.hItem = _treeView.getSelection();
+					::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0,(LPARAM)&tvItem);
+					ProjectPanelData& projectPanelData = *(ProjectPanelData*)(tvItem.lParam);
+
+					// a text was added for monitor folder root - give it its own name
+					if (tvnotif->item.pszText && *tvnotif->item.pszText)
+					{
+						projectPanelData._label = tvnotif->item.pszText;
+					}
+					else
+					{
+						projectPanelData._label.clear();
+						generic_string newFolderLabel(projectPanelData._filePath);
+
+						const size_t lastSlashIdx = newFolderLabel.find_last_of(TEXT("\\/"));
+						if (std::string::npos != lastSlashIdx)
+						{
+							newFolderLabel.erase(0, lastSlashIdx + 1);
+							if( newFolderLabel.empty() ) // drive
+							{
+								newFolderLabel = projectPanelData._filePath;
+								newFolderLabel.erase(lastSlashIdx);
+							}
+						}
+						wcsncpy(tvItem.pszText,newFolderLabel.c_str(), MAX_PATH-1);
+						::SendMessage(_treeView.getHSelf(), TVM_SETITEM, 0,(LPARAM)&tvItem);
+						break;
+					}
 				}
 
 				// For File, Folder and Project

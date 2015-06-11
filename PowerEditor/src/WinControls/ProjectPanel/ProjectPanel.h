@@ -78,6 +78,7 @@ class ProjectPanelData : public TreeViewData {
 public:
 	generic_string _name;
 	generic_string _filePath;
+	generic_string _label;
 	std::vector<generic_string> _filters;
 	NodeType _nodeType;
 	DirectoryWatcher* _directoryWatcher;

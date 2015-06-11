@@ -254,6 +254,11 @@ public:
 
 	TreeView& getTreeView() { return _treeView; }
 
+	//TODO: place this into a basic support lib
+	static generic_string& trim(generic_string & str);
+	static std::vector<generic_string> split(const generic_string & str, TCHAR delim);
+	static generic_string combine(const std::vector<generic_string>& vec, TCHAR delim);
+
 protected:
 	TreeView _treeView;
 	HIMAGELIST _hImaLst;
@@ -270,7 +275,8 @@ protected:
 	void addFiles(HTREEITEM hTreeItem);
 	void addFilesFromDirectory(HTREEITEM hTreeItem, bool monitored);
 	void recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTreeItem, bool monitored, bool recursive);
-	HTREEITEM addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, bool monitored = false, bool root = false, const TCHAR *monitorPath = NULL, bool sortIn = false );
+	HTREEITEM addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, bool monitored = false, bool root = false, 
+	                    const TCHAR *monitorPath = NULL, bool sortIn = false, const std::vector<generic_string>* filters = NULL);
 
 	bool writeWorkSpace(TCHAR *projectFileName = NULL);
 	generic_string getRelativePath(const generic_string & fn, const TCHAR *workSpaceFileName);
@@ -307,6 +313,7 @@ protected:
 	static const ProjectPanelData* getData( const TreeViewData* data ) {
 		return (ProjectPanelData*) data;
 	}
+
 };
 
 class FileRelocalizerDlg : public StaticDialog
@@ -360,10 +367,6 @@ protected :
 	generic_string getTextFromCombo(HWND hCombo, bool) const;
 	void fillComboHistory(int id, const std::vector<generic_string> & strings);
 	int saveComboHistory(int id, int maxcount, std::vector<generic_string> & strings);
-private:
-	//TODO: place this into a basic support lib
-	static generic_string& trim(generic_string & str);
-	static std::vector<generic_string> split(const generic_string & str, TCHAR delim);
 
 };
 

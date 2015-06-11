@@ -32,6 +32,7 @@
 #include "FileDialog.h"
 #include "localization.h"
 #include "Parameters.h"
+#include <sstream>
 
 #define CX_BITMAP         16
 #define CY_BITMAP         16
@@ -561,6 +562,10 @@ void ProjectPanel::buildProjectXml(TiXmlNode *node, HTREEITEM hItem, const TCHAR
 			generic_string newFn = getRelativePath(projectPanelData._filePath, fn2write);
 			TiXmlNode *fileLeaf = node->InsertEndChild(TiXmlElement(TEXT("FolderMonitor")));
 			fileLeaf->ToElement()->SetAttribute(TEXT("name"), newFn.c_str());
+			generic_string filters = combine(projectPanelData._filters, TCHAR(';'));
+			if (!filters.empty())
+				fileLeaf->ToElement()->SetAttribute(TEXT("filters"), filters.c_str());
+
 		}
 		else
 		{
@@ -621,7 +626,15 @@ bool ProjectPanel::buildTreeFrom(TiXmlNode *projectRoot, HTREEITEM hParentItem)
 					newFolderLabel.erase(lastSlashIdx);
 				}
 			}
-			addFolder(hParentItem, newFolderLabel.c_str(), true, true, fullPath.c_str());
+
+			std::vector<generic_string> filters;
+			const TCHAR *strFilters = (childNode->ToElement())->Attribute(TEXT("filters"));
+			if (strFilters)
+			{
+				generic_string filter(strFilters);
+				filters = split(filter, TEXT(';'));
+			}
+			addFolder(hParentItem, newFolderLabel.c_str(), true, true, fullPath.c_str(), false, &filters);
 		}
 		else if (lstrcmp(TEXT("File"), v) == 0)
 		{
@@ -1129,7 +1142,7 @@ const std::vector<generic_string>* ProjectPanel::getFilters(HTREEITEM hItem)
 	else return NULL;
 }
 
-HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, bool monitored, bool root, const TCHAR *monitorPath, bool sortIn)
+HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, bool monitored, bool root, const TCHAR *monitorPath, bool sortIn, const std::vector<generic_string>* filters)
 {
 	NodeType nodeType(nodeType_folder);
 	int iconindex = INDEX_CLOSED_NODE;
@@ -1149,12 +1162,12 @@ HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, 
 	}
 
 	const std::vector<generic_string> dummy;
-	const std::vector<generic_string>* filters = getFilters(hTreeItem);
-	if (filters == nullptr)
-		filters = &dummy;
+	const std::vector<generic_string>* finalFilters = filters ? filters : getFilters(hTreeItem);
+	if (finalFilters == nullptr)
+		finalFilters = &dummy;
 	
 
-	HTREEITEM addedItem = _treeView.addItem(folderName, hTreeItem, iconindex, new ProjectPanelData(_directoryWatcher, folderName, monitorPath, nodeType, *filters), sortIn ? treeviewInsertFunc : NULL);
+	HTREEITEM addedItem = _treeView.addItem(folderName, hTreeItem, iconindex, new ProjectPanelData(_directoryWatcher, folderName, monitorPath, nodeType, *finalFilters), sortIn ? treeviewInsertFunc : NULL);
 
 	if (monitored)
 		_treeView.addItem( TEXT(""), addedItem, INDEX_LEAF_MONITOR, new ProjectPanelData(_directoryWatcher,TEXT(""), TEXT(""), nodeType_dummy ));
@@ -1581,6 +1594,57 @@ void ProjectPanel::addFilesFromDirectory(HTREEITEM hTreeItem, bool monitored)
 	}
 }
 
+generic_string& ProjectPanel::trim(generic_string & str)
+{
+	generic_string::size_type pos = str.find_last_not_of(' ');
+
+	if (pos != generic_string::npos)
+	{
+		str.erase(pos + 1);
+		pos = str.find_first_not_of(' ');
+		if (pos != generic_string::npos) str.erase(0, pos);
+	}
+	else str.erase(str.begin(), str.end());
+	return str;
+}
+
+std::vector<generic_string> ProjectPanel::split(const generic_string & str, TCHAR delim)
+{
+	std::vector<generic_string> result;
+
+	if (!str.empty())
+	{
+		size_t start = 0;
+		size_t pos = str.find(delim, start);
+
+		while (pos != generic_string::npos)
+		{
+			generic_string t(str.substr(start, pos - start));
+			result.push_back(trim(t));
+			start = pos + 1;
+			pos = str.find(delim, start);
+		}
+		generic_string t(str.substr(start, pos - start));
+		result.push_back(trim(t));
+	}
+
+	return result;
+
+}
+
+generic_string ProjectPanel::combine(const std::vector<generic_string>& vec, TCHAR delim)
+{
+	std::wstringstream ss;
+
+	for (size_t i = 0; i < vec.size(); ++i)
+		ss << vec[i] << (i <vec.size()-1 ? delim : TEXT(''));
+
+	return ss.str();
+
+}
+
+
+
 INT_PTR CALLBACK FileRelocalizerDlg::run_dlgProc(UINT Message, WPARAM wParam, LPARAM) 
 {
 	switch (Message)
@@ -1654,7 +1718,7 @@ INT_PTR CALLBACK FilterDlg::run_dlgProc(UINT Message, WPARAM wParam, LPARAM)
 					::GetDlgItemText(_hSelf, IDD_PROJECTPANEL_FILTERS_COMBO, tfilters, filterSize);
 					addText2Combo(tfilters, ::GetDlgItem(_hSelf, IDD_PROJECTPANEL_FILTERS_COMBO));
 
-					_filters = split(tfilters, TEXT(';'));
+					_filters = ProjectPanel::split(tfilters, TEXT(';'));
 
 					::EndDialog(_hSelf, 0);
 				}
@@ -1731,44 +1795,6 @@ int FilterDlg::saveComboHistory(int id, int maxcount, std::vector<generic_string
 	return count;
 }
 
-
-generic_string& FilterDlg::trim(generic_string & str)
-{
-	generic_string::size_type pos = str.find_last_not_of(' ');
-
-	if (pos != generic_string::npos)
-	{
-		str.erase(pos + 1);
-		pos = str.find_first_not_of(' ');
-		if (pos != generic_string::npos) str.erase(0, pos);
-	}
-	else str.erase(str.begin(), str.end());
-	return str;
-}
-
-std::vector<generic_string> FilterDlg::split(const generic_string & str, TCHAR delim)
-{
-	std::vector<generic_string> result;
-
-	if (!str.empty())
-	{
-		size_t start = 0;
-		size_t pos = str.find(delim, start);
-
-		while (pos != generic_string::npos)
-		{
-			generic_string t(str.substr(start, pos - start));
-			result.push_back(trim(t));
-			start = pos + 1;
-			pos = str.find(delim, start);
-		}
-		generic_string t(str.substr(start, pos - start));
-		result.push_back(trim(t));
-	}
-
-	return result;
-
-}
 
 int FilterDlg::doDialog(bool isRTL /*= false*/)
 {

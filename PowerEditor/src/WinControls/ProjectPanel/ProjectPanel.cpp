@@ -967,20 +967,27 @@ void ProjectPanel::notified(LPNMHDR notification)
 			case TVN_GETINFOTIP:
 			{
 				LPNMTVGETINFOTIP lpGetInfoTip = (LPNMTVGETINFOTIP)notification;
-				generic_string *str = NULL ;
 
 				if (_treeView.getRoot() == lpGetInfoTip->hItem)
 				{
-					str = &_workSpaceFilePath;
+					_infotipStr = _workSpaceFilePath;
 				}
 				else
 				{
-					str = &((ProjectPanelData *)lpGetInfoTip->lParam)->_filePath;
-					if (str->empty())
+					_infotipStr = ((ProjectPanelData *)lpGetInfoTip->lParam)->_filePath;
+					if (_infotipStr.empty())
 						return;
+
+					const std::vector<generic_string>* filters = getFilters(lpGetInfoTip->hItem);
+					if (filters && !filters->empty())
+					{
+						_infotipStr += TEXT(" (");
+						_infotipStr += combine(*filters, TEXT(';'));
+						_infotipStr += TEXT(")");
+					}
 				}
-				lpGetInfoTip->pszText = (LPTSTR)str->c_str();
-				lpGetInfoTip->cchTextMax = str->size();
+				lpGetInfoTip->pszText = (LPTSTR)_infotipStr.c_str();
+				lpGetInfoTip->cchTextMax = _infotipStr.size();
 			}
 			break;
 
@@ -1637,7 +1644,11 @@ generic_string ProjectPanel::combine(const std::vector<generic_string>& vec, TCH
 	std::wstringstream ss;
 
 	for (size_t i = 0; i < vec.size(); ++i)
-		ss << vec[i] << (i <vec.size()-1 ? delim : TEXT(''));
+	{
+		ss << vec[i];
+		if (i <vec.size()-1)
+			ss << delim;
+	}
 
 	return ss.str();
 

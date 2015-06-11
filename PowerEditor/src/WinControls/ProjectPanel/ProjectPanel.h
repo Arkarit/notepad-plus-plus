@@ -196,6 +196,8 @@ protected:
 
 class ProjectPanel : public DockingDlgInterface, public TreeViewListener {
 	friend class ProjectPanelDirectory;
+	
+	generic_string _infotipStr;
 
 public:
 	ProjectPanel()

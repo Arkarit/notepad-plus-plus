@@ -903,20 +903,13 @@ void ProjectPanel::notified(LPNMHDR notification)
 				openSelectFile();
 			}
 			break;
-			case TVN_BEGINLABELEDIT:
-			{
-				LPNMTVDISPINFO tvnotif = (LPNMTVDISPINFO)notification;
-				NodeType nt = getNodeType(tvnotif->item.hItem);
-				if (nt == nodeType_monitorFile || nt == nodeType_monitorFolder || nt == nodeType_monitorFolderRoot)
-					_treeView.cancelEdit();
-			}
-			break;
 			case TVN_ENDLABELEDIT:
 			{
 				LPNMTVDISPINFO tvnotif = (LPNMTVDISPINFO)notification;
 				if (!tvnotif->item.pszText)
 					return;
-				if (getNodeType(tvnotif->item.hItem) == nodeType_root)
+				NodeType nt = getNodeType(tvnotif->item.hItem);
+				if (nt == nodeType_root || nt == nodeType_monitorFile || nt == nodeType_monitorFolder || nt == nodeType_monitorFolderRoot)
 					return;
 
 				ProjectPanelData& projectPanelData = *(ProjectPanelData*)tvnotif->item.lParam;

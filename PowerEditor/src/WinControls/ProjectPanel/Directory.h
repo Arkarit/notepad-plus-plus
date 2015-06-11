@@ -54,7 +54,7 @@ protected:
 public:
 	// default directory - does not exist by default
 	Directory(bool hideEmptyDirs = true);
-	// directory with path - is instantly read in ctor
+	// directory with path - is instantly read in ctor, if autoread==true
 	Directory(const generic_string& path, const std::vector<generic_string>& filters = std::vector<generic_string>(), bool hideEmptyDirs=true, bool autoread=true );
 
 	virtual ~Directory() {}

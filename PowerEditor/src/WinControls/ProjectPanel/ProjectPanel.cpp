@@ -565,7 +565,6 @@ void ProjectPanel::buildProjectXml(TiXmlNode *node, HTREEITEM hItem, const TCHAR
 			generic_string filters = combine(projectPanelData._filters, TCHAR(';'));
 			if (!filters.empty())
 				fileLeaf->ToElement()->SetAttribute(TEXT("filters"), filters.c_str());
-
 		}
 		else
 		{
@@ -858,7 +857,7 @@ void ProjectPanel::expandOrCollapseMonitorFolder(bool expand, HTREEITEM hItem)
 
 }
 
-void ProjectPanel::setFilters(const std::vector<generic_string>& filters, HTREEITEM hItem)
+bool ProjectPanel::setFilters(const std::vector<generic_string>& filters, HTREEITEM hItem)
 {
 	TVITEM tvItem;
 	tvItem.mask = TVIF_PARAM;
@@ -867,7 +866,12 @@ void ProjectPanel::setFilters(const std::vector<generic_string>& filters, HTREEI
 	ProjectPanelData& projectPanelData = *(ProjectPanelData*)(tvItem.lParam);
 
 	if (projectPanelData.isFolderMonitor() || projectPanelData.isFolderMonitorRoot())
+	{
+		if (projectPanelData.isFolderMonitorRoot() && projectPanelData._filters == filters)
+			return false;
+
 		projectPanelData._filters = filters;
+	}
 
 	if (projectPanelData.isWatching())
 	{
@@ -880,6 +884,7 @@ void ProjectPanel::setFilters(const std::vector<generic_string>& filters, HTREEI
 	{
 		setFilters(filters,hItemNode);
 	}
+	return true;
 }
 
 void ProjectPanel::removeDummies(HTREEITEM hTreeItem)
@@ -1428,7 +1433,8 @@ void ProjectPanel::popupMenuCmd(int cmdID)
 			filterDlg.init(_hInst, _hParent);
 			if (filterDlg.doDialog() == 0)
 			{
-				setFilters(filterDlg.getFilters(), hTreeItem);
+				if (setFilters(filterDlg.getFilters(), hTreeItem))
+					setWorkSpaceDirty(true);
 			}
 		}
 		break;

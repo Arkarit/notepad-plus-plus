@@ -298,7 +298,7 @@ protected:
 	HMENU getContextMenu(HTREEITEM hTreeItem) const;
 	void expandOrCollapseMonitorFolder(bool expand, HTREEITEM hItem);
 
-	void setFilters(const std::vector<generic_string>& filters, HTREEITEM hItem);
+	bool setFilters(const std::vector<generic_string>& filters, HTREEITEM hItem);
 
 	void removeDummies(HTREEITEM hTreeItem);
 

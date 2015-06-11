@@ -35,6 +35,7 @@
 // a simple basic directory.
 
 class Directory {
+	bool _hideEmptyDirs;
 protected:
 	struct comparator {
 		bool operator() (const generic_string& lhs, const generic_string& rhs) const {
@@ -52,9 +53,9 @@ protected:
 	FILETIME _lastWriteTime;
 public:
 	// default directory - does not exist by default
-	Directory();
+	Directory(bool hideEmptyDirs = true);
 	// directory with path - is instantly read in ctor
-	Directory(const generic_string& path, const std::vector<generic_string>& filters = std::vector<generic_string>(), bool autoread=true );
+	Directory(const generic_string& path, const std::vector<generic_string>& filters = std::vector<generic_string>(), bool hideEmptyDirs=true, bool autoread=true );
 
 	virtual ~Directory() {}
 
@@ -108,6 +109,8 @@ private:
 	static void enablePrivileges();
 	static bool enablePrivilege(LPCTSTR privName);
 	void append(const generic_string& path, const generic_string& filter, bool readDirs);
+	bool containsData(const generic_string& path);
+	bool containsData(const generic_string& path, const generic_string& filter);
 	bool readLastWriteTime(FILETIME& filetime) const;
 
 

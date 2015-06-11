@@ -28,8 +28,9 @@
 #include "Directory.h"
 #include <Shlwapi.h>
 
-Directory::Directory()
+Directory::Directory(bool hideEmptyDirs)
 	: _exists(false)
+	, _hideEmptyDirs(hideEmptyDirs)
 {
 	_lastWriteTime.dwLowDateTime = 0;
 	_lastWriteTime.dwHighDateTime = 0;
@@ -37,8 +38,9 @@ Directory::Directory()
 	_filters.push_back(generic_string(TEXT("*.*")));
 }
 
-Directory::Directory(const generic_string& path, const std::vector<generic_string>& filters, bool autoread)
+Directory::Directory(const generic_string& path, const std::vector<generic_string>& filters, bool hideEmptyDirs, bool autoread)
 	: _filters(filters)
+	, _hideEmptyDirs(hideEmptyDirs)
 {
 //_filters.clear();
 //_filters.push_back(TEXT("*.js"));
@@ -124,7 +126,19 @@ void Directory::append(const generic_string& path, const generic_string& filter,
 				continue;
 			}
 			if (readDirs)
+			{
+				if (_hideEmptyDirs)
+				{
+					generic_string childPath = path + TEXT("\\") + file;
+					if (!containsData(childPath))
+					{
+						if (!FindNextFile(hFind, &fd))
+							break;
+						continue;
+					}
+				}
 				_dirs.insert(file);
+			}
 		}
 		else
 		{
@@ -139,6 +153,74 @@ void Directory::append(const generic_string& path, const generic_string& filter,
 	if (hFind != INVALID_HANDLE_VALUE)
 		FindClose(hFind);
 
+
+}
+
+bool Directory::containsData(const generic_string& path)
+{
+	if (_filters.empty())
+		return containsData(path, TEXT("*.*"));
+
+	for (size_t i=0; i<_filters.size(); ++i)
+	{
+		if (containsData(path, _filters[i]))
+			return true;
+	}
+	return false;
+}
+
+bool Directory::containsData(const generic_string& path, const generic_string& filter)
+{
+	generic_string searchPath = path + TEXT("\\") + filter;
+
+	WIN32_FIND_DATAW fd;
+	HANDLE hFind = FindFirstFile(searchPath.c_str(), &fd);
+
+	if (hFind == INVALID_HANDLE_VALUE)
+		return false;
+
+	while (hFind != INVALID_HANDLE_VALUE)
+	{
+		const generic_string file(fd.cFileName);
+
+		struct _WIN32_FILE_ATTRIBUTE_DATA m_attr;
+		if (!GetFileAttributesExW((path + TEXT("\\") + file).c_str(), GetFileExInfoStandard, &m_attr))
+		{
+			if (!FindNextFile(hFind, &fd))
+				break;
+			continue;
+		}
+
+		if (m_attr.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+		{
+			if (file == TEXT(".") || file == TEXT(".."))
+			{
+				if (!FindNextFile(hFind, &fd))
+					break;
+				continue;
+			}
+
+			generic_string childPath = path + TEXT("\\") + file;
+			if (containsData(childPath))
+			{
+				FindClose(hFind);
+				return true;
+			}
+		}
+		else
+		{
+			FindClose(hFind);
+			return true;
+		}
+
+		if (!FindNextFile(hFind, &fd))
+			break;
+	}
+
+	if (hFind != INVALID_HANDLE_VALUE)
+		FindClose(hFind);
+
+	return false;
 
 }
 

@@ -176,15 +176,12 @@ protected:
 	HTREEITEM _hItem;
 	std::map<generic_string,HTREEITEM> _dirMap;
 	std::map<generic_string,HTREEITEM> _fileMap;
-	bool _wasInitiallyEmpty;
-
 public:
 	ProjectPanelDirectory( ProjectPanel *projectPanel, HTREEITEM hItem );
 	virtual ~ProjectPanelDirectory() {}
 
 protected:
 
-	virtual void onBeginSynchronize(const Directory& other);
 	virtual void onDirAdded(const generic_string& name);
 	virtual void onDirRemoved(const generic_string& name);
 	virtual void onFileAdded(const generic_string& name);
@@ -281,7 +278,7 @@ protected:
 	void addFilesFromDirectory(HTREEITEM hTreeItem, bool monitored);
 	void recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTreeItem, bool monitored, bool recursive);
 	HTREEITEM addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, bool monitored = false, bool root = false, 
-	                    const TCHAR *monitorPath = NULL, bool sortIn = false, const std::vector<generic_string>* filters = NULL);
+	                    const TCHAR *monitorPath = NULL, const std::vector<generic_string>* filters = NULL);
 
 	bool writeWorkSpace(TCHAR *projectFileName = NULL);
 	generic_string getRelativePath(const generic_string & fn, const TCHAR *workSpaceFileName);
@@ -307,7 +304,7 @@ protected:
 
 	void treeItemChanged(HTREEITEM hItem,TreeViewData* data);
 
-	static generic_string buildFolderName(const ProjectPanelData& data);
+	static generic_string buildFilename(const ProjectPanelData& data);
 
 	// TreeViewListener
 	virtual void onTreeItemAdded(bool afterClone, HTREEITEM hItem, TreeViewData* newData);

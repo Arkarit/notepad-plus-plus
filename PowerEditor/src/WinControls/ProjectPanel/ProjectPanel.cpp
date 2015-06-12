@@ -192,42 +192,6 @@ INT_PTR CALLBACK ProjectPanel::run_dlgProc(UINT message, WPARAM wParam, LPARAM l
 	return DockingDlgInterface::run_dlgProc(message, wParam, lParam);
 }
 
-static HTREEITEM treeviewInsertFunc(TreeView* treeView, HTREEITEM hParent, const TreeViewData* parentTVData, const TCHAR *toInsertName, const TreeViewData* toInsertTVData)
-{
-//return TVI_LAST;
-
-
-	const ProjectPanelData* parentData = (const ProjectPanelData*) parentTVData;
-	const ProjectPanelData* toInsertData = (const ProjectPanelData*) toInsertTVData;
-
-	if( !parentData->isFolderMonitor() && !parentData->isFolderMonitorRoot() )
-		return TVI_LAST;
-
-	HTREEITEM hLastItem = NULL;
-    for (HTREEITEM hItem = treeView->getChildFrom(hParent);
-        hItem != NULL;
-        hLastItem = hItem, hItem = treeView->getNextSibling(hItem))
-    {
-		TVITEM tvItem;
-		tvItem.mask = TVIF_PARAM;
-		tvItem.hItem = hItem;
-		SendMessage(treeView->getHSelf(), TVM_GETITEM, 0,(LPARAM)&tvItem);
-		ProjectPanelData* itemData = (ProjectPanelData*) tvItem.lParam;
-
-		// folders always before files
-		if( itemData->isFolderMonitor() && !toInsertData->isFolderMonitor() )
-			continue;
-
-		if( !itemData->isFolderMonitor() && toInsertData->isFolderMonitor()
-		||  lstrcmpi(itemData->_name.c_str(),toInsertName) > 0)
-			return hLastItem == NULL ? TVI_FIRST : hLastItem;
-
-    }
-
-	return TVI_LAST;
-
-}
-
 void ProjectPanel::checkIfNeedSave(const TCHAR *title)
 {
 	if (_isDirty)
@@ -647,7 +611,7 @@ bool ProjectPanel::buildTreeFrom(TiXmlNode *projectRoot, HTREEITEM hParentItem)
 				filters = split(filter, TEXT(';'));
 			}
 
-			addFolder(hParentItem, newFolderLabel.c_str(), true, true, fullPath.c_str(), false, &filters);
+			addFolder(hParentItem, newFolderLabel.c_str(), true, true, fullPath.c_str(), &filters);
 		}
 		else if (lstrcmp(TEXT("File"), v) == 0)
 		{
@@ -841,7 +805,7 @@ void ProjectPanel::treeItemChanged(HTREEITEM hTreeItem, TreeViewData* data)
 
 }
 
-generic_string ProjectPanel::buildFolderName(const ProjectPanelData& data)
+generic_string ProjectPanel::buildFilename(const ProjectPanelData& data)
 {
 	generic_string result(data._filePath);
 
@@ -1217,7 +1181,7 @@ const std::vector<generic_string>* ProjectPanel::getFilters(HTREEITEM hItem)
 	else return NULL;
 }
 
-HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, bool monitored, bool root, const TCHAR *monitorPath, bool sortIn, const std::vector<generic_string>* filters)
+HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, bool monitored, bool root, const TCHAR *monitorPath, const std::vector<generic_string>* filters)
 {
 	NodeType nodeType(nodeType_folder);
 	int iconindex = INDEX_CLOSED_NODE;
@@ -1242,7 +1206,7 @@ HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, 
 		finalFilters = &dummy;
 	
 
-	HTREEITEM addedItem = _treeView.addItem(folderName, hTreeItem, iconindex, new ProjectPanelData(_directoryWatcher, folderName, monitorPath, nodeType, *finalFilters), sortIn ? treeviewInsertFunc : NULL);
+	HTREEITEM addedItem = _treeView.addItem(folderName, hTreeItem, iconindex, new ProjectPanelData(_directoryWatcher, folderName, monitorPath, nodeType, *finalFilters));
 
 	if (monitored)
 		_treeView.addItem( TEXT(""), addedItem, INDEX_LEAF_MONITOR, new ProjectPanelData(_directoryWatcher,TEXT(""), TEXT(""), nodeType_dummy ));
@@ -1623,7 +1587,7 @@ void ProjectPanel::recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTre
 		if (folderPath[lstrlen(folderPath)-1] != '\\')
 			pathFile += TEXT("\\");
 		pathFile += files[i];
-		_treeView.addItem(files[i].c_str(), hTreeItem, monitored ? INDEX_LEAF_MONITOR : INDEX_LEAF, new ProjectPanelData(_directoryWatcher, files[i].c_str(), pathFile.c_str(), monitored ? nodeType_monitorFile : nodeType_file ), treeviewInsertFunc);
+		_treeView.addItem(files[i].c_str(), hTreeItem, monitored ? INDEX_LEAF_MONITOR : INDEX_LEAF, new ProjectPanelData(_directoryWatcher, files[i].c_str(), pathFile.c_str(), monitored ? nodeType_monitorFile : nodeType_file ));
 	}
 
 	::FindClose(hFile);
@@ -1905,7 +1869,6 @@ ProjectPanelDirectory::ProjectPanelDirectory(ProjectPanel* projectPanel, HTREEIT
 	, _projectPanel(projectPanel)
 	, _treeView(&projectPanel->getTreeView())
 	, _hItem(hItem)
-	, _wasInitiallyEmpty(false)
 {
 	TCHAR textBuffer[MAX_PATH];
 	TVITEM tvItem;
@@ -1955,15 +1918,9 @@ ProjectPanelDirectory::ProjectPanelDirectory(ProjectPanel* projectPanel, HTREEIT
 }
 
 
-void ProjectPanelDirectory::onBeginSynchronize(const Directory& other)
-{
-	other;
-	_wasInitiallyEmpty = true;//empty();
-}
-
 void ProjectPanelDirectory::onDirAdded(const generic_string& name)
 {
-	_projectPanel->addFolder(_hItem, name.c_str(), true, false, (_path + TEXT("\\") + name).c_str(), !_wasInitiallyEmpty );
+	_projectPanel->addFolder(_hItem, name.c_str(), true, false, (_path + TEXT("\\") + name).c_str() );
 
 }
 
@@ -1974,7 +1931,7 @@ void ProjectPanelDirectory::onDirRemoved(const generic_string& name)
 
 void ProjectPanelDirectory::onFileAdded(const generic_string& name)
 {
-	_treeView->addItem(name.c_str(), _hItem, INDEX_LEAF_MONITOR, new ProjectPanelData(_projectPanel->_directoryWatcher, name.c_str(), (_path + TEXT("\\") + name).c_str(), nodeType_monitorFile ), _wasInitiallyEmpty ? NULL : treeviewInsertFunc);
+	_treeView->addItem(name.c_str(), _hItem, INDEX_LEAF_MONITOR, new ProjectPanelData(_projectPanel->_directoryWatcher, name.c_str(), (_path + TEXT("\\") + name).c_str(), nodeType_monitorFile ));
 
 }
 
@@ -1995,13 +1952,10 @@ int CALLBACK compareFunc(LPARAM lhs, LPARAM rhs, LPARAM)
 	if (dataL.isFolderMonitor() != dataR.isFolderMonitor())
 		return dataL.isFolderMonitor() ? -1 : 1;
 
-
-
 	// both items are of the same kind.
-	generic_string nameL = ProjectPanel::buildFolderName(dataL);
-	generic_string nameR = ProjectPanel::buildFolderName(dataR);
+	generic_string nameL = ProjectPanel::buildFilename(dataL);
+	generic_string nameR = ProjectPanel::buildFilename(dataR);
 	return lstrcmpi(nameL.c_str(),nameL.c_str());
-
 }
 
 void ProjectPanelDirectory::onEndSynchronize(const Directory& other)

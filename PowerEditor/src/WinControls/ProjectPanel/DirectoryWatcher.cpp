@@ -30,7 +30,7 @@
 #include <assert.h>
 
 
-DirectoryWatcher::DirectoryWatcher(HWND hWnd, DWORD updateFrequencyMs) 
+DirectoryWatcher::DirectoryWatcher(HWND hWnd, DWORD updateFrequencyMs, bool hideEmptyDirs) 
 	: _hWnd(hWnd)
 	, _hThread(NULL)
 	, _hRunningEvent(NULL)
@@ -40,6 +40,7 @@ DirectoryWatcher::DirectoryWatcher(HWND hWnd, DWORD updateFrequencyMs)
 	, _updateFrequencyMs(updateFrequencyMs)
 	, _watching(true)
 	, _changeOccurred(false)
+	, _hideEmptyDirs(hideEmptyDirs)
 {
 }
 
@@ -309,9 +310,12 @@ void DirectoryWatcher::updateDirs()
 		}
 
 		// if this fails, create a new one.
+		// It is created without directly reading it to keep locking short 
+		// (This could e.g. be a large network directory, which could otherwise block the main thread for a long time)
+		// It is then read in the next directory iteration.
 		if (!currentWatchdir)
 		{
-			currentWatchdir = new Directory(insertStruct->_path, insertStruct->_filters);
+			currentWatchdir = new Directory(insertStruct->_path, insertStruct->_filters, _hideEmptyDirs, false);
 			_watchdirs.insert(currentWatchdir);
 		}
 

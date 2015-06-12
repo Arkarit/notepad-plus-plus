@@ -54,7 +54,7 @@
 // FindFirstChangeNotification/FindNextChangeNotification: Did not work very good, because a max of ~60 directories per thread
 // can be handled (64 objects limit of WaitForMultipleObjects)
 // To use a FindFirstChangeNotification for a whole tree is also not an option, because I wanted to allow to add root directories as well,
-// and e.g. the continuing changes of C: are insane (think of temp dir, logs etc.)
+// and e.g. the continuing changes of C: are insane (think of temp dir, logs etc.) And besides, FindFirstChangeNotification does not tell you WHAT has changed *sigh*
 //
 // GetQueuedCompletionStatus/ReadDirectoryChangesW: Worked perfect in terms of being notified, BUT locked all open directories against deletion, which is definitely not what we want.
 //
@@ -62,6 +62,11 @@
 // The first step is to compare the last write time of the directory.
 // Only if this has changed, the directory is examined more in depth, if any files have been added or removed.
 // Only if this is the case, the message is sent.
+//
+// Adding and removing directories works in two steps internally.
+// First, the directory is inserted to a set of directories to be removed or added.
+// Second, these sets are evaluated and its values are added or removed to the set of watched directories.
+// This is done so to keep the locking time as short as possible; only the transfering of the directories is locked, not the directory watch iteration itself.
 
 class DirectoryWatcher
 {
@@ -81,6 +86,8 @@ class DirectoryWatcher
 	HANDLE _hRunningEvent, _hStopEvent, _hUpdateEvent;
 	bool _running;
 	HWND _hWnd;
+	bool _hideEmptyDirs;
+
 
 	std::set<Directory*> _watchdirs;
 	std::map<HTREEITEM, Directory*> _dirItems;
@@ -99,7 +106,7 @@ class DirectoryWatcher
 	bool _watching;
 public:
 
-	DirectoryWatcher(HWND hWnd, DWORD updateFrequencyMs = 1000);
+	DirectoryWatcher(HWND hWnd, DWORD updateFrequencyMs = 1000, bool hideEmptyDirs = true);
 	virtual ~DirectoryWatcher();
 
 	// startThread() must be called manually after creation. Throws std::runtime_error if fails to create events/resources (not very likely)

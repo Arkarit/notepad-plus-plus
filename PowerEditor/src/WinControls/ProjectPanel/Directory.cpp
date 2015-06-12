@@ -31,6 +31,7 @@
 Directory::Directory(bool hideEmptyDirs)
 	: _exists(false)
 	, _hideEmptyDirs(hideEmptyDirs)
+	, _wasRead(false)
 {
 	_lastWriteTime.dwLowDateTime = 0;
 	_lastWriteTime.dwHighDateTime = 0;
@@ -39,13 +40,15 @@ Directory::Directory(bool hideEmptyDirs)
 }
 
 Directory::Directory(const generic_string& path, const std::vector<generic_string>& filters, bool hideEmptyDirs, bool autoread)
-	: _filters(filters)
+	: _exists(false)
+	, _path(path)
+	, _filters(filters)
 	, _hideEmptyDirs(hideEmptyDirs)
+	, _wasRead(false)
 {
-//_filters.clear();
-//_filters.push_back(TEXT("*.js"));
-//_filters.push_back(TEXT("*.jpg"));
-
+	_lastWriteTime.dwLowDateTime = 0;
+	_lastWriteTime.dwHighDateTime = 0;
+	enablePrivileges();
 	if (autoread)
 		read(path);
 }
@@ -74,12 +77,20 @@ bool Directory::read(const generic_string& path, const std::vector<generic_strin
 
 	readLastWriteTime(_lastWriteTime);
 
+	_wasRead = true;
+
 	return _exists;
 
 }
 
 bool Directory::readIfChanged()
 {
+	if (!_wasRead)
+	{
+		read();
+		return true;
+	}
+
 	if (!writeTimeHasChanged())
 		return false;
 	Directory cmp(_path,_filters);
@@ -156,6 +167,8 @@ void Directory::append(const generic_string& path, const generic_string& filter,
 
 }
 
+
+// containsData() checks, if a directory or its subdirs contain any data which match the filters.
 bool Directory::containsData(const generic_string& path)
 {
 	if (_filters.empty())
@@ -169,6 +182,7 @@ bool Directory::containsData(const generic_string& path)
 	return false;
 }
 
+// containsData() recursive call
 bool Directory::containsData(const generic_string& path, const generic_string& filter)
 {
 	generic_string searchPath = path + TEXT("\\") + filter;
@@ -191,8 +205,10 @@ bool Directory::containsData(const generic_string& path, const generic_string& f
 			continue;
 		}
 
+		// a directory was found
 		if (m_attr.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 		{
+			// skip . and ..
 			if (file == TEXT(".") || file == TEXT(".."))
 			{
 				if (!FindNextFile(hFind, &fd))
@@ -200,6 +216,7 @@ bool Directory::containsData(const generic_string& path, const generic_string& f
 				continue;
 			}
 
+			// check if this child directory contains data; if this is the case, return true
 			generic_string childPath = path + TEXT("\\") + file;
 			if (containsData(childPath))
 			{
@@ -209,6 +226,7 @@ bool Directory::containsData(const generic_string& path, const generic_string& f
 		}
 		else
 		{
+			// data was found - return true
 			FindClose(hFind);
 			return true;
 		}
@@ -242,12 +260,13 @@ bool Directory::writeTimeHasChanged() const
 
 }
 
-void Directory::setFilters(const std::vector<generic_string>& filters)
+void Directory::setFilters(const std::vector<generic_string>& filters, bool autoread)
 {
 	if (_filters != filters)
 	{
-		_filters = filters; 
-		read();
+		_filters = filters;
+		if (autoread)
+			read();
 	}
 }
 
@@ -272,6 +291,18 @@ void Directory::synchronizeTo(const Directory& other)
 
 }
 
+void Directory::setHideEmptyDirs(bool hideEmptyDirs, bool autoread)
+{
+	if (_hideEmptyDirs != hideEmptyDirs)
+	{
+		_hideEmptyDirs = hideEmptyDirs;
+		if (autoread)
+			read();
+	}
+}
+
+// read last write time reads the last write time into "filetime".
+// Under some circumstances, it might happen that the file time can not be determined, in this case it returns false.
 bool Directory::readLastWriteTime(FILETIME& filetime) const
 {
 	if (_path.empty())
@@ -338,7 +369,7 @@ bool Directory::operator!=(const Directory& other) const
 	return !operator== (other);
 }
 
-
+// necessary to access root directory file time
 void Directory::enablePrivileges()
 {
 	static bool privilegesEnabled = false;

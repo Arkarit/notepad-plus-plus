@@ -32,12 +32,13 @@
 #include "Common.h"
 #include <set>
 
-// a simple basic directory.
+// directory class for project panel.
 
 class Directory {
 protected:
 	generic_string _path;
 	bool _hideEmptyDirs;
+	bool _wasRead;
 
 	struct comparator {
 		bool operator() (const generic_string& lhs, const generic_string& rhs) const {
@@ -62,7 +63,7 @@ public:
 
 	const generic_string& getPath() const { return _path; }
 
-	// read the directory. Returns true, if the read directory exists.
+	// read the directory. Returns true, if the directory exists.
 	bool read(const generic_string& path, const std::vector<generic_string>& filters);
 	bool read(const generic_string& path) { return read(path,_filters); }
 	bool read() { return read(_path, _filters); }
@@ -85,16 +86,19 @@ public:
 
 	bool writeTimeHasChanged() const;
 
-	// setFilters automatically re-reads the directory
-	void setFilters(const std::vector<generic_string>& filters = std::vector<generic_string>());
+	void setFilters(const std::vector<generic_string>& filters = std::vector<generic_string>(), bool autoread=true);
 	const std::vector<generic_string>& getFilters() const { return _filters; }
+
+	// empty directories can be hidden:
+	// "empty" means in this case, neither the directory itself nor its subdirectories contains any data, which match the filters
+	bool getHideEmptyDirs() const { return _hideEmptyDirs; }
+	void setHideEmptyDirs(bool hideEmptyDirs, bool autoread=true);
 
 	// synchronizeTo is basically like a copy constructor, with the difference, that it calls the
 	// following virtual functions onDirAdded(), ...
 	// Using this makes only sense, if you have subclassed this and evaluate those virtual methods; otherwise just use the copy ctor/assigment operator.
 	// Note that the virtual methods are called BEFORE the contents of this directory are really changed.
 	void synchronizeTo(const Directory& other);
-
 
 protected:
 

@@ -306,6 +306,8 @@ protected:
 
 	static generic_string buildFilename(const ProjectPanelData& data);
 
+	void itemVisibilityChanges(HTREEITEM hItem, bool visible);
+
 	// TreeViewListener
 	virtual void onTreeItemAdded(bool afterClone, HTREEITEM hItem, TreeViewData* newData);
 	virtual void onMessage(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);

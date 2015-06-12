@@ -35,8 +35,10 @@
 // a simple basic directory.
 
 class Directory {
-	bool _hideEmptyDirs;
 protected:
+	generic_string _path;
+	bool _hideEmptyDirs;
+
 	struct comparator {
 		bool operator() (const generic_string& lhs, const generic_string& rhs) const {
 			return lstrcmpi(lhs.c_str(),rhs.c_str()) < 0;
@@ -48,7 +50,6 @@ protected:
 	std::vector<generic_string> _filters;
 
 	bool _exists;
-	generic_string _path;
 
 	FILETIME _lastWriteTime;
 public:

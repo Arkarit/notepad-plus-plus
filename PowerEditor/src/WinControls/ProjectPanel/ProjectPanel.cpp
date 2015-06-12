@@ -823,6 +823,31 @@ generic_string ProjectPanel::buildFilename(const ProjectPanelData& data)
 
 }
 
+void ProjectPanel::itemVisibilityChanges(HTREEITEM hItem, bool visible)
+{
+	TVITEM tvItem;
+	tvItem.mask = TVIF_PARAM;
+	tvItem.hItem = hItem;
+	::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0, (LPARAM)&tvItem);
+	ProjectPanelData& projectPanelData = *(ProjectPanelData*)(tvItem.lParam);
+	bool expanded = (tvItem.state & TVIS_EXPANDED) != 0;
+	if (projectPanelData.isFolderMonitor())
+	{
+		if (visible && expanded)
+			projectPanelData.watchDir(true);
+		if (!visible || !expanded)
+			projectPanelData.watchDir(false);
+	}
+
+	for (HTREEITEM hChildItem = _treeView.getChildFrom(hItem);
+    hChildItem != NULL;
+    hChildItem = _treeView.getNextSibling(hChildItem))
+    {
+		itemVisibilityChanges(hChildItem, visible);
+	}
+
+}
+
 void ProjectPanel::expandOrCollapseMonitorFolder(bool expand, HTREEITEM hItem)
 {
 
@@ -837,7 +862,6 @@ void ProjectPanel::expandOrCollapseMonitorFolder(bool expand, HTREEITEM hItem)
 	if (expand)
 	{
 		removeDummies(hItem);
-//		_treeView.removeAllChildren(hItem);
 		if (projectPanelData.isFolderMonitor())
 			projectPanelData.watchDir(true);
 	}
@@ -845,8 +869,13 @@ void ProjectPanel::expandOrCollapseMonitorFolder(bool expand, HTREEITEM hItem)
 	{
 		if (projectPanelData.isFolderMonitor())
 			projectPanelData.watchDir(false);
-//		_treeView.removeAllChildren(hItem);
-//		_treeView.addItem( TEXT(""), hItem, INDEX_LEAF_MONITOR, new ProjectPanelFileData(_directoryWatcher, TEXT(""), TEXT(""), nodeType_dummy ));
+	}
+
+	for (HTREEITEM hChildItem = _treeView.getChildFrom(hItem);
+    hChildItem != NULL;
+    hChildItem = _treeView.getNextSibling(hChildItem))
+    {
+		itemVisibilityChanges(hChildItem, expand);
 	}
 
 	_directoryWatcher->update();

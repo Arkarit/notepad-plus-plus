@@ -189,6 +189,7 @@ protected:
 	virtual void onDirRemoved(const generic_string& name);
 	virtual void onFileAdded(const generic_string& name);
 	virtual void onFileRemoved(const generic_string& name);
+	virtual void onEndSynchronize(const Directory& other);
 
 };
 
@@ -197,6 +198,7 @@ protected:
 
 class ProjectPanel : public DockingDlgInterface, public TreeViewListener {
 	friend class ProjectPanelDirectory;
+	friend int CALLBACK compareFunc(LPARAM lhs, LPARAM rhs, LPARAM);
 	
 	generic_string _infotipStr;
 
@@ -304,6 +306,8 @@ protected:
 	void removeDummies(HTREEITEM hTreeItem);
 
 	void treeItemChanged(HTREEITEM hItem,TreeViewData* data);
+
+	static generic_string buildFolderName(const ProjectPanelData& data);
 
 	// TreeViewListener
 	virtual void onTreeItemAdded(bool afterClone, HTREEITEM hItem, TreeViewData* newData);

@@ -644,12 +644,24 @@ bool TreeView::restoreFoldingStateFrom(const TreeStateNode & treeState2Compare, 
 	return isOk;
 }
 
-void TreeView::sort(HTREEITEM hTreeItem)
+void TreeView::sort(HTREEITEM hTreeItem, bool recursive, PFNTVCOMPARE compareFunc, LPARAM userLparam)
 {
-	::SendMessage(_hSelf, TVM_SORTCHILDREN, TRUE, (LPARAM)hTreeItem);
+	if (compareFunc)
+	{
+		TVSORTCB sortCB;
+		sortCB.hParent = hTreeItem;
+		sortCB.lpfnCompare = compareFunc;
+		sortCB.lParam = userLparam;
+		TreeView_SortChildrenCB(_hSelf, &sortCB, FALSE);
+	}
+	else
+	{
+		::SendMessage(_hSelf, TVM_SORTCHILDREN, TRUE, (LPARAM)hTreeItem);
+	}
+	if (recursive)
+		for (HTREEITEM hItem = getChildFrom(hTreeItem); hItem != NULL; hItem = getNextSibling(hItem))
+			sort(hItem, true, compareFunc, userLparam);
 
-	for (HTREEITEM hItem = getChildFrom(hTreeItem); hItem != NULL; hItem = getNextSibling(hItem))
-		sort(hItem);
 }
 
 TreeViewData* TreeView::getData(HTREEITEM hItem)

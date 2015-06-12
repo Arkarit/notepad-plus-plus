@@ -158,7 +158,7 @@ public:
 	bool restoreFoldingStateFrom(const TreeStateNode & treeState2Compare, HTREEITEM treeviewNode);
 	bool retrieveFoldingStateTo(TreeStateNode & treeState2Construct, HTREEITEM treeviewNode);
 	bool searchLeafAndBuildTree(TreeView & tree2Build, const generic_string & text2Search, int index2Search);
-	void sort(HTREEITEM hTreeItem);
+	void sort(HTREEITEM hTreeItem, bool recursive = true, PFNTVCOMPARE compareFunc = NULL, LPARAM userLparam = 0);
 
 	bool itemValid(HTREEITEM item) {
 		return _validHandles.find(item) != _validHandles.end();
@@ -199,6 +199,7 @@ protected:
 	bool isDescendant(HTREEITEM targetItem, HTREEITEM draggedItem);
 	bool canDragOut(HTREEITEM targetItem);
 	bool canDropIn(HTREEITEM targetItem);
+
 };
 
 

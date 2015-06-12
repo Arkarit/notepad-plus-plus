@@ -841,6 +841,24 @@ void ProjectPanel::treeItemChanged(HTREEITEM hTreeItem, TreeViewData* data)
 
 }
 
+generic_string ProjectPanel::buildFolderName(const ProjectPanelData& data)
+{
+	generic_string result(data._filePath);
+
+	const size_t lastSlashIdx = result.find_last_of(TEXT("\\/"));
+	if (std::string::npos != lastSlashIdx)
+	{
+		result.erase(0, lastSlashIdx + 1);
+		if( result.empty() ) // drive
+		{
+			result = data._filePath;
+			result.erase(lastSlashIdx);
+		}
+	}
+	return result;
+
+}
+
 void ProjectPanel::expandOrCollapseMonitorFolder(bool expand, HTREEITEM hItem)
 {
 
@@ -1940,7 +1958,7 @@ ProjectPanelDirectory::ProjectPanelDirectory(ProjectPanel* projectPanel, HTREEIT
 void ProjectPanelDirectory::onBeginSynchronize(const Directory& other)
 {
 	other;
-	_wasInitiallyEmpty = empty();
+	_wasInitiallyEmpty = true;//empty();
 }
 
 void ProjectPanelDirectory::onDirAdded(const generic_string& name)
@@ -1963,5 +1981,34 @@ void ProjectPanelDirectory::onFileAdded(const generic_string& name)
 void ProjectPanelDirectory::onFileRemoved(const generic_string& name)
 {
 	_treeView->removeItem(_fileMap[name]);
+}
+
+int CALLBACK compareFunc(LPARAM lhs, LPARAM rhs, LPARAM)
+{
+	ProjectPanelData& dataL = *(ProjectPanelData*) lhs;
+	ProjectPanelData& dataR = *(ProjectPanelData*) rhs;
+	assert( (dataL.isFileMonitor() || dataL.isFolderMonitor()) && (dataR.isFileMonitor() || dataR.isFolderMonitor()));
+	if( !((dataL.isFileMonitor() || dataL.isFolderMonitor()) && (dataR.isFileMonitor() || dataR.isFolderMonitor())))
+		return 0;
+
+	// one of the items is a folder, the other is not - folders are always on top
+	if (dataL.isFolderMonitor() != dataR.isFolderMonitor())
+		return dataL.isFolderMonitor() ? -1 : 1;
+
+
+
+	// both items are of the same kind.
+	generic_string nameL = ProjectPanel::buildFolderName(dataL);
+	generic_string nameR = ProjectPanel::buildFolderName(dataR);
+	return lstrcmpi(nameL.c_str(),nameL.c_str());
+
+}
+
+void ProjectPanelDirectory::onEndSynchronize(const Directory& other)
+{
+	other;
+	_treeView->sort(_hItem, false, compareFunc);
+
+
 }
 

@@ -258,7 +258,7 @@ public:
 
 	TreeView& getTreeView() { return _treeView; }
 
-	//TODO: place this into a basic support lib
+	//TODO: place this into a basic string support lib
 	static generic_string& trim(generic_string & str);
 	static std::vector<generic_string> split(const generic_string & str, TCHAR delim);
 	static generic_string combine(const std::vector<generic_string>& vec, TCHAR delim);
@@ -306,7 +306,7 @@ protected:
 
 	void treeItemChanged(HTREEITEM hItem,TreeViewData* data);
 
-	static generic_string buildFilename(const ProjectPanelData& data);
+	static generic_string buildFilename(const generic_string& filePath);
 
 	void itemVisibilityChanges(HTREEITEM hItem, bool visible);
 

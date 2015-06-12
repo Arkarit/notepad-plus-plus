@@ -590,17 +590,7 @@ bool ProjectPanel::buildTreeFrom(TiXmlNode *projectRoot, HTREEITEM hParentItem)
 			else
 			{
 
-				newFolderLabel = fullPath;
-				const size_t lastSlashIdx = newFolderLabel.find_last_of(TEXT("\\/"));
-				if (std::string::npos != lastSlashIdx)
-				{
-					newFolderLabel.erase(0, lastSlashIdx + 1);
-					if( newFolderLabel.empty() ) // drive
-					{
-						newFolderLabel = fullPath;
-						newFolderLabel.erase(lastSlashIdx);
-					}
-				}
+				newFolderLabel = buildFilename(fullPath);
 			}
 
 			std::vector<generic_string> filters;
@@ -805,9 +795,9 @@ void ProjectPanel::treeItemChanged(HTREEITEM hTreeItem, TreeViewData* data)
 
 }
 
-generic_string ProjectPanel::buildFilename(const ProjectPanelData& data)
+generic_string ProjectPanel::buildFilename(const generic_string& filePath)
 {
-	generic_string result(data._filePath);
+	generic_string result(filePath);
 
 	const size_t lastSlashIdx = result.find_last_of(TEXT("\\/"));
 	if (std::string::npos != lastSlashIdx)
@@ -815,7 +805,7 @@ generic_string ProjectPanel::buildFilename(const ProjectPanelData& data)
 		result.erase(0, lastSlashIdx + 1);
 		if( result.empty() ) // drive
 		{
-			result = data._filePath;
+			result = filePath;
 			result.erase(lastSlashIdx);
 		}
 	}
@@ -1001,18 +991,7 @@ void ProjectPanel::notified(LPNMHDR notification)
 					else
 					{
 						projectPanelData._label.clear();
-						generic_string newFolderLabel(projectPanelData._filePath);
-
-						const size_t lastSlashIdx = newFolderLabel.find_last_of(TEXT("\\/"));
-						if (std::string::npos != lastSlashIdx)
-						{
-							newFolderLabel.erase(0, lastSlashIdx + 1);
-							if( newFolderLabel.empty() ) // drive
-							{
-								newFolderLabel = projectPanelData._filePath;
-								newFolderLabel.erase(lastSlashIdx);
-							}
-						}
+						generic_string newFolderLabel = buildFilename(projectPanelData._filePath);
 						wcsncpy(tvItem.pszText,newFolderLabel.c_str(), MAX_PATH-1);
 						::SendMessage(_treeView.getHSelf(), TVM_SETITEM, 0,(LPARAM)&tvItem);
 						break;
@@ -1243,13 +1222,17 @@ HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, 
 	if (getNodeType(hTreeItem) != nodeType_monitorFolderRoot && getNodeType(hTreeItem) != nodeType_monitorFolder)
 	{
 		TreeView_Expand(_treeView.getHSelf(), hTreeItem, TVE_EXPAND);
-		TreeView_EditLabel(_treeView.getHSelf(), addedItem);
 	}
 
 	if (getNodeType(hTreeItem) == nodeType_folder)
 		_treeView.setItemImage(hTreeItem, INDEX_OPEN_NODE, INDEX_OPEN_NODE);
 	else if (getNodeType(hTreeItem) == nodeType_monitorFolderRoot)
 		_treeView.setItemImage(hTreeItem, INDEX_OPEN_MONITOR, INDEX_OPEN_MONITOR);
+
+	if (getNodeType(addedItem) != nodeType_monitorFolder)
+	{
+		TreeView_EditLabel(_treeView.getHSelf(), addedItem);
+	}
 
 	return addedItem;
 }
@@ -1641,17 +1624,7 @@ void ProjectPanel::addFilesFromDirectory(HTREEITEM hTreeItem, bool monitored)
 	{
 		if (monitored)
 		{
-			generic_string newFolderLabel(dirPath);
-			const size_t lastSlashIdx = newFolderLabel.find_last_of(TEXT("\\/"));
-			if (std::string::npos != lastSlashIdx)
-			{
-				newFolderLabel.erase(0, lastSlashIdx + 1);
-				if( newFolderLabel.empty() ) // drive added
-				{
-					newFolderLabel = dirPath;
-					newFolderLabel.erase(lastSlashIdx);
-				}
-			}
+			generic_string newFolderLabel = buildFilename(dirPath);
 			hTreeItem = addFolder(hTreeItem, newFolderLabel.c_str(), true, true, dirPath.c_str());
 		}
 
@@ -1982,14 +1955,12 @@ int CALLBACK compareFunc(LPARAM lhs, LPARAM rhs, LPARAM)
 		return dataL.isFolderMonitor() ? -1 : 1;
 
 	// both items are of the same kind.
-	return lstrcmpi( dataL._name.c_str(),dataR._name.c_str());
+	return lstrcmpi(dataL._name.c_str(),dataR._name.c_str());
 }
 
 void ProjectPanelDirectory::onEndSynchronize(const Directory& other)
 {
 	other;
 	_treeView->sort(_hItem, false, compareFunc);
-
-
 }
 

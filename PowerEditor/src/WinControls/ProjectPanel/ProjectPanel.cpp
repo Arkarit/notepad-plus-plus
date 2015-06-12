@@ -1982,9 +1982,7 @@ int CALLBACK compareFunc(LPARAM lhs, LPARAM rhs, LPARAM)
 		return dataL.isFolderMonitor() ? -1 : 1;
 
 	// both items are of the same kind.
-	generic_string nameL = ProjectPanel::buildFilename(dataL);
-	generic_string nameR = ProjectPanel::buildFilename(dataR);
-	return lstrcmpi(nameL.c_str(),nameL.c_str());
+	return lstrcmpi( dataL._name.c_str(),dataR._name.c_str());
 }
 
 void ProjectPanelDirectory::onEndSynchronize(const Directory& other)

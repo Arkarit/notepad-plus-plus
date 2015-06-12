@@ -185,8 +185,6 @@ protected:
 	void dupTree(HTREEITEM hTree2Dup, HTREEITEM hParentItem);
 	bool searchLeafRecusivelyAndBuildTree(HTREEITEM tree2Build, const generic_string & text2Search, int index2Search, HTREEITEM tree2Search);
 
-	void synchronizeTree(HTREEITEM parent);
-
 	// Drag and Drop operations
 	HTREEITEM _draggedItem;
 	HIMAGELIST _draggedImageList;

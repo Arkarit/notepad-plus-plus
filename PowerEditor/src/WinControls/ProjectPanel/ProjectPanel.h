@@ -74,6 +74,8 @@ enum NodeType {
 
 class TiXmlNode;
 
+// ProjectPanelData is stored in the LPARAM of the tree nodes.
+// The data it contains depends on the node type.
 class ProjectPanelData : public TreeViewData {
 public:
 	generic_string _name;

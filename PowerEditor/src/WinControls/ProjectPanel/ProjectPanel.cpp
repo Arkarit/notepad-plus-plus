@@ -249,7 +249,7 @@ void ProjectPanel::initMenus()
 	generic_string edit_addfolder = pNativeSpeaker->getProjectPanelLangMenuStr("ProjectMenu", IDM_PROJECT_NEWFOLDER, PM_EDITNEWFOLDER);
 	generic_string edit_addfiles = pNativeSpeaker->getProjectPanelLangMenuStr("ProjectMenu", IDM_PROJECT_ADDFILES, PM_EDITADDFILES);
 	generic_string edit_addfilesRecursive = pNativeSpeaker->getProjectPanelLangMenuStr("ProjectMenu", IDM_PROJECT_ADDFILESRECUSIVELY, PM_EDITADDFILESRECUSIVELY);
-	generic_string edit_addfolderMonitor = pNativeSpeaker->getProjectPanelLangMenuStr("ProjectMenu", IDM_PROJECT_EDITADDFOLDERMONITOR, PM_EDITADDFOLDERMONITOR);
+	generic_string edit_addDirectory = pNativeSpeaker->getProjectPanelLangMenuStr("ProjectMenu", IDM_PROJECT_EDITADDDIRECTORY, PM_EDITADDDIRECTORY);
 	generic_string edit_remove = pNativeSpeaker->getProjectPanelLangMenuStr("ProjectMenu", IDM_PROJECT_DELETEFOLDER, PM_EDITREMOVE);
 	generic_string edit_setfilter = pNativeSpeaker->getProjectPanelLangMenuStr("ProjectMenu", IDM_PROJECT_SETFILTERS, PM_SETFILTERS);
 
@@ -261,7 +261,7 @@ void ProjectPanel::initMenus()
 	::InsertMenu(_hProjectMenu, 0, MF_BYCOMMAND, IDM_PROJECT_NEWFOLDER, edit_addfolder.c_str());
 	::InsertMenu(_hProjectMenu, 0, MF_BYCOMMAND, IDM_PROJECT_ADDFILES, edit_addfiles.c_str());
 	::InsertMenu(_hProjectMenu, 0, MF_BYCOMMAND, IDM_PROJECT_ADDFILESRECUSIVELY, edit_addfilesRecursive.c_str());
-	::InsertMenu(_hProjectMenu, 0, MF_BYCOMMAND, IDM_PROJECT_EDITADDFOLDERMONITOR, edit_addfolderMonitor.c_str());
+	::InsertMenu(_hProjectMenu, 0, MF_BYCOMMAND, IDM_PROJECT_EDITADDDIRECTORY, edit_addDirectory.c_str());
 	::InsertMenu(_hProjectMenu, 0, MF_BYCOMMAND, IDM_PROJECT_DELETEFOLDER, edit_remove.c_str());
 
 	edit_moveup = pNativeSpeaker->getProjectPanelLangMenuStr("FolderMenu", IDM_PROJECT_MOVEUP, PM_MOVEUPENTRY);
@@ -270,7 +270,7 @@ void ProjectPanel::initMenus()
 	edit_addfolder = pNativeSpeaker->getProjectPanelLangMenuStr("FolderMenu", IDM_PROJECT_NEWFOLDER, PM_EDITNEWFOLDER);
 	edit_addfiles = pNativeSpeaker->getProjectPanelLangMenuStr("FolderMenu", IDM_PROJECT_ADDFILES, PM_EDITADDFILES);
 	edit_addfilesRecursive = pNativeSpeaker->getProjectPanelLangMenuStr("FolderMenu", IDM_PROJECT_ADDFILESRECUSIVELY, PM_EDITADDFILESRECUSIVELY);
-	edit_addfolderMonitor = pNativeSpeaker->getProjectPanelLangMenuStr("FolderMenu", IDM_PROJECT_EDITADDFOLDERMONITOR, PM_EDITADDFOLDERMONITOR);
+	edit_addDirectory = pNativeSpeaker->getProjectPanelLangMenuStr("FolderMenu", IDM_PROJECT_EDITADDDIRECTORY, PM_EDITADDDIRECTORY);
 	edit_remove = pNativeSpeaker->getProjectPanelLangMenuStr("FolderMenu", IDM_PROJECT_DELETEFOLDER, PM_EDITREMOVE);
 
 	_hFolderMenu = ::CreatePopupMenu();
@@ -281,7 +281,7 @@ void ProjectPanel::initMenus()
 	::InsertMenu(_hFolderMenu, 0, MF_BYCOMMAND, IDM_PROJECT_NEWFOLDER,     edit_addfolder.c_str());
 	::InsertMenu(_hFolderMenu, 0, MF_BYCOMMAND, IDM_PROJECT_ADDFILES,      edit_addfiles.c_str());
 	::InsertMenu(_hFolderMenu, 0, MF_BYCOMMAND, IDM_PROJECT_ADDFILESRECUSIVELY, edit_addfilesRecursive.c_str());
-	::InsertMenu(_hFolderMenu, 0, MF_BYCOMMAND, IDM_PROJECT_EDITADDFOLDERMONITOR, edit_addfolderMonitor.c_str());
+	::InsertMenu(_hFolderMenu, 0, MF_BYCOMMAND, IDM_PROJECT_EDITADDDIRECTORY, edit_addDirectory.c_str());
 	::InsertMenu(_hFolderMenu, 0, MF_BYCOMMAND, IDM_PROJECT_DELETEFOLDER, edit_remove.c_str());
 
 	edit_moveup = pNativeSpeaker->getProjectPanelLangMenuStr("FileMenu", IDM_PROJECT_MOVEUP, PM_MOVEUPENTRY);
@@ -298,12 +298,12 @@ void ProjectPanel::initMenus()
 	::InsertMenu(_hFileMenu, 0, MF_BYCOMMAND, IDM_PROJECT_DELETEFILE, edit_remove.c_str());
 	::InsertMenu(_hFileMenu, 0, MF_BYCOMMAND, IDM_PROJECT_MODIFYFILEPATH, edit_modifyfile.c_str());
 
-	_hFolderMonitorMenu = ::CreatePopupMenu();
-	::InsertMenu(_hFolderMonitorMenu, 0, MF_BYCOMMAND, IDM_PROJECT_MOVEUP, edit_moveup.c_str());
-	::InsertMenu(_hFolderMonitorMenu, 0, MF_BYCOMMAND, IDM_PROJECT_MOVEDOWN, edit_movedown.c_str());
-	::InsertMenu(_hFolderMonitorMenu, 0, MF_BYCOMMAND, IDM_PROJECT_DELETEFILE, edit_remove.c_str());
-	::InsertMenu(_hFolderMonitorMenu, 0, MF_BYCOMMAND, IDM_PROJECT_SETFILTERS, edit_setfilter.c_str());
-	::InsertMenu(_hFolderMonitorMenu, 0, MF_BYCOMMAND, IDM_PROJECT_RENAME, edit_rename.c_str());
+	_hDirectoryMenu = ::CreatePopupMenu();
+	::InsertMenu(_hDirectoryMenu, 0, MF_BYCOMMAND, IDM_PROJECT_MOVEUP, edit_moveup.c_str());
+	::InsertMenu(_hDirectoryMenu, 0, MF_BYCOMMAND, IDM_PROJECT_MOVEDOWN, edit_movedown.c_str());
+	::InsertMenu(_hDirectoryMenu, 0, MF_BYCOMMAND, IDM_PROJECT_DELETEFILE, edit_remove.c_str());
+	::InsertMenu(_hDirectoryMenu, 0, MF_BYCOMMAND, IDM_PROJECT_SETFILTERS, edit_setfilter.c_str());
+	::InsertMenu(_hDirectoryMenu, 0, MF_BYCOMMAND, IDM_PROJECT_RENAME, edit_rename.c_str());
 
 }
 
@@ -426,7 +426,7 @@ void ProjectPanel::destroyMenus()
 	::DestroyMenu(_hProjectMenu);
 	::DestroyMenu(_hFolderMenu);
 	::DestroyMenu(_hFileMenu);
-	::DestroyMenu(_hFolderMonitorMenu);
+	::DestroyMenu(_hDirectoryMenu);
 }
 
 bool ProjectPanel::openWorkSpace(const TCHAR *projectFileName)
@@ -548,10 +548,10 @@ void ProjectPanel::buildProjectXml(TiXmlNode *node, HTREEITEM hItem, const TCHAR
 			TiXmlNode *fileLeaf = node->InsertEndChild(TiXmlElement(TEXT("File")));
 			fileLeaf->ToElement()->SetAttribute(TEXT("name"), newFn.c_str());
 		}
-		else if (projectPanelData.isFolderMonitorRoot())
+		else if (projectPanelData.isBaseDirectory())
 		{
 			generic_string newFn = getRelativePath(projectPanelData._filePath, fn2write);
-			TiXmlNode *fileLeaf = node->InsertEndChild(TiXmlElement(TEXT("FolderMonitor")));
+			TiXmlNode *fileLeaf = node->InsertEndChild(TiXmlElement(TEXT("Directory")));
 			fileLeaf->ToElement()->SetAttribute(TEXT("name"), newFn.c_str());
 			generic_string filters = combine(projectPanelData._filters, TCHAR(';'));
 			if (!filters.empty())
@@ -601,7 +601,7 @@ bool ProjectPanel::buildTreeFrom(TiXmlNode *projectRoot, HTREEITEM hParentItem)
 					return false;
 			}
 		}
-		if (lstrcmp(TEXT("FolderMonitor"), v) == 0)
+		if (lstrcmp(TEXT("Directory"), v) == 0)
 		{
 
 			const TCHAR *strLabel = (childNode->ToElement())->Attribute(TEXT("label"));
@@ -642,7 +642,7 @@ bool ProjectPanel::buildTreeFrom(TiXmlNode *projectRoot, HTREEITEM hParentItem)
 	return true;
 }
 
-void ProjectPanel::rebuildFolderMonitorTree(HTREEITEM hParentItem, const ProjectPanelData& projectPanelData)
+void ProjectPanel::rebuildDirectoryTree(HTREEITEM hParentItem, const ProjectPanelData& projectPanelData)
 {
 	TVITEM tvItem;
 	tvItem.mask = TVIF_PARAM;
@@ -650,7 +650,7 @@ void ProjectPanel::rebuildFolderMonitorTree(HTREEITEM hParentItem, const Project
 	::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0, (LPARAM)&tvItem);
 
 	int iImg;
-	if (projectPanelData._nodeType == nodeType_monitorFolderRoot)
+	if (projectPanelData._nodeType == nodeType_baseDir)
 	{
 		if (!::PathFileExists(projectPanelData._filePath.c_str()))
 		{
@@ -662,7 +662,7 @@ void ProjectPanel::rebuildFolderMonitorTree(HTREEITEM hParentItem, const Project
 			iImg = (tvItem.state & TVIS_EXPANDED) ? INDEX_OPEN_BASEDIR : INDEX_CLOSED_BASEDIR;
 		}
 	}
-	else if (projectPanelData._nodeType == nodeType_monitorFolder)
+	else if (projectPanelData._nodeType == nodeType_dir)
 	{
 		if (!::PathFileExists(projectPanelData._filePath.c_str()))
 		{
@@ -711,14 +711,14 @@ void ProjectPanel::openSelectFile()
 	NodeType nType = getNodeType(tvItem.hItem);
 	ProjectPanelData& projectPanelData = *(ProjectPanelData*)tvItem.lParam;
 
-	if ((nType == nodeType_file || nType == nodeType_monitorFile) && (projectPanelData.isFile() || projectPanelData.isFileMonitor()))
+	if ((nType == nodeType_file || nType == nodeType_dirFile) && (projectPanelData.isFile() || projectPanelData.isDirectoryFile()))
 	{
 		tvItem.mask = TVIF_IMAGE | TVIF_SELECTEDIMAGE;
 		if (::PathFileExists(projectPanelData._filePath.c_str()))
 		{
 			::SendMessage(_hParent, NPPM_DOOPEN, 0, (LPARAM)(projectPanelData._filePath.c_str()));
-			tvItem.iImage = projectPanelData.isFileMonitor() ? INDEX_LEAF_DIRFILE : INDEX_LEAF;
-			tvItem.iSelectedImage = projectPanelData.isFileMonitor() ? INDEX_LEAF_DIRFILE : INDEX_LEAF;
+			tvItem.iImage = projectPanelData.isDirectoryFile() ? INDEX_LEAF_DIRFILE : INDEX_LEAF;
+			tvItem.iSelectedImage = projectPanelData.isDirectoryFile() ? INDEX_LEAF_DIRFILE : INDEX_LEAF;
 		}
 		else
 		{
@@ -740,9 +740,9 @@ HMENU ProjectPanel::getContextMenu(HTREEITEM hTreeItem) const
 		hMenu = _hProjectMenu;
 	else if (nodeType == nodeType_folder)
 		hMenu = _hFolderMenu;
-	else if (nodeType == nodeType_monitorFolderRoot)
-		hMenu = _hFolderMonitorMenu;
-	else if (nodeType == nodeType_monitorFolder || nodeType == nodeType_monitorFile)
+	else if (nodeType == nodeType_baseDir)
+		hMenu = _hDirectoryMenu;
+	else if (nodeType == nodeType_dir || nodeType == nodeType_dirFile)
 		hMenu = NULL; // currently no context menu for monitored files
 	else //nodeType_file
 		hMenu = _hFileMenu;
@@ -756,7 +756,7 @@ void ProjectPanel::onTreeItemAdded(bool afterClone, HTREEITEM hItem, TreeViewDat
 
 	ProjectPanelData* tvInfo = getData(newData);
 	tvInfo->setItem( hItem );
-	if (tvInfo->isFolderMonitorRoot())
+	if (tvInfo->isBaseDirectory())
 		tvInfo->watchDir(true);
 }
 
@@ -808,12 +808,12 @@ void ProjectPanel::treeItemChanged(HTREEITEM hTreeItem, TreeViewData* data)
 		case nodeType_file:
 			iImg = ::PathFileExists(projectPanelData._filePath.c_str()) ? INDEX_LEAF : INDEX_LEAF_INVALID;
 			break;
-		case nodeType_monitorFile:
+		case nodeType_dirFile:
 			iImg = INDEX_LEAF_DIRFILE;
 			break;
-		case nodeType_monitorFolderRoot:
-		case nodeType_monitorFolder:
-			rebuildFolderMonitorTree(hTreeItem, projectPanelData);
+		case nodeType_baseDir:
+		case nodeType_dir:
+			rebuildDirectoryTree(hTreeItem, projectPanelData);
 			return;
 		default:
 			return;
@@ -848,7 +848,7 @@ void ProjectPanel::itemVisibilityChanges(HTREEITEM hItem, bool visible)
 	::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0, (LPARAM)&tvItem);
 	ProjectPanelData& projectPanelData = *(ProjectPanelData*)(tvItem.lParam);
 	bool expanded = (tvItem.state & TVIS_EXPANDED) != 0;
-	if (projectPanelData.isFolderMonitor())
+	if (projectPanelData.isDirectory())
 	{
 		if (visible && expanded)
 			projectPanelData.watchDir(true);
@@ -865,7 +865,7 @@ void ProjectPanel::itemVisibilityChanges(HTREEITEM hItem, bool visible)
 
 }
 
-void ProjectPanel::expandOrCollapseMonitorFolder(bool expand, HTREEITEM hItem)
+void ProjectPanel::expandOrCollapseDirectory(bool expand, HTREEITEM hItem)
 {
 
 	TVITEM tvItem;
@@ -873,18 +873,18 @@ void ProjectPanel::expandOrCollapseMonitorFolder(bool expand, HTREEITEM hItem)
 	tvItem.hItem = hItem;
 	::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0, (LPARAM)&tvItem);
 	ProjectPanelData& projectPanelData = *(ProjectPanelData*)(tvItem.lParam);
-	if (!(projectPanelData.isFolderMonitor() || projectPanelData.isFolderMonitorRoot()) )
+	if (!(projectPanelData.isDirectory() || projectPanelData.isBaseDirectory()) )
 		return;
 
 	if (expand)
 	{
 		removeDummies(hItem);
-		if (projectPanelData.isFolderMonitor())
+		if (projectPanelData.isDirectory())
 			projectPanelData.watchDir(true);
 	}
 	else
 	{
-		if (projectPanelData.isFolderMonitor())
+		if (projectPanelData.isDirectory())
 			projectPanelData.watchDir(false);
 	}
 
@@ -907,9 +907,9 @@ bool ProjectPanel::setFilters(const std::vector<generic_string>& filters, HTREEI
 	::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0, (LPARAM)&tvItem);
 	ProjectPanelData& projectPanelData = *(ProjectPanelData*)(tvItem.lParam);
 
-	if (projectPanelData.isFolderMonitor() || projectPanelData.isFolderMonitorRoot())
+	if (projectPanelData.isDirectory() || projectPanelData.isBaseDirectory())
 	{
-		if (projectPanelData.isFolderMonitorRoot() && projectPanelData._filters == filters)
+		if (projectPanelData.isBaseDirectory() && projectPanelData._filters == filters)
 			return false;
 
 		projectPanelData._filters = filters;
@@ -967,9 +967,9 @@ void ProjectPanel::notified(LPNMHDR notification)
 			{
 				LPNMTVDISPINFO tvnotif = (LPNMTVDISPINFO)notification;
 				NodeType nt = getNodeType(tvnotif->item.hItem);
-				if (!tvnotif->item.pszText && nt != nodeType_monitorFolderRoot)
+				if (!tvnotif->item.pszText && nt != nodeType_baseDir)
 					return;
-				if (nt == nodeType_root || nt == nodeType_monitorFile || nt == nodeType_monitorFolder)
+				if (nt == nodeType_root || nt == nodeType_dirFile || nt == nodeType_dir)
 					return;
 
 				ProjectPanelData& projectPanelData = *(ProjectPanelData*)tvnotif->item.lParam;
@@ -994,8 +994,8 @@ void ProjectPanel::notified(LPNMHDR notification)
 					tvItem.mask = TVIF_IMAGE | TVIF_SELECTEDIMAGE;
 					if (::PathFileExists(filePath.c_str()))
 					{
-						tvItem.iImage = projectPanelData.isFileMonitor() ? INDEX_LEAF_DIRFILE : INDEX_LEAF;
-						tvItem.iSelectedImage = projectPanelData.isFileMonitor() ? INDEX_LEAF_DIRFILE : INDEX_LEAF;
+						tvItem.iImage = projectPanelData.isDirectoryFile() ? INDEX_LEAF_DIRFILE : INDEX_LEAF;
+						tvItem.iSelectedImage = projectPanelData.isDirectoryFile() ? INDEX_LEAF_DIRFILE : INDEX_LEAF;
 					}
 					else
 					{
@@ -1004,11 +1004,11 @@ void ProjectPanel::notified(LPNMHDR notification)
 					}
 					TreeView_SetItem(_treeView.getHSelf(), &tvItem);
 				}
-				else if (nt == nodeType_monitorFolderRoot)
+				else if (nt == nodeType_baseDir)
 				{
 					ProjectPanelData& projectPanelData = *(ProjectPanelData*)(tvnotif->item.lParam);
 
-					// a text was added for monitor folder root - give it its own name
+					// a text was added for base directory - give it its own name
 					if (tvnotif->item.pszText && *tvnotif->item.pszText)
 					{
 						projectPanelData._label = tvnotif->item.pszText;
@@ -1068,7 +1068,7 @@ void ProjectPanel::notified(LPNMHDR notification)
 				{
 					HTREEITEM hItem = _treeView.getSelection();
 					NodeType nType = getNodeType(hItem);
-					if (nType == nodeType_project || nType == nodeType_folder || nType == nodeType_monitorFolderRoot)
+					if (nType == nodeType_project || nType == nodeType_folder || nType == nodeType_baseDir)
 						popupMenuCmd(IDM_PROJECT_DELETEFOLDER);
 					else if (nType == nodeType_file)
 						popupMenuCmd(IDM_PROJECT_DELETEFILE);
@@ -1119,7 +1119,7 @@ void ProjectPanel::notified(LPNMHDR notification)
 						_treeView.setItemImage(nmtv->itemNew.hItem, INDEX_OPEN_NODE, INDEX_OPEN_NODE);
 					}
 				}
-				else if (getNodeType(nmtv->itemNew.hItem) == nodeType_monitorFolder)
+				else if (getNodeType(nmtv->itemNew.hItem) == nodeType_dir)
 				{
 					if (nmtv->action == TVE_COLLAPSE)
 					{
@@ -1130,7 +1130,7 @@ void ProjectPanel::notified(LPNMHDR notification)
 						_treeView.setItemImage(nmtv->itemNew.hItem, INDEX_OPEN_DIR, INDEX_OPEN_DIR);
 					}
 				}
-				else if (getNodeType(nmtv->itemNew.hItem) == nodeType_monitorFolderRoot)
+				else if (getNodeType(nmtv->itemNew.hItem) == nodeType_baseDir)
 				{
 					if (nmtv->action == TVE_COLLAPSE)
 					{
@@ -1142,7 +1142,7 @@ void ProjectPanel::notified(LPNMHDR notification)
 					}
 				}
 
-				expandOrCollapseMonitorFolder(nmtv->action == TVE_EXPAND, nmtv->itemNew.hItem);
+				expandOrCollapseDirectory(nmtv->action == TVE_EXPAND, nmtv->itemNew.hItem);
 
 			}
 			break;
@@ -1220,9 +1220,9 @@ const std::vector<generic_string>* ProjectPanel::getFilters(HTREEITEM hItem)
 	::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0, (LPARAM)&tvItem);
 	ProjectPanelData& projectPanelData = *(ProjectPanelData*)(tvItem.lParam);
 
-	if (projectPanelData.isFolderMonitorRoot())
+	if (projectPanelData.isBaseDirectory())
 		return &projectPanelData._filters;
-	else if (projectPanelData.isFolderMonitor())
+	else if (projectPanelData.isDirectory())
 		return getFilters(_treeView.getParent(hItem));
 	else return NULL;
 }
@@ -1236,12 +1236,12 @@ HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, 
 	{
 		if (root)
 		{
-			nodeType = nodeType_monitorFolderRoot;
+			nodeType = nodeType_baseDir;
 			iconindex = ::PathFileExists(monitorPath) ? INDEX_CLOSED_BASEDIR : INDEX_OFFLINE_BASEDIR;
 		}
 		else
 		{
-			nodeType = nodeType_monitorFolder;
+			nodeType = nodeType_dir;
 			iconindex = INDEX_CLOSED_DIR;
 		}
 	}
@@ -1257,17 +1257,17 @@ HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, 
 	if (monitored)
 		_treeView.addItem( TEXT(""), addedItem, INDEX_LEAF_DIRFILE, new ProjectPanelData(_directoryWatcher,TEXT(""), TEXT(""), nodeType_dummy ));
 
-	if (getNodeType(hTreeItem) != nodeType_monitorFolderRoot && getNodeType(hTreeItem) != nodeType_monitorFolder)
+	if (getNodeType(hTreeItem) != nodeType_baseDir && getNodeType(hTreeItem) != nodeType_dir)
 	{
 		TreeView_Expand(_treeView.getHSelf(), hTreeItem, TVE_EXPAND);
 	}
 
 	if (getNodeType(hTreeItem) == nodeType_folder)
 		_treeView.setItemImage(hTreeItem, INDEX_OPEN_NODE, INDEX_OPEN_NODE);
-	else if (getNodeType(hTreeItem) == nodeType_monitorFolderRoot)
+	else if (getNodeType(hTreeItem) == nodeType_baseDir)
 		_treeView.setItemImage(hTreeItem, INDEX_OPEN_BASEDIR, INDEX_OPEN_BASEDIR);
 
-	if (getNodeType(addedItem) != nodeType_monitorFolder && getNodeType(addedItem) != nodeType_monitorFolderRoot)
+	if (getNodeType(addedItem) != nodeType_dir && getNodeType(addedItem) != nodeType_baseDir)
 	{
 		TreeView_EditLabel(_treeView.getHSelf(), addedItem);
 	}
@@ -1387,10 +1387,10 @@ void ProjectPanel::popupMenuCmd(int cmdID)
 		}
 		break;
 
-		case IDM_PROJECT_EDITADDFOLDERMONITOR:
+		case IDM_PROJECT_EDITADDDIRECTORY:
 		{
 			addFilesFromDirectory(hTreeItem, true);
-			if (getNodeType(hTreeItem) == nodeType_monitorFolderRoot)
+			if (getNodeType(hTreeItem) == nodeType_baseDir)
 				_treeView.setItemImage(hTreeItem, INDEX_OPEN_BASEDIR, INDEX_OPEN_BASEDIR);
 		}
 		break;
@@ -1637,7 +1637,7 @@ void ProjectPanel::recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTre
 		if (folderPath[lstrlen(folderPath)-1] != '\\')
 			pathFile += TEXT("\\");
 		pathFile += files[i];
-		_treeView.addItem(files[i].c_str(), hTreeItem, monitored ? INDEX_LEAF_DIRFILE : INDEX_LEAF, new ProjectPanelData(_directoryWatcher, files[i].c_str(), pathFile.c_str(), monitored ? nodeType_monitorFile : nodeType_file ));
+		_treeView.addItem(files[i].c_str(), hTreeItem, monitored ? INDEX_LEAF_DIRFILE : INDEX_LEAF, new ProjectPanelData(_directoryWatcher, files[i].c_str(), pathFile.c_str(), monitored ? nodeType_dirFile : nodeType_file ));
 	}
 
 	::FindClose(hFile);
@@ -1919,8 +1919,8 @@ ProjectPanelDirectory::ProjectPanelDirectory(ProjectPanel* projectPanel, HTREEIT
 	tvItem.hItem = hItem;
 	SendMessage(_treeView->getHSelf(), TVM_GETITEM, 0,(LPARAM)&tvItem);
 	ProjectPanelData& projectPanelData = *(ProjectPanelData*) tvItem.lParam;
-	assert (projectPanelData.isFolderMonitorRoot() || projectPanelData.isFolderMonitor());
-	if (!projectPanelData.isFolderMonitorRoot() && !projectPanelData.isFolderMonitor())
+	assert (projectPanelData.isBaseDirectory() || projectPanelData.isDirectory());
+	if (!projectPanelData.isBaseDirectory() && !projectPanelData.isDirectory())
 		return;
 	_exists = PathFileExists(projectPanelData._filePath.c_str()) != 0;
 	if (_exists)
@@ -1939,12 +1939,12 @@ ProjectPanelDirectory::ProjectPanelDirectory(ProjectPanel* projectPanel, HTREEIT
 		if (std::string::npos != lastSlashIdx)
 			filename.erase(0, lastSlashIdx + 1);
 
-		if (projectPanelData.isFileMonitor())
+		if (projectPanelData.isDirectoryFile())
 		{
 			_files.insert(filename);
 			_fileMap[filename] = hItemNode;
 		}
-		else if (projectPanelData.isFolderMonitorRoot() || projectPanelData.isFolderMonitor())
+		else if (projectPanelData.isBaseDirectory() || projectPanelData.isDirectory())
 		{
 			_dirs.insert(filename);
 			_dirMap[filename] = hItemNode;
@@ -1971,7 +1971,7 @@ void ProjectPanelDirectory::onDirRemoved(const generic_string& name)
 
 void ProjectPanelDirectory::onFileAdded(const generic_string& name)
 {
-	_treeView->addItem(name.c_str(), _hItem, INDEX_LEAF_DIRFILE, new ProjectPanelData(_projectPanel->_directoryWatcher, name.c_str(), (_path + TEXT("\\") + name).c_str(), nodeType_monitorFile ));
+	_treeView->addItem(name.c_str(), _hItem, INDEX_LEAF_DIRFILE, new ProjectPanelData(_projectPanel->_directoryWatcher, name.c_str(), (_path + TEXT("\\") + name).c_str(), nodeType_dirFile ));
 
 }
 
@@ -1984,13 +1984,13 @@ int CALLBACK compareFunc(LPARAM lhs, LPARAM rhs, LPARAM)
 {
 	ProjectPanelData& dataL = *(ProjectPanelData*) lhs;
 	ProjectPanelData& dataR = *(ProjectPanelData*) rhs;
-	assert( (dataL.isFileMonitor() || dataL.isFolderMonitor()) && (dataR.isFileMonitor() || dataR.isFolderMonitor()));
-	if( !((dataL.isFileMonitor() || dataL.isFolderMonitor()) && (dataR.isFileMonitor() || dataR.isFolderMonitor())))
+	assert( (dataL.isDirectoryFile() || dataL.isDirectory()) && (dataR.isDirectoryFile() || dataR.isDirectory()));
+	if( !((dataL.isDirectoryFile() || dataL.isDirectory()) && (dataR.isDirectoryFile() || dataR.isDirectory())))
 		return 0;
 
 	// one of the items is a folder, the other is not - folders are always on top
-	if (dataL.isFolderMonitor() != dataR.isFolderMonitor())
-		return dataL.isFolderMonitor() ? -1 : 1;
+	if (dataL.isDirectory() != dataR.isDirectory())
+		return dataL.isDirectory() ? -1 : 1;
 
 	// both items are of the same kind.
 	return lstrcmpi(dataL._name.c_str(),dataR._name.c_str());

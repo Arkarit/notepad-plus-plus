@@ -57,7 +57,7 @@
 #define PM_EDITNEWFOLDER           TEXT("Add Folder")
 #define PM_EDITADDFILES            TEXT("Add Files...")
 #define PM_EDITADDFILESRECUSIVELY  TEXT("Add Files from Directory...")
-#define PM_EDITADDFOLDERMONITOR    TEXT("Add Folder Monitor...")
+#define PM_EDITADDDIRECTORY	       TEXT("Add Directory...")
 #define PM_EDITREMOVE              TEXT("Remove\tDEL")
 #define PM_EDITMODIFYFILE          TEXT("Modify File Path")
 #define PM_SETFILTERS              TEXT("Set Filters...")
@@ -69,7 +69,7 @@
 #define PM_MOVEDOWNENTRY           TEXT("Move Down\tCtrl+Down")
 
 enum NodeType {
-	nodeType_dummy = -1, nodeType_root = 0, nodeType_project = 1, nodeType_folder = 2, nodeType_file = 3, nodeType_monitorFolderRoot = 4, nodeType_monitorFolder = 5, nodeType_monitorFile = 6,
+	nodeType_dummy = -1, nodeType_root = 0, nodeType_project = 1, nodeType_folder = 2, nodeType_file = 3, nodeType_baseDir = 4, nodeType_dir = 5, nodeType_dirFile = 6,
 };
 
 class TiXmlNode;
@@ -112,7 +112,7 @@ public:
 
 	bool watchDir(bool watch) {
 		if (_hItem && _watch && !watch)
-			if (_nodeType == nodeType_monitorFolderRoot || _nodeType == nodeType_monitorFolder)
+			if (_nodeType == nodeType_baseDir || _nodeType == nodeType_dir)
 				_directoryWatcher->removeDir(_hItem);
 
 		_watch = watch;
@@ -120,16 +120,16 @@ public:
 			return true;
 
 		if (_hItem)
-			if (watch && (_nodeType == nodeType_monitorFolderRoot || _nodeType == nodeType_monitorFolder))
+			if (watch && (_nodeType == nodeType_baseDir || _nodeType == nodeType_dir))
 				_directoryWatcher->addOrChangeDir(_filePath,_hItem,_filters);
 			else
 				return true;
 
-		return !(_nodeType == nodeType_monitorFolderRoot || _nodeType == nodeType_monitorFolder);
+		return !(_nodeType == nodeType_baseDir || _nodeType == nodeType_dir);
 	}
 
 	bool isWatching() const {
-		return (_nodeType == nodeType_monitorFolderRoot || _nodeType == nodeType_monitorFolder) && _watch;
+		return (_nodeType == nodeType_baseDir || _nodeType == nodeType_dir) && _watch;
 	}
 
 	bool isRoot() const {
@@ -144,14 +144,14 @@ public:
 	bool isFolder() const {
 		return _nodeType == nodeType_folder;
 	}
-	bool isFileMonitor() const {
-		return _nodeType == nodeType_monitorFile;
+	bool isDirectoryFile() const {
+		return _nodeType == nodeType_dirFile;
 	}
-	bool isFolderMonitor() const {
-		return _nodeType == nodeType_monitorFolder;
+	bool isDirectory() const {
+		return _nodeType == nodeType_dir;
 	}
-	bool isFolderMonitorRoot() const {
-		return _nodeType == nodeType_monitorFolderRoot;
+	bool isBaseDirectory() const {
+		return _nodeType == nodeType_baseDir;
 	}
 	bool isDummy() const {
 		return _nodeType == nodeType_dummy;
@@ -210,7 +210,7 @@ public:
 		, _hProjectMenu(NULL)
 		, _hFolderMenu(NULL)
 		, _hFileMenu(NULL)
-		, _hFolderMonitorMenu(NULL)
+		, _hDirectoryMenu(NULL)
 		, _directoryWatcher(NULL)
 	{
 	};
@@ -265,7 +265,7 @@ protected:
 	TreeView _treeView;
 	HIMAGELIST _hImaLst;
 	HWND _hToolbarMenu;
-	HMENU _hWorkSpaceMenu, _hProjectMenu, _hFolderMenu, _hFileMenu, _hFolderMonitorMenu;
+	HMENU _hWorkSpaceMenu, _hProjectMenu, _hFolderMenu, _hFileMenu, _hDirectoryMenu;
 	generic_string _workSpaceFilePath;
 	generic_string _selDirOfFilesFromDirDlg;
 	bool _isDirty;
@@ -303,13 +303,13 @@ protected:
 	const std::vector<generic_string>* getFilters(HTREEITEM hItem);
 	virtual INT_PTR CALLBACK run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam);
 	bool buildTreeFrom(TiXmlNode *projectRoot, HTREEITEM hParentItem);
-	void rebuildFolderMonitorTree(HTREEITEM hParentItem, const ProjectPanelData& data);
+	void rebuildDirectoryTree(HTREEITEM hParentItem, const ProjectPanelData& data);
 	void notified(LPNMHDR notification);
 	void showContextMenu(int x, int y);
 	generic_string getAbsoluteFilePath(const TCHAR * relativePath);
 	void openSelectFile();
 	HMENU getContextMenu(HTREEITEM hTreeItem) const;
-	void expandOrCollapseMonitorFolder(bool expand, HTREEITEM hItem);
+	void expandOrCollapseDirectory(bool expand, HTREEITEM hItem);
 
 	bool setFilters(const std::vector<generic_string>& filters, HTREEITEM hItem);
 

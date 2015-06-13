@@ -158,7 +158,7 @@ public:
 	}
 
 	virtual TreeViewData* clone() const {
-		return new ProjectPanelData(_directoryWatcher, _name.c_str(), _filePath.c_str(), _nodeType);
+		return new ProjectPanelData(_directoryWatcher, _name.c_str(), _filePath.c_str(), _nodeType, _filters);
 	}
 
 private:

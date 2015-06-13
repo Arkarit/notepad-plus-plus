@@ -37,17 +37,19 @@
 #define CX_BITMAP         16
 #define CY_BITMAP         16
 
-#define INDEX_CLEAN_ROOT      0
-#define INDEX_DIRTY_ROOT      1
-#define INDEX_PROJECT         2
-#define INDEX_OPEN_NODE	      3
-#define INDEX_CLOSED_NODE     4
-#define INDEX_LEAF            5
-#define INDEX_LEAF_INVALID    6
-#define INDEX_OPEN_MONITOR    7
-#define INDEX_CLOSED_MONITOR  8
-#define INDEX_INVALID_MONITOR 9
-#define INDEX_LEAF_MONITOR    10
+#define INDEX_CLEAN_ROOT		0
+#define INDEX_DIRTY_ROOT		1
+#define INDEX_PROJECT			2
+#define INDEX_OPEN_NODE			3
+#define INDEX_CLOSED_NODE		4
+#define INDEX_LEAF				5
+#define INDEX_LEAF_INVALID		6
+#define INDEX_OPEN_DIR			7
+#define INDEX_CLOSED_DIR		8
+#define INDEX_OPEN_BASEDIR		9
+#define INDEX_CLOSED_BASEDIR	10
+#define INDEX_OFFLINE_BASEDIR	11
+#define INDEX_LEAF_DIRFILE		12
 
 #define GET_X_LPARAM(lp)                        ((int)(short)LOWORD(lp))
 #define GET_Y_LPARAM(lp)                        ((int)(short)HIWORD(lp))
@@ -103,26 +105,32 @@ INT_PTR CALLBACK ProjectPanel::run_dlgProc(UINT message, WPARAM wParam, LPARAM l
 						 IDI_PROJECT_FOLDERCLOSE, 
 						 IDI_PROJECT_FILE, 
 						 IDI_PROJECT_FILEINVALID, 
-						 IDI_PROJECT_FOLDERMONITOROPEN, 
-						 IDI_PROJECT_FOLDERMONITORCLOSE, 
-						 IDI_PROJECT_FOLDERMONITORINVALID, 
-						 IDI_PROJECT_FILEMONITOR
+						 IDI_PROJECT_DIROPEN, 
+						 IDI_PROJECT_DIRCLOSE, 
+						 IDI_PROJECT_BASEDIROPEN, 
+						 IDI_PROJECT_BASEDIRCLOSE, 
+						 IDI_PROJECT_BASEDIROFFLINE, 
+						 IDI_PROJECT_DIRFILE
 						 );
 
 			_treeView.addCanNotDropInList(INDEX_LEAF);
 			_treeView.addCanNotDropInList(INDEX_LEAF_INVALID);
-			_treeView.addCanNotDropInList(INDEX_OPEN_MONITOR);
-			_treeView.addCanNotDropInList(INDEX_CLOSED_MONITOR);
-			_treeView.addCanNotDropInList(INDEX_INVALID_MONITOR);
-			_treeView.addCanNotDropInList(INDEX_LEAF_MONITOR);
+			_treeView.addCanNotDropInList(INDEX_OPEN_DIR);
+			_treeView.addCanNotDropInList(INDEX_CLOSED_DIR);
+			_treeView.addCanNotDropInList(INDEX_OPEN_BASEDIR);
+			_treeView.addCanNotDropInList(INDEX_CLOSED_BASEDIR);
+			_treeView.addCanNotDropInList(INDEX_OFFLINE_BASEDIR);
+			_treeView.addCanNotDropInList(INDEX_LEAF_DIRFILE);
 
 			_treeView.addCanNotDragOutList(INDEX_CLEAN_ROOT);
 			_treeView.addCanNotDragOutList(INDEX_DIRTY_ROOT);
 			_treeView.addCanNotDragOutList(INDEX_PROJECT);
-			_treeView.addCanNotDragOutList(INDEX_OPEN_MONITOR);
-			_treeView.addCanNotDragOutList(INDEX_CLOSED_MONITOR);
-			_treeView.addCanNotDragOutList(INDEX_INVALID_MONITOR);
-			_treeView.addCanNotDragOutList(INDEX_LEAF_MONITOR);
+			_treeView.addCanNotDragOutList(INDEX_OPEN_DIR);
+			_treeView.addCanNotDragOutList(INDEX_CLOSED_DIR);
+			_treeView.addCanNotDragOutList(INDEX_OPEN_BASEDIR);
+			_treeView.addCanNotDragOutList(INDEX_CLOSED_BASEDIR);
+			_treeView.addCanNotDragOutList(INDEX_OFFLINE_BASEDIR);
+			_treeView.addCanNotDragOutList(INDEX_LEAF_DIRFILE);
 
 			_treeView.display();
 			if (!openWorkSpace(_workSpaceFilePath.c_str()))
@@ -307,10 +315,12 @@ BOOL ProjectPanel::setImageList(int root_clean_id,
 								int closed_node_id, 
 								int leaf_id, 
 								int ivalid_leaf_id, 
-								int open_monitor_id, 
-								int closed_monitor_id, 
-								int invalid_monitor_id, 
-								int file_monitor_id
+								int open_dir_id, 
+								int closed_dir_id, 
+								int open_basedir_id, 
+								int closed_basedir_id, 
+								int invalid_basedir_id, 
+								int leaf_dirfile_id
 								) 
 {
 	HBITMAP hbmp;
@@ -364,25 +374,37 @@ BOOL ProjectPanel::setImageList(int root_clean_id,
 	ImageList_AddMasked(_hImaLst, hbmp, maskColour);
 	DeleteObject(hbmp);
 
-	hbmp = LoadBitmap(_hInst, MAKEINTRESOURCE(open_monitor_id));
+	hbmp = LoadBitmap(_hInst, MAKEINTRESOURCE(open_dir_id));
 	if (hbmp == NULL)
 		return FALSE;
 	ImageList_AddMasked(_hImaLst, hbmp, maskColour);
 	DeleteObject(hbmp);
 
-	hbmp = LoadBitmap(_hInst, MAKEINTRESOURCE(closed_monitor_id));
+	hbmp = LoadBitmap(_hInst, MAKEINTRESOURCE(closed_dir_id));
 	if (hbmp == NULL)
 		return FALSE;
 	ImageList_AddMasked(_hImaLst, hbmp, maskColour);
 	DeleteObject(hbmp);
 
-	hbmp = LoadBitmap(_hInst, MAKEINTRESOURCE(invalid_monitor_id));
+	hbmp = LoadBitmap(_hInst, MAKEINTRESOURCE(open_basedir_id));
 	if (hbmp == NULL)
 		return FALSE;
 	ImageList_AddMasked(_hImaLst, hbmp, maskColour);
 	DeleteObject(hbmp);
 
-	hbmp = LoadBitmap(_hInst, MAKEINTRESOURCE(file_monitor_id));
+	hbmp = LoadBitmap(_hInst, MAKEINTRESOURCE(closed_basedir_id));
+	if (hbmp == NULL)
+		return FALSE;
+	ImageList_AddMasked(_hImaLst, hbmp, maskColour);
+	DeleteObject(hbmp);
+
+	hbmp = LoadBitmap(_hInst, MAKEINTRESOURCE(invalid_basedir_id));
+	if (hbmp == NULL)
+		return FALSE;
+	ImageList_AddMasked(_hImaLst, hbmp, maskColour);
+	DeleteObject(hbmp);
+
+	hbmp = LoadBitmap(_hInst, MAKEINTRESOURCE(leaf_dirfile_id));
 	if (hbmp == NULL)
 		return FALSE;
 	ImageList_AddMasked(_hImaLst, hbmp, maskColour);
@@ -632,12 +654,12 @@ void ProjectPanel::rebuildFolderMonitorTree(HTREEITEM hParentItem, const Project
 	{
 		if (!::PathFileExists(projectPanelData._filePath.c_str()))
 		{
-			iImg = INDEX_INVALID_MONITOR;
+			iImg = INDEX_OFFLINE_BASEDIR;
 			_treeView.removeAllChildren(hParentItem);
 		}
 		else
 		{
-			iImg = (tvItem.state & TVIS_EXPANDED) ? INDEX_OPEN_MONITOR : INDEX_CLOSED_MONITOR;
+			iImg = (tvItem.state & TVIS_EXPANDED) ? INDEX_OPEN_BASEDIR : INDEX_CLOSED_BASEDIR;
 		}
 	}
 	else if (projectPanelData._nodeType == nodeType_monitorFolder)
@@ -649,7 +671,7 @@ void ProjectPanel::rebuildFolderMonitorTree(HTREEITEM hParentItem, const Project
 		}
 		else
 		{
-			iImg = (tvItem.state & TVIS_EXPANDED) ? INDEX_OPEN_MONITOR : INDEX_CLOSED_MONITOR;
+			iImg = (tvItem.state & TVIS_EXPANDED) ? INDEX_OPEN_DIR : INDEX_CLOSED_DIR;
 		}
 	}
 	else
@@ -695,8 +717,8 @@ void ProjectPanel::openSelectFile()
 		if (::PathFileExists(projectPanelData._filePath.c_str()))
 		{
 			::SendMessage(_hParent, NPPM_DOOPEN, 0, (LPARAM)(projectPanelData._filePath.c_str()));
-			tvItem.iImage = projectPanelData.isFileMonitor() ? INDEX_LEAF_MONITOR : INDEX_LEAF;
-			tvItem.iSelectedImage = projectPanelData.isFileMonitor() ? INDEX_LEAF_MONITOR : INDEX_LEAF;
+			tvItem.iImage = projectPanelData.isFileMonitor() ? INDEX_LEAF_DIRFILE : INDEX_LEAF;
+			tvItem.iSelectedImage = projectPanelData.isFileMonitor() ? INDEX_LEAF_DIRFILE : INDEX_LEAF;
 		}
 		else
 		{
@@ -787,7 +809,7 @@ void ProjectPanel::treeItemChanged(HTREEITEM hTreeItem, TreeViewData* data)
 			iImg = ::PathFileExists(projectPanelData._filePath.c_str()) ? INDEX_LEAF : INDEX_LEAF_INVALID;
 			break;
 		case nodeType_monitorFile:
-			iImg = INDEX_LEAF_MONITOR;
+			iImg = INDEX_LEAF_DIRFILE;
 			break;
 		case nodeType_monitorFolderRoot:
 		case nodeType_monitorFolder:
@@ -972,8 +994,8 @@ void ProjectPanel::notified(LPNMHDR notification)
 					tvItem.mask = TVIF_IMAGE | TVIF_SELECTEDIMAGE;
 					if (::PathFileExists(filePath.c_str()))
 					{
-						tvItem.iImage = projectPanelData.isFileMonitor() ? INDEX_LEAF_MONITOR : INDEX_LEAF;
-						tvItem.iSelectedImage = projectPanelData.isFileMonitor() ? INDEX_LEAF_MONITOR : INDEX_LEAF;
+						tvItem.iImage = projectPanelData.isFileMonitor() ? INDEX_LEAF_DIRFILE : INDEX_LEAF;
+						tvItem.iSelectedImage = projectPanelData.isFileMonitor() ? INDEX_LEAF_DIRFILE : INDEX_LEAF;
 					}
 					else
 					{
@@ -1097,15 +1119,26 @@ void ProjectPanel::notified(LPNMHDR notification)
 						_treeView.setItemImage(nmtv->itemNew.hItem, INDEX_OPEN_NODE, INDEX_OPEN_NODE);
 					}
 				}
-				else if (getNodeType(nmtv->itemNew.hItem) == nodeType_monitorFolder || getNodeType(nmtv->itemNew.hItem) == nodeType_monitorFolderRoot)
+				else if (getNodeType(nmtv->itemNew.hItem) == nodeType_monitorFolder)
 				{
 					if (nmtv->action == TVE_COLLAPSE)
 					{
-						_treeView.setItemImage(nmtv->itemNew.hItem, INDEX_CLOSED_MONITOR, INDEX_CLOSED_MONITOR);
+						_treeView.setItemImage(nmtv->itemNew.hItem, INDEX_CLOSED_DIR, INDEX_CLOSED_DIR);
 					}
 					else if (nmtv->action == TVE_EXPAND)
 					{
-						_treeView.setItemImage(nmtv->itemNew.hItem, INDEX_OPEN_MONITOR, INDEX_OPEN_MONITOR);
+						_treeView.setItemImage(nmtv->itemNew.hItem, INDEX_OPEN_DIR, INDEX_OPEN_DIR);
+					}
+				}
+				else if (getNodeType(nmtv->itemNew.hItem) == nodeType_monitorFolderRoot)
+				{
+					if (nmtv->action == TVE_COLLAPSE)
+					{
+						_treeView.setItemImage(nmtv->itemNew.hItem, INDEX_CLOSED_BASEDIR, INDEX_CLOSED_BASEDIR);
+					}
+					else if (nmtv->action == TVE_EXPAND)
+					{
+						_treeView.setItemImage(nmtv->itemNew.hItem, INDEX_OPEN_BASEDIR, INDEX_OPEN_BASEDIR);
 					}
 				}
 
@@ -1204,12 +1237,12 @@ HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, 
 		if (root)
 		{
 			nodeType = nodeType_monitorFolderRoot;
-			iconindex = ::PathFileExists(monitorPath) ? INDEX_CLOSED_MONITOR : INDEX_INVALID_MONITOR;
+			iconindex = ::PathFileExists(monitorPath) ? INDEX_CLOSED_BASEDIR : INDEX_OFFLINE_BASEDIR;
 		}
 		else
 		{
 			nodeType = nodeType_monitorFolder;
-			iconindex = INDEX_CLOSED_MONITOR;
+			iconindex = INDEX_CLOSED_DIR;
 		}
 	}
 
@@ -1222,7 +1255,7 @@ HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, 
 	HTREEITEM addedItem = _treeView.addItem(folderName, hTreeItem, iconindex, new ProjectPanelData(_directoryWatcher, folderName, monitorPath, nodeType, *finalFilters));
 
 	if (monitored)
-		_treeView.addItem( TEXT(""), addedItem, INDEX_LEAF_MONITOR, new ProjectPanelData(_directoryWatcher,TEXT(""), TEXT(""), nodeType_dummy ));
+		_treeView.addItem( TEXT(""), addedItem, INDEX_LEAF_DIRFILE, new ProjectPanelData(_directoryWatcher,TEXT(""), TEXT(""), nodeType_dummy ));
 
 	if (getNodeType(hTreeItem) != nodeType_monitorFolderRoot && getNodeType(hTreeItem) != nodeType_monitorFolder)
 	{
@@ -1232,7 +1265,7 @@ HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, 
 	if (getNodeType(hTreeItem) == nodeType_folder)
 		_treeView.setItemImage(hTreeItem, INDEX_OPEN_NODE, INDEX_OPEN_NODE);
 	else if (getNodeType(hTreeItem) == nodeType_monitorFolderRoot)
-		_treeView.setItemImage(hTreeItem, INDEX_OPEN_MONITOR, INDEX_OPEN_MONITOR);
+		_treeView.setItemImage(hTreeItem, INDEX_OPEN_BASEDIR, INDEX_OPEN_BASEDIR);
 
 	if (getNodeType(addedItem) != nodeType_monitorFolder && getNodeType(addedItem) != nodeType_monitorFolderRoot)
 	{
@@ -1358,7 +1391,7 @@ void ProjectPanel::popupMenuCmd(int cmdID)
 		{
 			addFilesFromDirectory(hTreeItem, true);
 			if (getNodeType(hTreeItem) == nodeType_monitorFolderRoot)
-				_treeView.setItemImage(hTreeItem, INDEX_OPEN_MONITOR, INDEX_OPEN_MONITOR);
+				_treeView.setItemImage(hTreeItem, INDEX_OPEN_BASEDIR, INDEX_OPEN_BASEDIR);
 		}
 		break;
 
@@ -1604,7 +1637,7 @@ void ProjectPanel::recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTre
 		if (folderPath[lstrlen(folderPath)-1] != '\\')
 			pathFile += TEXT("\\");
 		pathFile += files[i];
-		_treeView.addItem(files[i].c_str(), hTreeItem, monitored ? INDEX_LEAF_MONITOR : INDEX_LEAF, new ProjectPanelData(_directoryWatcher, files[i].c_str(), pathFile.c_str(), monitored ? nodeType_monitorFile : nodeType_file ));
+		_treeView.addItem(files[i].c_str(), hTreeItem, monitored ? INDEX_LEAF_DIRFILE : INDEX_LEAF, new ProjectPanelData(_directoryWatcher, files[i].c_str(), pathFile.c_str(), monitored ? nodeType_monitorFile : nodeType_file ));
 	}
 
 	::FindClose(hFile);
@@ -1938,7 +1971,7 @@ void ProjectPanelDirectory::onDirRemoved(const generic_string& name)
 
 void ProjectPanelDirectory::onFileAdded(const generic_string& name)
 {
-	_treeView->addItem(name.c_str(), _hItem, INDEX_LEAF_MONITOR, new ProjectPanelData(_projectPanel->_directoryWatcher, name.c_str(), (_path + TEXT("\\") + name).c_str(), nodeType_monitorFile ));
+	_treeView->addItem(name.c_str(), _hItem, INDEX_LEAF_DIRFILE, new ProjectPanelData(_projectPanel->_directoryWatcher, name.c_str(), (_path + TEXT("\\") + name).c_str(), nodeType_monitorFile ));
 
 }
 

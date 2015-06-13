@@ -295,6 +295,7 @@ void ProjectPanel::initMenus()
 	::InsertMenu(_hFolderMonitorMenu, 0, MF_BYCOMMAND, IDM_PROJECT_MOVEDOWN, edit_movedown.c_str());
 	::InsertMenu(_hFolderMonitorMenu, 0, MF_BYCOMMAND, IDM_PROJECT_DELETEFILE, edit_remove.c_str());
 	::InsertMenu(_hFolderMonitorMenu, 0, MF_BYCOMMAND, IDM_PROJECT_SETFILTERS, edit_setfilter.c_str());
+	::InsertMenu(_hFolderMonitorMenu, 0, MF_BYCOMMAND, IDM_PROJECT_RENAME, edit_rename.c_str());
 
 }
 
@@ -983,9 +984,7 @@ void ProjectPanel::notified(LPNMHDR notification)
 				}
 				else if (nt == nodeType_monitorFolderRoot)
 				{
-					tvItem.hItem = _treeView.getSelection();
-					::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0,(LPARAM)&tvItem);
-					ProjectPanelData& projectPanelData = *(ProjectPanelData*)(tvItem.lParam);
+					ProjectPanelData& projectPanelData = *(ProjectPanelData*)(tvnotif->item.lParam);
 
 					// a text was added for monitor folder root - give it its own name
 					if (tvnotif->item.pszText && *tvnotif->item.pszText)
@@ -997,6 +996,8 @@ void ProjectPanel::notified(LPNMHDR notification)
 						projectPanelData._label.clear();
 						generic_string newFolderLabel = buildFilename(projectPanelData._filePath);
 						wcsncpy(tvItem.pszText,newFolderLabel.c_str(), MAX_PATH-1);
+						tvItem.hItem = tvnotif->item.hItem;
+						tvItem.mask = TVIF_TEXT;
 						::SendMessage(_treeView.getHSelf(), TVM_SETITEM, 0,(LPARAM)&tvItem);
 						break;
 					}
@@ -1233,7 +1234,7 @@ HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, 
 	else if (getNodeType(hTreeItem) == nodeType_monitorFolderRoot)
 		_treeView.setItemImage(hTreeItem, INDEX_OPEN_MONITOR, INDEX_OPEN_MONITOR);
 
-	if (getNodeType(addedItem) != nodeType_monitorFolder)
+	if (getNodeType(addedItem) != nodeType_monitorFolder && getNodeType(addedItem) != nodeType_monitorFolderRoot)
 	{
 		TreeView_EditLabel(_treeView.getHSelf(), addedItem);
 	}

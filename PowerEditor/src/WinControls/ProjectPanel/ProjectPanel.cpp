@@ -1824,6 +1824,10 @@ INT_PTR CALLBACK FilterDlg::run_dlgProc(UINT Message, WPARAM wParam, LPARAM)
 	{
 		case WM_INITDIALOG :
 		{
+			NppParameters *nppParams = NppParameters::getInstance();
+			FindHistory & findHistory = nppParams->getFindHistory();
+
+			fillComboHistory(IDD_PROJECTPANEL_FILTERS_COMBO, findHistory._findHistoryFilters);
 			goToCenter();
 			return TRUE;
 		}
@@ -1841,6 +1845,10 @@ INT_PTR CALLBACK FilterDlg::run_dlgProc(UINT Message, WPARAM wParam, LPARAM)
 					addText2Combo(tfilters, ::GetDlgItem(_hSelf, IDD_PROJECTPANEL_FILTERS_COMBO));
 
 					_filters = ProjectPanel::split(tfilters, TEXT(';'));
+
+					NppParameters *nppParams = NppParameters::getInstance();
+					FindHistory & findHistory = nppParams->getFindHistory();
+					saveComboHistory(IDD_PROJECTPANEL_FILTERS_COMBO, findHistory._nbMaxFindHistoryFilter, findHistory._findHistoryFilters);
 
 					::EndDialog(_hSelf, 0);
 				}
@@ -1929,16 +1937,8 @@ int FilterDlg::doDialog(bool isRTL /*= false*/)
 		return result;
 	}
 
-	NppParameters *nppParams = NppParameters::getInstance();
-	FindHistory & findHistory = nppParams->getFindHistory();
 
-	fillComboHistory(IDD_PROJECTPANEL_FILTERS_COMBO, findHistory._findHistoryFilters);
-
-	int result = ::DialogBoxParam(_hInst, MAKEINTRESOURCE(IDD_PROJECTPANEL_FILTERDIALOG), _hParent,  dlgProc, (LPARAM)this);
-
-	saveComboHistory(IDD_PROJECTPANEL_FILTERS_COMBO, findHistory._nbMaxFindHistoryFilter, findHistory._findHistoryFilters);
-
-	return result;
+	return ::DialogBoxParam(_hInst, MAKEINTRESOURCE(IDD_PROJECTPANEL_FILTERDIALOG), _hParent,  dlgProc, (LPARAM)this);
 
 }
 

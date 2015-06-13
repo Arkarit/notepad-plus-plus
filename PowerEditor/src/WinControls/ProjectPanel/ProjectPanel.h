@@ -312,6 +312,7 @@ protected:
 	void expandOrCollapseDirectory(bool expand, HTREEITEM hItem);
 
 	bool setFilters(const std::vector<generic_string>& filters, HTREEITEM hItem);
+	void updateBaseDirName(HTREEITEM hItem);
 
 	void removeDummies(HTREEITEM hTreeItem);
 

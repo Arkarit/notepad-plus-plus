@@ -935,7 +935,36 @@ bool ProjectPanel::setFilters(const std::vector<generic_string>& filters, HTREEI
 	{
 		setFilters(filters,hItemNode);
 	}
+
+	updateBaseDirName(hItem);
 	return true;
+}
+
+void ProjectPanel::updateBaseDirName(HTREEITEM hItem)
+{
+	TCHAR textBuffer[MAX_PATH];
+	TVITEM tvItem;
+	tvItem.mask = TVIF_TEXT | TVIF_PARAM;
+	tvItem.pszText = textBuffer;
+	tvItem.cchTextMax = MAX_PATH;
+	tvItem.hItem = hItem;
+	::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0, (LPARAM)&tvItem);
+	ProjectPanelData& projectPanelData = *(ProjectPanelData*)(tvItem.lParam);
+
+	if (projectPanelData.isDirectory() || projectPanelData.isDirectoryFile())
+	{
+		updateBaseDirName(_treeView.getParent(hItem));
+	}
+	else if (projectPanelData.isBaseDirectory())
+	{
+		if (projectPanelData._label.empty())
+		{
+			generic_string newFolderLabel = buildDirectoryName(projectPanelData._filePath, projectPanelData._filters);
+			wcsncpy(tvItem.pszText,newFolderLabel.c_str(), MAX_PATH-1);
+			tvItem.mask = TVIF_TEXT;
+			::SendMessage(_treeView.getHSelf(), TVM_SETITEM, 0,(LPARAM)&tvItem);
+		}
+	}
 }
 
 void ProjectPanel::removeDummies(HTREEITEM hTreeItem)

@@ -610,16 +610,6 @@ bool ProjectPanel::buildTreeFrom(TiXmlNode *projectRoot, HTREEITEM hParentItem)
 			const TCHAR *strValue = (childNode->ToElement())->Attribute(TEXT("name"));
 			generic_string fullPath = getAbsoluteFilePath(strValue);
 
-			if (strLabel)
-			{
-				newFolderLabel = strLabel;
-			}
-			else
-			{
-
-				newFolderLabel = buildFilename(fullPath);
-			}
-
 			std::vector<generic_string> filters;
 			const TCHAR *strFilters = (childNode->ToElement())->Attribute(TEXT("filters"));
 			if (strFilters)
@@ -627,6 +617,17 @@ bool ProjectPanel::buildTreeFrom(TiXmlNode *projectRoot, HTREEITEM hParentItem)
 				generic_string filter(strFilters);
 				filters = split(filter, TEXT(';'));
 			}
+
+			if (strLabel)
+			{
+				newFolderLabel = strLabel;
+			}
+			else
+			{
+
+				newFolderLabel = buildDirectoryName(fullPath, filters);
+			}
+
 
 			addFolder(hParentItem, newFolderLabel.c_str(), true, true, fullPath.c_str(), &filters);
 		}
@@ -822,7 +823,7 @@ void ProjectPanel::treeItemChanged(HTREEITEM hTreeItem, TreeViewData* data)
 
 }
 
-generic_string ProjectPanel::buildFilename(const generic_string& filePath)
+generic_string ProjectPanel::buildDirectoryName(const generic_string& filePath, const std::vector<generic_string>& filters)
 {
 	generic_string result(filePath);
 
@@ -836,6 +837,14 @@ generic_string ProjectPanel::buildFilename(const generic_string& filePath)
 			result.erase(lastSlashIdx);
 		}
 	}
+
+	if (!filters.empty())
+	{
+		result += TEXT(" (");
+		result += combine(filters, TEXT(';'));
+		result += TEXT(")");
+	}
+
 	return result;
 
 }
@@ -1016,7 +1025,7 @@ void ProjectPanel::notified(LPNMHDR notification)
 					else
 					{
 						projectPanelData._label.clear();
-						generic_string newFolderLabel = buildFilename(projectPanelData._filePath);
+						generic_string newFolderLabel = buildDirectoryName(projectPanelData._filePath, projectPanelData._filters);
 						wcsncpy(tvItem.pszText,newFolderLabel.c_str(), MAX_PATH-1);
 						tvItem.hItem = tvnotif->item.hItem;
 						tvItem.mask = TVIF_TEXT;
@@ -1662,7 +1671,7 @@ void ProjectPanel::addFilesFromDirectory(HTREEITEM hTreeItem, bool monitored)
 	{
 		if (monitored)
 		{
-			generic_string newFolderLabel = buildFilename(dirPath);
+			generic_string newFolderLabel = buildDirectoryName(dirPath);
 			hTreeItem = addFolder(hTreeItem, newFolderLabel.c_str(), true, true, dirPath.c_str());
 		}
 

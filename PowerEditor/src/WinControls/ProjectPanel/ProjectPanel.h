@@ -317,7 +317,7 @@ protected:
 
 	void treeItemChanged(HTREEITEM hItem,TreeViewData* data);
 
-	static generic_string buildFilename(const generic_string& filePath);
+	static generic_string buildDirectoryName(const generic_string& filePath, const std::vector<generic_string>& filters = std::vector<generic_string>());
 
 	void itemVisibilityChanges(HTREEITEM hItem, bool visible);
 
@@ -372,7 +372,9 @@ public :
 
 	int doDialog(bool isRTL = false);
 
-	const std::vector<generic_string>& getFilters() const { return _filters; }
+	const std::vector<generic_string>& getFilters() const { 
+		return _filters; 
+	}
 
 
     virtual void destroy() {

@@ -180,7 +180,7 @@ protected:
 	};
 	void cleanSubEntries(HTREEITEM hTreeItem);
 	void dupTree(HTREEITEM hTree2Dup, HTREEITEM hParentItem);
-	bool searchLeafRecusivelyAndBuildTree(HTREEITEM tree2Build, const generic_string & text2Search, int index2Search, HTREEITEM tree2Search);
+	bool searchLeafRecursivelyAndBuildTree(HTREEITEM tree2Build, const generic_string & text2Search, int index2Search, HTREEITEM tree2Search);
 
 	// Drag and Drop operations
 	HTREEITEM _draggedItem;

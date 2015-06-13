@@ -526,10 +526,10 @@ bool TreeView::searchLeafAndBuildTree(TreeView & tree2Build, const generic_strin
 	//tree2Build.removeAllItems();
 	//HTREEITEM root = getRoot();
 
-	return searchLeafRecusivelyAndBuildTree(tree2Build.getRoot(), text2Search, index2Search, getRoot());
+	return searchLeafRecursivelyAndBuildTree(tree2Build.getRoot(), text2Search, index2Search, getRoot());
 }
 
-bool TreeView::searchLeafRecusivelyAndBuildTree(HTREEITEM tree2Build, const generic_string & text2Search, int index2Search, HTREEITEM tree2Search)
+bool TreeView::searchLeafRecursivelyAndBuildTree(HTREEITEM tree2Build, const generic_string & text2Search, int index2Search, HTREEITEM tree2Search)
 {
 	if (!tree2Search)
 		return false;
@@ -567,7 +567,7 @@ bool TreeView::searchLeafRecusivelyAndBuildTree(HTREEITEM tree2Build, const gene
 	bool isOk = true;
 	for (HTREEITEM hItem = getChildFrom(tree2Search); hItem != NULL; hItem = getNextSibling(hItem))
 	{
-		isOk = searchLeafRecusivelyAndBuildTree(tree2Build, text2Search, index2Search, hItem);
+		isOk = searchLeafRecursivelyAndBuildTree(tree2Build, text2Search, index2Search, hItem);
 		if (!isOk)
 			break;
 		++i;

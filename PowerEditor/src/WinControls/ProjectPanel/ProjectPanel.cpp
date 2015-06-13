@@ -91,6 +91,8 @@ INT_PTR CALLBACK ProjectPanel::run_dlgProc(UINT message, WPARAM wParam, LPARAM l
 			ShowWindow(_hToolbarMenu, SW_SHOW);
 
 			_treeView.init(_hInst, _hSelf, ID_PROJECTTREEVIEW);
+			_treeView.setListener(this);
+
 			_directoryWatcher = new DirectoryWatcher(_treeView.getHSelf());
 			_directoryWatcher->startThread();
 
@@ -174,6 +176,7 @@ INT_PTR CALLBACK ProjectPanel::run_dlgProc(UINT message, WPARAM wParam, LPARAM l
 
 		case WM_DESTROY:
         {
+			_treeView.setListener(NULL);
 			_directoryWatcher->stopThread();
 			_treeView.destroy();
 			destroyMenus();

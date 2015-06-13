@@ -166,10 +166,7 @@ public:
 
 	TreeViewData* getData(HTREEITEM item);
 
-	void setListener(TreeViewListener* listener)
-	{
-		_listener = listener;
-	}
+	void setListener(TreeViewListener* listener);
 
 protected:
 	TreeViewListener* _listener;

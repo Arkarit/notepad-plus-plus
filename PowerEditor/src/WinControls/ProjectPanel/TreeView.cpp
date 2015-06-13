@@ -28,6 +28,7 @@
 
 
 #include "TreeView.h"
+#include <assert.h>
 
 #define CY_ITEMHEIGHT     18
 
@@ -56,6 +57,7 @@ void TreeView::init(HINSTANCE hInst, HWND parent, int treeViewID)
 
 void TreeView::destroy()
 {
+	assert(!_listener && "listener not removed before destroy");
 	HTREEITEM root = TreeView_GetRoot(_hSelf);
 	cleanSubEntries(root);
 	::DestroyWindow(_hSelf);
@@ -672,4 +674,10 @@ TreeViewData* TreeView::getData(HTREEITEM hItem)
 	SendMessage(_hSelf, TVM_GETITEM, 0,(LPARAM)&tvItem);
 	return (TreeViewData*) tvItem.lParam;
 
+}
+
+void TreeView::setListener(TreeViewListener* listener)
+{
+	assert(_hSelf && "listener set before init/after destroy");
+	_listener = listener;
 }

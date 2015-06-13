@@ -213,11 +213,9 @@ public:
 		, _hFolderMonitorMenu(NULL)
 		, _directoryWatcher(NULL)
 	{
-		_treeView.setListener(this);
 	};
 
 	virtual ~ProjectPanel() {
-		_treeView.setListener(NULL);
 		delete _directoryWatcher;
 	}
 

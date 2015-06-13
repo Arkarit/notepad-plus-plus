@@ -174,6 +174,7 @@ INT_PTR CALLBACK ProjectPanel::run_dlgProc(UINT message, WPARAM wParam, LPARAM l
 
 		case WM_DESTROY:
         {
+			_directoryWatcher->stopThread();
 			_treeView.destroy();
 			destroyMenus();
 			::DestroyWindow(_hToolbarMenu);

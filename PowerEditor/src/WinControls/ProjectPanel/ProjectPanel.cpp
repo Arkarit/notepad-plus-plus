@@ -553,7 +553,7 @@ void ProjectPanel::buildProjectXml(TiXmlNode *node, HTREEITEM hItem, const TCHAR
 			generic_string newFn = getRelativePath(projectPanelData._filePath, fn2write);
 			TiXmlNode *fileLeaf = node->InsertEndChild(TiXmlElement(TEXT("Directory")));
 			fileLeaf->ToElement()->SetAttribute(TEXT("name"), newFn.c_str());
-			generic_string filters = combine(projectPanelData._filters, TCHAR(';'));
+			generic_string filters = stringJoin(projectPanelData._filters, TEXT(";"), true);
 			if (!filters.empty())
 				fileLeaf->ToElement()->SetAttribute(TEXT("filters"), filters.c_str());
 			if (!projectPanelData._label.empty())
@@ -615,7 +615,7 @@ bool ProjectPanel::buildTreeFrom(TiXmlNode *projectRoot, HTREEITEM hParentItem)
 			if (strFilters)
 			{
 				generic_string filter(strFilters);
-				filters = split(filter, TEXT(';'));
+				filters = stringSplit(filter, TEXT(";"), true);
 			}
 
 			if (strLabel)
@@ -841,7 +841,7 @@ generic_string ProjectPanel::buildDirectoryName(const generic_string& filePath, 
 	if (!filters.empty())
 	{
 		result += TEXT(" (");
-		result += combine(filters, TEXT(';'));
+		result += stringJoin(filters, TEXT(";"), true);
 		result += TEXT(")");
 	}
 
@@ -1087,7 +1087,7 @@ void ProjectPanel::notified(LPNMHDR notification)
 					if (filters && !filters->empty())
 					{
 						_infotipStr += TEXT(" (");
-						_infotipStr += combine(*filters, TEXT(';'));
+						_infotipStr += stringJoin(*filters, TEXT(";"), true);
 						_infotipStr += TEXT(")");
 					}
 				}
@@ -1712,61 +1712,6 @@ void ProjectPanel::addFilesFromDirectory(HTREEITEM hTreeItem, bool monitored)
 	}
 }
 
-generic_string& ProjectPanel::trim(generic_string & str)
-{
-	generic_string::size_type pos = str.find_last_not_of(' ');
-
-	if (pos != generic_string::npos)
-	{
-		str.erase(pos + 1);
-		pos = str.find_first_not_of(' ');
-		if (pos != generic_string::npos) str.erase(0, pos);
-	}
-	else str.erase(str.begin(), str.end());
-	return str;
-}
-
-std::vector<generic_string> ProjectPanel::split(const generic_string & str, TCHAR delim)
-{
-	std::vector<generic_string> result;
-
-	if (!str.empty())
-	{
-		size_t start = 0;
-		size_t pos = str.find(delim, start);
-
-		while (pos != generic_string::npos)
-		{
-			generic_string t(str.substr(start, pos - start));
-			result.push_back(trim(t));
-			start = pos + 1;
-			pos = str.find(delim, start);
-		}
-		generic_string t(str.substr(start, pos - start));
-		result.push_back(trim(t));
-	}
-
-	return result;
-
-}
-
-generic_string ProjectPanel::combine(const std::vector<generic_string>& vec, TCHAR delim)
-{
-	std::wstringstream ss;
-
-	for (size_t i = 0; i < vec.size(); ++i)
-	{
-		ss << vec[i];
-		if (i <vec.size()-1)
-			ss << delim;
-	}
-
-	return ss.str();
-
-}
-
-
-
 INT_PTR CALLBACK FileRelocalizerDlg::run_dlgProc(UINT Message, WPARAM wParam, LPARAM) 
 {
 	switch (Message)
@@ -1844,7 +1789,7 @@ INT_PTR CALLBACK FilterDlg::run_dlgProc(UINT Message, WPARAM wParam, LPARAM)
 					::GetDlgItemText(_hSelf, IDD_PROJECTPANEL_FILTERS_COMBO, tfilters, filterSize);
 					addText2Combo(tfilters, ::GetDlgItem(_hSelf, IDD_PROJECTPANEL_FILTERS_COMBO));
 
-					_filters = ProjectPanel::split(tfilters, TEXT(';'));
+					_filters = stringSplit(tfilters, TEXT(";"), true);
 
 					NppParameters *nppParams = NppParameters::getInstance();
 					FindHistory & findHistory = nppParams->getFindHistory();

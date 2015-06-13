@@ -256,11 +256,6 @@ public:
 
 	TreeView& getTreeView() { return _treeView; }
 
-	//TODO: place this into a basic string support lib common.h tokenizeString stringJoin
-	static generic_string& trim(generic_string & str);
-	static std::vector<generic_string> split(const generic_string & str, TCHAR delim);
-	static generic_string combine(const std::vector<generic_string>& vec, TCHAR delim);
-
 protected:
 	TreeView _treeView;
 	HIMAGELIST _hImaLst;

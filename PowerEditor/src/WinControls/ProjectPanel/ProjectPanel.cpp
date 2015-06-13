@@ -629,7 +629,17 @@ bool ProjectPanel::buildTreeFrom(TiXmlNode *projectRoot, HTREEITEM hParentItem)
 			}
 
 
-			addFolder(hParentItem, newFolderLabel.c_str(), true, true, fullPath.c_str(), &filters);
+			HTREEITEM hNewFolder = addFolder(hParentItem, newFolderLabel.c_str(), true, true, fullPath.c_str(), &filters);
+			if (strLabel)
+			{
+				TVITEM tvItem;
+				tvItem.mask = TVIF_PARAM;
+				tvItem.hItem = hNewFolder;
+				::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0,(LPARAM)&tvItem);
+				ProjectPanelData& projectPanelData = *(ProjectPanelData*)tvItem.lParam;
+				projectPanelData._label = strLabel;
+			}
+
 		}
 		else if (lstrcmp(TEXT("File"), v) == 0)
 		{

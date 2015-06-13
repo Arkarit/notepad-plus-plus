@@ -36,8 +36,8 @@
 #include <set>
 
 #include "resource.h"
-#include "Locking.h"
 #include "Directory.h"
+#include "mutex.h"
 
 #define DIRECTORYWATCHER_UPDATE			DIRECTORYWATCHER_USER
 #define DIRECTORYWATCHER_UPDATE_DONE	DIRECTORYWATCHER_USER + 1
@@ -97,7 +97,7 @@ class DirectoryWatcher
 	DWORD _updateFrequencyMs;
 	bool _changeOccurred;
 
-	Lock _lock;
+	Yuni::Mutex _lock;
 
 	std::vector<InsertStruct*> _dirItemsToAdd;
 	std::set<HTREEITEM> _dirItemsToRemove;
@@ -119,7 +119,7 @@ public:
 	void removeAllDirs();
 
 	bool getWatching() const { return _watching; }
-	void setWatching(bool val) { Scopelock lock(_lock); _watching = val; }
+	void setWatching(bool val) { Yuni::MutexLocker lock(_lock); _watching = val; }
 
 	void update();
 

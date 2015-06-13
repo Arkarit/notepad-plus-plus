@@ -46,14 +46,14 @@ DirectoryWatcher::DirectoryWatcher(HWND hWnd, DWORD updateFrequencyMs, bool hide
 
 DirectoryWatcher::~DirectoryWatcher()
 {
-	Scopelock lock(_lock);
+	Yuni::MutexLocker lock(_lock);
 	stopThread();
 	removeAllDirs();
 }
 
 void DirectoryWatcher::addOrChangeDir(const generic_string& path, HTREEITEM treeItem, const std::vector<generic_string>& filters)
 {
-	Scopelock lock(_lock);
+	Yuni::MutexLocker lock(_lock);
 	
 	// remove a probably previously existing item
 	// to easily change the filters.
@@ -66,13 +66,13 @@ void DirectoryWatcher::addOrChangeDir(const generic_string& path, HTREEITEM tree
 
 void DirectoryWatcher::removeDir(HTREEITEM treeItem)
 {
-	Scopelock lock(_lock);
+	Yuni::MutexLocker lock(_lock);
 	_dirItemsToRemove.insert(treeItem);
 }
 
 void DirectoryWatcher::removeAllDirs()
 {
-	Scopelock lock(_lock);
+	Yuni::MutexLocker lock(_lock);
 	for (auto it=_watchdirs.begin(); it != _watchdirs.end(); ++it)
 		delete *it;
 	_watchdirs.clear();
@@ -98,7 +98,7 @@ void DirectoryWatcher::startThread()
 {
 
 	try {
-		Scopelock lock(_lock);
+		Yuni::MutexLocker lock(_lock);
 		if (_running)
 			return;
 
@@ -131,7 +131,7 @@ void DirectoryWatcher::startThread()
 
 void DirectoryWatcher::stopThread()
 {
-	Scopelock lock(_lock);
+	Yuni::MutexLocker lock(_lock);
 
 	if (_running)
 	{
@@ -249,7 +249,7 @@ void DirectoryWatcher::iterateDirs()
 
 void DirectoryWatcher::updateDirs()
 {
-	Scopelock lock(_lock);
+	Yuni::MutexLocker lock(_lock);
 
 	// first, remove all dir items
 	for (auto itToRemove = _dirItemsToRemove.begin(); itToRemove != _dirItemsToRemove.end(); ++itToRemove)

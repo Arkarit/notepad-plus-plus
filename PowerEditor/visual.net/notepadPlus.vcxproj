@@ -155,7 +155,6 @@ copy ..\src\contextMenu.xml ..\bin\contextMenu.xml
     <ClCompile Include="..\src\WinControls\ContextMenu\ContextMenu.cpp" />
     <ClCompile Include="..\src\WinControls\ProjectPanel\Directory.cpp" />
     <ClCompile Include="..\src\WinControls\ProjectPanel\DirectoryWatcher.cpp" />
-    <ClCompile Include="..\src\WinControls\ProjectPanel\Locking.cpp" />
     <ClCompile Include="..\src\WinControls\TabBar\ControlsTab.cpp" />
     <ClCompile Include="..\src\WinControls\DockingWnd\DockingCont.cpp" />
     <ClCompile Include="..\src\WinControls\DockingWnd\DockingManager.cpp" />
@@ -451,7 +450,6 @@ copy ..\src\contextMenu.xml ..\bin\contextMenu.xml
     <ClInclude Include="..\src\ScitillaComponent\Buffer.h" />
     <ClInclude Include="..\src\WinControls\ProjectPanel\Directory.h" />
     <ClInclude Include="..\src\WinControls\ProjectPanel\DirectoryWatcher.h" />
-    <ClInclude Include="..\src\WinControls\ProjectPanel\Locking.h" />
     <ClInclude Include="..\uchardet\CharDistribution.h" />
     <ClInclude Include="..\src\WinControls\ClipboardHistory\clipboardHistoryPanel.h" />
     <ClInclude Include="..\src\WinControls\ClipboardHistory\clipboardHistoryPanel_rc.h" />

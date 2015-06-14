@@ -30,7 +30,7 @@
 #include <assert.h>
 
 
-DirectoryWatcher::DirectoryWatcher(HWND hWnd, DWORD updateFrequencyMs, bool hideEmptyDirs) 
+DirectoryWatcher::DirectoryWatcher(HWND hWnd, DWORD updateFrequencyMs, bool hideEmptyDirs, DWORD checkEmptyDirsEvery) 
 	: _hWnd(hWnd)
 	, _hThread(NULL)
 	, _hRunningEvent(NULL)
@@ -41,6 +41,8 @@ DirectoryWatcher::DirectoryWatcher(HWND hWnd, DWORD updateFrequencyMs, bool hide
 	, _watching(true)
 	, _changeOccurred(false)
 	, _hideEmptyDirs(hideEmptyDirs)
+	, _checkEmptyDirsCount(0)
+	, _checkEmptyDirsEvery(checkEmptyDirsEvery)
 {
 }
 
@@ -179,6 +181,7 @@ int DirectoryWatcher::thread()
 	events[0] = _hStopEvent;
 	events[1] = _hUpdateEvent;
 
+	::SetThreadPriority( ::GetCurrentThread(), THREAD_PRIORITY_LOWEST );
 
 	for(;;)
 	{
@@ -234,6 +237,18 @@ void DirectoryWatcher::iterateDirs()
 
 	_changeOccurred = false;
 
+	bool respectEmptyDirs=false;
+	if (_hideEmptyDirs && _checkEmptyDirsEvery)
+	{
+		_checkEmptyDirsCount++;
+		if (_checkEmptyDirsCount >= _checkEmptyDirsEvery)
+		{
+			_checkEmptyDirsCount = 0;
+			respectEmptyDirs = true;
+		}
+	}
+
+
 	for (auto it=_dirItems.begin(); it!=_dirItems.end(); ++it)
 	{
 		HTREEITEM hTreeItem = it->first;
@@ -252,7 +267,7 @@ void DirectoryWatcher::iterateDirs()
 			continue;
 		}
 
-		bool changed = dir->readIfChanged();
+		bool changed = dir->readIfChanged(respectEmptyDirs);
 
 		changedMap[dir] = changed;
 

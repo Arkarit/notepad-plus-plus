@@ -61,6 +61,8 @@ bool Directory::read(const generic_string& path, const std::vector<generic_strin
 	_lastWriteTime.dwHighDateTime = 0;
 	_files.clear();
 	_dirs.clear();
+	_invisibleDirs.clear();
+
 	if (&_filters != &filters)
 		_filters = filters;
 
@@ -83,7 +85,7 @@ bool Directory::read(const generic_string& path, const std::vector<generic_strin
 
 }
 
-bool Directory::readIfChanged()
+bool Directory::readIfChanged(bool respectEmptyDirs)
 {
 	if (!_wasRead)
 	{
@@ -91,8 +93,17 @@ bool Directory::readIfChanged()
 		return true;
 	}
 
-	if (!writeTimeHasChanged())
-		return false;
+	if (respectEmptyDirs && _hideEmptyDirs)
+	{
+		if (!writeTimeHasChanged() && !containsDataChanged())
+			return false;
+	}
+	else
+	{
+		if (!writeTimeHasChanged())
+			return false;
+	}
+
 	Directory cmp(_path,_filters);
 	if (*this != cmp)
 	{
@@ -143,6 +154,7 @@ void Directory::append(const generic_string& path, const generic_string& filter,
 					generic_string childPath = path + TEXT("\\") + file;
 					if (!containsData(childPath))
 					{
+						_invisibleDirs.push_back(file);
 						if (!FindNextFile(hFind, &fd))
 							break;
 						continue;
@@ -167,6 +179,23 @@ void Directory::append(const generic_string& path, const generic_string& filter,
 
 }
 
+
+bool Directory::containsDataChanged() const
+{
+	for (auto it=_dirs.begin(); it != _dirs.end(); ++it)
+	{
+		generic_string childPath = _path + TEXT("\\") + *it;
+		if (!containsData(childPath))
+			return true;
+	}
+	for (auto it=_invisibleDirs.begin(); it != _invisibleDirs.end(); ++it)
+	{
+		generic_string childPath = _path + TEXT("\\") + *it;
+		if (containsData(childPath))
+			return true;
+	}
+	return false;
+}
 
 // containsData() checks, if a directory or its subdirs contain any data which match the filters.
 bool Directory::containsData(const generic_string& path) const

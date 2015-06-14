@@ -87,6 +87,8 @@ class DirectoryWatcher
 	bool _running;
 	HWND _hWnd;
 	bool _hideEmptyDirs;
+	DWORD _checkEmptyDirsEvery;
+	DWORD _checkEmptyDirsCount;
 
 
 	std::set<Directory*> _watchdirs;
@@ -106,7 +108,7 @@ class DirectoryWatcher
 	bool _watching;
 public:
 
-	DirectoryWatcher(HWND hWnd = NULL, DWORD updateFrequencyMs = 1000, bool hideEmptyDirs = true);
+	DirectoryWatcher(HWND hWnd = NULL, DWORD updateFrequencyMs = 1000, bool hideEmptyDirs = true, DWORD checkEmptyDirsEvery = 10);
 	virtual ~DirectoryWatcher();
 
 	// startThread() must be called manually after creation. Throws std::runtime_error if fails to create events/resources (not very likely)

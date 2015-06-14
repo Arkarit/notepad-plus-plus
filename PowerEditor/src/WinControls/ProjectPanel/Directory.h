@@ -47,6 +47,7 @@ protected:
 	};
 	std::set<generic_string,comparator> _dirs;
 	std::set<generic_string,comparator> _files;
+	std::vector<generic_string> _invisibleDirs;
 	
 	std::vector<generic_string> _filters;
 
@@ -71,7 +72,7 @@ public:
 	// re-read the current directory, but only if it was changed.
 	// returns true, if directory was re-read, false if directory has not changed.
 	// Caution, in opposite to the other read() functions this is independent of the existence of the read directory!
-	bool readIfChanged();
+	bool readIfChanged(bool respectEmptyDirs = true);
 
 	// false when not initialized.
 	bool exists() const { return _exists; }
@@ -114,6 +115,7 @@ private:
 	static void enablePrivileges();
 	static bool enablePrivilege(LPCTSTR privName);
 	void append(const generic_string& path, const generic_string& filter, bool readDirs);
+	bool containsDataChanged() const;
 	bool containsData(const generic_string& path) const;
 	bool containsData(const generic_string& path, const generic_string& filter) const;
 	bool readLastWriteTime(FILETIME& filetime) const;

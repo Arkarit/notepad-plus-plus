@@ -114,10 +114,9 @@ private:
 	static void enablePrivileges();
 	static bool enablePrivilege(LPCTSTR privName);
 	void append(const generic_string& path, const generic_string& filter, bool readDirs);
-	bool containsData(const generic_string& path);
-	bool containsData(const generic_string& path, const generic_string& filter);
+	bool containsData(const generic_string& path) const;
+	bool containsData(const generic_string& path, const generic_string& filter) const;
 	bool readLastWriteTime(FILETIME& filetime) const;
-
 
 
 };

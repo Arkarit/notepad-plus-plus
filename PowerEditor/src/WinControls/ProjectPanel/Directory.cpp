@@ -169,7 +169,7 @@ void Directory::append(const generic_string& path, const generic_string& filter,
 
 
 // containsData() checks, if a directory or its subdirs contain any data which match the filters.
-bool Directory::containsData(const generic_string& path)
+bool Directory::containsData(const generic_string& path) const
 {
 	if (_filters.empty())
 		return containsData(path, TEXT("*.*"));
@@ -183,7 +183,7 @@ bool Directory::containsData(const generic_string& path)
 }
 
 // containsData() recursive call
-bool Directory::containsData(const generic_string& path, const generic_string& filter)
+bool Directory::containsData(const generic_string& path, const generic_string& filter) const
 {
 	generic_string searchPath = path + TEXT("\\") + filter;
 

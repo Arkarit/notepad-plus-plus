@@ -71,7 +71,6 @@ public:
 
 	// re-read the current directory, but only if it was changed.
 	// returns true, if directory was re-read, false if directory has not changed.
-	// Caution, in opposite to the other read() functions this is independent of the existence of the read directory!
 	bool readIfChanged(bool respectEmptyDirs = true);
 
 	// false when not initialized.

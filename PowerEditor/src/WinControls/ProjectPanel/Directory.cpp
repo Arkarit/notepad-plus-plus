@@ -120,7 +120,8 @@ void Directory::append(const generic_string& path, const generic_string& filter,
 	generic_string searchPath = _path + TEXT("\\") + filter;
 
 	WIN32_FIND_DATAW fd;
-	HANDLE hFind = FindFirstFile(searchPath.c_str(), &fd);
+
+	HANDLE hFind = FindFirstFileEx(searchPath.c_str(), FindExInfoBasic, &fd, FindExSearchNameMatch, NULL, FIND_FIRST_EX_LARGE_FETCH);
 
 	if (hFind == INVALID_HANDLE_VALUE)
 		return;
@@ -207,20 +208,52 @@ bool Directory::containsData(const generic_string& path) const
 bool Directory::containsData(const generic_string& path, const generic_string& filter) const
 {
 	generic_string searchPath = path + TEXT("\\") + filter;
+	generic_string childPath;
+	generic_string file;
 
+
+	// first step: check only files. If one is found, it contains data.
 	WIN32_FIND_DATAW fd;
-	HANDLE hFind = FindFirstFile(searchPath.c_str(), &fd);
+	HANDLE hFind = FindFirstFileEx(searchPath.c_str(), FindExInfoBasic, &fd, FindExSearchNameMatch, NULL, FIND_FIRST_EX_LARGE_FETCH);
 
 	if (hFind == INVALID_HANDLE_VALUE)
 		return false;
 
 	while (hFind != INVALID_HANDLE_VALUE)
 	{
-		const generic_string file(fd.cFileName);
+
+		// a directory was found... skip it in this pass
+		if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+		{
+			if (!FindNextFile(hFind, &fd))
+				return false;
+			continue;
+		}
+		else
+		{
+			// data was found - return true
+			FindClose(hFind);
+			return true;
+		}
+
+	}
+
+	if (hFind != INVALID_HANDLE_VALUE)
+		FindClose(hFind);
+
+	// no file was found in this directory. Now check the sub directories.
+	hFind = FindFirstFileEx(searchPath.c_str(), FindExInfoBasic, &fd, FindExSearchLimitToDirectories, NULL, FIND_FIRST_EX_LARGE_FETCH);
+
+	if (hFind == INVALID_HANDLE_VALUE)
+		return false;
+
+	while (hFind != INVALID_HANDLE_VALUE)
+	{
 
 		// a directory was found
 		if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 		{
+			file = fd.cFileName;
 			// skip . and ..
 			if (file == TEXT(".") || file == TEXT(".."))
 			{
@@ -230,7 +263,7 @@ bool Directory::containsData(const generic_string& path, const generic_string& f
 			}
 
 			// check if this child directory contains data; if this is the case, return true
-			generic_string childPath = path + TEXT("\\") + file;
+			childPath = path + TEXT("\\") + file;
 			if (containsData(childPath))
 			{
 				FindClose(hFind);
@@ -239,7 +272,7 @@ bool Directory::containsData(const generic_string& path, const generic_string& f
 		}
 		else
 		{
-			// data was found - return true
+			// data was found - return true. This should never happen, because the files were already checked. Just to be safe.
 			FindClose(hFind);
 			return true;
 		}

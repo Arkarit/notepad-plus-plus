@@ -287,8 +287,7 @@ protected:
 	HTREEITEM addDirectory(HTREEITEM hTreeItem);
 	void recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTreeItem);
 	HTREEITEM addFolder(HTREEITEM hTreeItem, const TCHAR *folderName);
-	HTREEITEM addDirectory(HTREEITEM hTreeItem, const TCHAR *folderName, bool monitored = false, bool root = false, 
-	                    const TCHAR *monitorPath = NULL, const std::vector<generic_string>* filters = NULL);
+	HTREEITEM addDirectory(HTREEITEM hTreeItem, const TCHAR *folderName, bool root = false, const TCHAR *monitorPath = NULL, const std::vector<generic_string>* filters = NULL);
 
 	bool writeWorkSpace(TCHAR *projectFileName = NULL);
 	generic_string getRelativePath(const generic_string & fn, const TCHAR *workSpaceFileName);

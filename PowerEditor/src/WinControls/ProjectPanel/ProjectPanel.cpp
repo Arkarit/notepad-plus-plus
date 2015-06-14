@@ -629,7 +629,7 @@ bool ProjectPanel::buildTreeFrom(TiXmlNode *projectRoot, HTREEITEM hParentItem)
 			}
 
 
-			HTREEITEM hNewDirectory = addDirectory(hParentItem, newFolderLabel.c_str(), true, true, fullPath.c_str(), &filters);
+			HTREEITEM hNewDirectory = addDirectory(hParentItem, newFolderLabel.c_str(), true, fullPath.c_str(), &filters);
 			if (strLabel)
 			{
 				TVITEM tvItem;
@@ -1287,23 +1287,15 @@ HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName)
 	return addedItem;
 }
 
-HTREEITEM ProjectPanel::addDirectory(HTREEITEM hTreeItem, const TCHAR *folderName, bool monitored, bool root, const TCHAR *monitorPath, const std::vector<generic_string>* filters)
+HTREEITEM ProjectPanel::addDirectory(HTREEITEM hTreeItem, const TCHAR *folderName, bool root, const TCHAR *monitorPath, const std::vector<generic_string>* filters)
 {
-	NodeType nodeType(nodeType_folder);
-	int iconindex = INDEX_CLOSED_NODE;
+	NodeType nodeType(nodeType_dir);
+	int iconindex = INDEX_CLOSED_DIR;
 
-	if (monitored)
+	if (root)
 	{
-		if (root)
-		{
-			nodeType = nodeType_baseDir;
-			iconindex = ::PathFileExists(monitorPath) ? INDEX_CLOSED_BASEDIR : INDEX_OFFLINE_BASEDIR;
-		}
-		else
-		{
-			nodeType = nodeType_dir;
-			iconindex = INDEX_CLOSED_DIR;
-		}
+		nodeType = nodeType_baseDir;
+		iconindex = ::PathFileExists(monitorPath) ? INDEX_CLOSED_BASEDIR : INDEX_OFFLINE_BASEDIR;
 	}
 
 	const std::vector<generic_string> dummy;
@@ -1314,8 +1306,7 @@ HTREEITEM ProjectPanel::addDirectory(HTREEITEM hTreeItem, const TCHAR *folderNam
 
 	HTREEITEM addedItem = _treeView.addItem(folderName, hTreeItem, iconindex, new ProjectPanelData(_directoryWatcher, folderName, monitorPath, nodeType, *finalFilters));
 
-	if (monitored)
-		_treeView.addItem( TEXT(""), addedItem, INDEX_LEAF_DIRFILE, new ProjectPanelData(_directoryWatcher,TEXT(""), TEXT(""), nodeType_dummy ));
+	_treeView.addItem( TEXT(""), addedItem, INDEX_LEAF_DIRFILE, new ProjectPanelData(_directoryWatcher,TEXT(""), TEXT(""), nodeType_dummy ));
 
 	if (getNodeType(hTreeItem) != nodeType_baseDir && getNodeType(hTreeItem) != nodeType_dir)
 	{
@@ -1346,7 +1337,7 @@ HTREEITEM ProjectPanel::addDirectory(HTREEITEM hTreeItem)
 	if (dirPath != TEXT(""))
 	{
 		generic_string newFolderLabel = buildDirectoryName(dirPath);
-		hTreeItem = addDirectory(hTreeItem, newFolderLabel.c_str(), true, true, dirPath.c_str());
+		hTreeItem = addDirectory(hTreeItem, newFolderLabel.c_str(), true, dirPath.c_str());
 		setWorkSpaceDirty(true);
 		_selDirOfFilesFromDirDlg = dirPath;
 	}
@@ -1977,7 +1968,7 @@ ProjectPanelDirectory::ProjectPanelDirectory(ProjectPanel* projectPanel, HTREEIT
 
 void ProjectPanelDirectory::onDirAdded(const generic_string& name)
 {
-	_projectPanel->addDirectory(_hItem, name.c_str(), true, false, (_path + TEXT("\\") + name).c_str() );
+	_projectPanel->addDirectory(_hItem, name.c_str(), false, (_path + TEXT("\\") + name).c_str() );
 
 }
 

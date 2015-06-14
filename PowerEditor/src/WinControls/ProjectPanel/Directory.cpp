@@ -131,15 +131,7 @@ void Directory::append(const generic_string& path, const generic_string& filter,
 	{
 		const generic_string file(fd.cFileName);
 
-		struct _WIN32_FILE_ATTRIBUTE_DATA m_attr;
-		if (!GetFileAttributesExW((path + TEXT("\\") + file).c_str(), GetFileExInfoStandard, &m_attr))
-		{
-			if (!FindNextFile(hFind, &fd))
-				break;
-			continue;
-		}
-
-		if (m_attr.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+		if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 		{
 			if (file == TEXT(".") || file == TEXT(".."))
 			{
@@ -226,16 +218,8 @@ bool Directory::containsData(const generic_string& path, const generic_string& f
 	{
 		const generic_string file(fd.cFileName);
 
-		struct _WIN32_FILE_ATTRIBUTE_DATA m_attr;
-		if (!GetFileAttributesExW((path + TEXT("\\") + file).c_str(), GetFileExInfoStandard, &m_attr))
-		{
-			if (!FindNextFile(hFind, &fd))
-				break;
-			continue;
-		}
-
 		// a directory was found
-		if (m_attr.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+		if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 		{
 			// skip . and ..
 			if (file == TEXT(".") || file == TEXT(".."))

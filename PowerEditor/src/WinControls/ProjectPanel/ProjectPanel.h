@@ -283,9 +283,11 @@ protected:
 					   int leaf_dirfile_id
 					   );
 	void addFiles(HTREEITEM hTreeItem);
-	void addFilesFromDirectory(HTREEITEM hTreeItem, bool monitored);
-	void recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTreeItem, bool monitored, bool recursive);
-	HTREEITEM addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, bool monitored = false, bool root = false, 
+	void addFilesFromDirectory(HTREEITEM hTreeItem);
+	HTREEITEM addDirectory(HTREEITEM hTreeItem);
+	void recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTreeItem);
+	HTREEITEM addFolder(HTREEITEM hTreeItem, const TCHAR *folderName);
+	HTREEITEM addDirectory(HTREEITEM hTreeItem, const TCHAR *folderName, bool monitored = false, bool root = false, 
 	                    const TCHAR *monitorPath = NULL, const std::vector<generic_string>* filters = NULL);
 
 	bool writeWorkSpace(TCHAR *projectFileName = NULL);

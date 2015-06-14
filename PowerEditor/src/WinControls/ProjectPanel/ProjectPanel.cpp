@@ -629,12 +629,12 @@ bool ProjectPanel::buildTreeFrom(TiXmlNode *projectRoot, HTREEITEM hParentItem)
 			}
 
 
-			HTREEITEM hNewFolder = addFolder(hParentItem, newFolderLabel.c_str(), true, true, fullPath.c_str(), &filters);
+			HTREEITEM hNewDirectory = addDirectory(hParentItem, newFolderLabel.c_str(), true, true, fullPath.c_str(), &filters);
 			if (strLabel)
 			{
 				TVITEM tvItem;
 				tvItem.mask = TVIF_PARAM;
-				tvItem.hItem = hNewFolder;
+				tvItem.hItem = hNewDirectory;
 				::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0,(LPARAM)&tvItem);
 				ProjectPanelData& projectPanelData = *(ProjectPanelData*)tvItem.lParam;
 				projectPanelData._label = strLabel;
@@ -1275,7 +1275,19 @@ const std::vector<generic_string>* ProjectPanel::getFilters(HTREEITEM hItem)
 	else return NULL;
 }
 
-HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, bool monitored, bool root, const TCHAR *monitorPath, const std::vector<generic_string>* filters)
+HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName)
+{
+	HTREEITEM addedItem = _treeView.addItem(folderName, hTreeItem, INDEX_CLOSED_NODE, new ProjectPanelData(_directoryWatcher, folderName, NULL, nodeType_folder));
+	
+	TreeView_Expand(_treeView.getHSelf(), hTreeItem, TVE_EXPAND);
+	TreeView_EditLabel(_treeView.getHSelf(), addedItem);
+	if (getNodeType(hTreeItem) == nodeType_folder)
+		_treeView.setItemImage(hTreeItem, INDEX_OPEN_NODE, INDEX_OPEN_NODE);
+
+	return addedItem;
+}
+
+HTREEITEM ProjectPanel::addDirectory(HTREEITEM hTreeItem, const TCHAR *folderName, bool monitored, bool root, const TCHAR *monitorPath, const std::vector<generic_string>* filters)
 {
 	NodeType nodeType(nodeType_folder);
 	int iconindex = INDEX_CLOSED_NODE;
@@ -1310,17 +1322,36 @@ HTREEITEM ProjectPanel::addFolder(HTREEITEM hTreeItem, const TCHAR *folderName, 
 		TreeView_Expand(_treeView.getHSelf(), hTreeItem, TVE_EXPAND);
 	}
 
-	if (getNodeType(hTreeItem) == nodeType_folder)
-		_treeView.setItemImage(hTreeItem, INDEX_OPEN_NODE, INDEX_OPEN_NODE);
-	else if (getNodeType(hTreeItem) == nodeType_baseDir)
+	if (getNodeType(hTreeItem) == nodeType_baseDir)
 		_treeView.setItemImage(hTreeItem, INDEX_OPEN_BASEDIR, INDEX_OPEN_BASEDIR);
 
-	if (getNodeType(addedItem) != nodeType_dir && getNodeType(addedItem) != nodeType_baseDir)
+	return addedItem;
+}
+
+HTREEITEM ProjectPanel::addDirectory(HTREEITEM hTreeItem)
+{
+	if (_selDirOfFilesFromDirDlg == TEXT("") && _workSpaceFilePath != TEXT(""))
 	{
-		TreeView_EditLabel(_treeView.getHSelf(), addedItem);
+		TCHAR dir[MAX_PATH];
+		lstrcpy(dir, _workSpaceFilePath.c_str());
+		::PathRemoveFileSpec(dir);
+		_selDirOfFilesFromDirDlg = dir;
+	}
+	generic_string dirPath;
+	if (_selDirOfFilesFromDirDlg != TEXT(""))
+		dirPath = getFolderName(_hSelf, _selDirOfFilesFromDirDlg.c_str());
+	else
+		dirPath = getFolderName(_hSelf);
+
+	if (dirPath != TEXT(""))
+	{
+		generic_string newFolderLabel = buildDirectoryName(dirPath);
+		hTreeItem = addDirectory(hTreeItem, newFolderLabel.c_str(), true, true, dirPath.c_str());
+		setWorkSpaceDirty(true);
+		_selDirOfFilesFromDirDlg = dirPath;
 	}
 
-	return addedItem;
+	return hTreeItem;
 }
 
 void ProjectPanel::popupMenuCmd(int cmdID)
@@ -1429,7 +1460,7 @@ void ProjectPanel::popupMenuCmd(int cmdID)
 
 		case IDM_PROJECT_ADDFILESRECUSIVELY:
 		{
-			addFilesFromDirectory(hTreeItem, false);
+			addFilesFromDirectory(hTreeItem);
 			if (getNodeType(hTreeItem) == nodeType_folder)
 				_treeView.setItemImage(hTreeItem, INDEX_OPEN_NODE, INDEX_OPEN_NODE);
 		}
@@ -1437,9 +1468,8 @@ void ProjectPanel::popupMenuCmd(int cmdID)
 
 		case IDM_PROJECT_EDITADDDIRECTORY:
 		{
-			addFilesFromDirectory(hTreeItem, true);
-			if (getNodeType(hTreeItem) == nodeType_baseDir)
-				_treeView.setItemImage(hTreeItem, INDEX_OPEN_BASEDIR, INDEX_OPEN_BASEDIR);
+			hTreeItem = addDirectory(hTreeItem);
+			_treeView.setItemImage(hTreeItem, INDEX_OPEN_BASEDIR, INDEX_OPEN_BASEDIR);
 		}
 		break;
 
@@ -1636,8 +1666,9 @@ void ProjectPanel::addFiles(HTREEITEM hTreeItem)
 	}
 }
 
-void ProjectPanel::recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTreeItem, bool monitored, bool recursive)
+void ProjectPanel::recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTreeItem)
 {
+	bool isRecursive = true;
 	bool isInHiddenDir = false;
 	generic_string dirFilter(folderPath);
 	if (folderPath[lstrlen(folderPath)-1] != '\\')
@@ -1659,7 +1690,7 @@ void ProjectPanel::recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTre
 			{
 				// do nothing
 			}
-			else if (recursive)
+			else if (isRecursive)
 			{
 				if ((lstrcmp(foundData.cFileName, TEXT("."))) && (lstrcmp(foundData.cFileName, TEXT(".."))))
 				{
@@ -1668,8 +1699,8 @@ void ProjectPanel::recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTre
 						pathDir += TEXT("\\");
 					pathDir += foundData.cFileName;
 					pathDir += TEXT("\\");
-					HTREEITEM addedItem = addFolder(hTreeItem, foundData.cFileName, monitored, false, monitored ? folderPath : NULL);
-					recursiveAddFilesFrom(pathDir.c_str(), addedItem, monitored, true);
+					HTREEITEM addedItem = addFolder(hTreeItem, foundData.cFileName);
+					recursiveAddFilesFrom(pathDir.c_str(), addedItem);
 				}
 			}
 		}
@@ -1685,13 +1716,13 @@ void ProjectPanel::recursiveAddFilesFrom(const TCHAR *folderPath, HTREEITEM hTre
 		if (folderPath[lstrlen(folderPath)-1] != '\\')
 			pathFile += TEXT("\\");
 		pathFile += files[i];
-		_treeView.addItem(files[i].c_str(), hTreeItem, monitored ? INDEX_LEAF_DIRFILE : INDEX_LEAF, new ProjectPanelData(_directoryWatcher, files[i].c_str(), pathFile.c_str(), monitored ? nodeType_dirFile : nodeType_file ));
+		_treeView.addItem(files[i].c_str(), hTreeItem, INDEX_LEAF, new ProjectPanelData(_directoryWatcher, files[i].c_str(), pathFile.c_str(), nodeType_file) );
 	}
 
 	::FindClose(hFile);
 }
 
-void ProjectPanel::addFilesFromDirectory(HTREEITEM hTreeItem, bool monitored)
+void ProjectPanel::addFilesFromDirectory(HTREEITEM hTreeItem)
 {
 	if (_selDirOfFilesFromDirDlg == TEXT("") && _workSpaceFilePath != TEXT(""))
 	{
@@ -1708,15 +1739,8 @@ void ProjectPanel::addFilesFromDirectory(HTREEITEM hTreeItem, bool monitored)
 
 	if (dirPath != TEXT(""))
 	{
-		if (monitored)
-		{
-			generic_string newFolderLabel = buildDirectoryName(dirPath);
-			hTreeItem = addFolder(hTreeItem, newFolderLabel.c_str(), true, true, dirPath.c_str());
-		}
-
-		recursiveAddFilesFrom(dirPath.c_str(), hTreeItem, monitored, !monitored);
-		if (!monitored)
-			_treeView.expand(hTreeItem);
+		recursiveAddFilesFrom(dirPath.c_str(), hTreeItem);
+		_treeView.expand(hTreeItem);
 		setWorkSpaceDirty(true);
 		_selDirOfFilesFromDirDlg = dirPath;
 	}
@@ -1953,7 +1977,7 @@ ProjectPanelDirectory::ProjectPanelDirectory(ProjectPanel* projectPanel, HTREEIT
 
 void ProjectPanelDirectory::onDirAdded(const generic_string& name)
 {
-	_projectPanel->addFolder(_hItem, name.c_str(), true, false, (_path + TEXT("\\") + name).c_str() );
+	_projectPanel->addDirectory(_hItem, name.c_str(), true, false, (_path + TEXT("\\") + name).c_str() );
 
 }
 

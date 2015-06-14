@@ -1820,6 +1820,16 @@ INT_PTR CALLBACK FilterDlg::run_dlgProc(UINT Message, WPARAM wParam, LPARAM)
 					if (_filters.size() == 1 && _filters[0].empty())
 						_filters.clear();
 
+					// check for nonsense combinations with *.* (which removes all filters)
+					for (size_t i=0; i<_filters.size(); ++i)
+					{
+						if (_filters[i] == TEXT("*.*"))
+						{
+							_filters.clear();
+							break;
+						}
+					}
+
 					NppParameters *nppParams = NppParameters::getInstance();
 					FindHistory & findHistory = nppParams->getFindHistory();
 					saveComboHistory(IDD_PROJECTPANEL_FILTERS_COMBO, findHistory._nbMaxFindHistoryFilter, findHistory._findHistoryFilters);

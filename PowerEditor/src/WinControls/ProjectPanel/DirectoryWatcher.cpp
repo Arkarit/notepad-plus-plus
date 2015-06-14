@@ -195,6 +195,9 @@ DWORD DirectoryWatcher::threadFunc(LPVOID data)
 
 bool DirectoryWatcher::post(HTREEITEM item, UINT message)
 {
+	if (!_hWnd)
+		return false;
+
 	if (message == DIRECTORYWATCHER_UPDATE)
 		_changeOccurred = true;
 

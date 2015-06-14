@@ -83,11 +83,11 @@ public:
 	generic_string _userLabel;
 	std::vector<generic_string> _filters;
 	NodeType _nodeType;
-	DirectoryWatcher* _directoryWatcher;
+	DirectoryWatcher& _directoryWatcher;
 	HTREEITEM _hItem;
 	bool _watch;
 
-	ProjectPanelData(DirectoryWatcher* directoryWatcher, const TCHAR* name, const TCHAR* filePath, NodeType nodeType, const std::vector<generic_string> filters = std::vector<generic_string>()) 
+	ProjectPanelData(DirectoryWatcher& directoryWatcher, const TCHAR* name, const TCHAR* filePath, NodeType nodeType, const std::vector<generic_string> filters = std::vector<generic_string>()) 
 		: TreeViewData()
 		, _name(name)
 		, _nodeType(nodeType)
@@ -113,7 +113,7 @@ public:
 	bool watchDir(bool watch) {
 		if (_hItem && _watch && !watch)
 			if (_nodeType == nodeType_baseDir || _nodeType == nodeType_dir)
-				_directoryWatcher->removeDir(_hItem);
+				_directoryWatcher.removeDir(_hItem);
 
 		_watch = watch;
 		if( !watch)
@@ -121,7 +121,7 @@ public:
 
 		if (_hItem)
 			if (watch && (_nodeType == nodeType_baseDir || _nodeType == nodeType_dir))
-				_directoryWatcher->addOrChangeDir(_filePath,_hItem,_filters);
+				_directoryWatcher.addOrChangeDir(_filePath,_hItem,_filters);
 			else
 				return true;
 
@@ -158,12 +158,13 @@ public:
 	}
 
 	virtual TreeViewData* clone() const {
-		return new ProjectPanelData(_directoryWatcher, _name.c_str(), _filePath.c_str(), _nodeType, _filters);
+		ProjectPanelData* result = new ProjectPanelData(_directoryWatcher, _name.c_str(), _filePath.c_str(), _nodeType, _filters);
+		result->_userLabel = _userLabel;
+		return result;
 	}
 
-private:
-	ProjectPanelData(const ProjectPanelData&) {}
-	ProjectPanelData& operator= (const ProjectPanelData&) {}
+	ProjectPanelData(const ProjectPanelData&) = delete;
+	ProjectPanelData& operator= (const ProjectPanelData&) = delete;
 };
 
 
@@ -207,12 +208,10 @@ public:
 		, _hFolderMenu(NULL)
 		, _hFileMenu(NULL)
 		, _hDirectoryMenu(NULL)
-		, _directoryWatcher(NULL)
 	{
 	};
 
 	virtual ~ProjectPanel() {
-		delete _directoryWatcher;
 	}
 
 
@@ -260,7 +259,7 @@ protected:
 	generic_string _workSpaceFilePath;
 	generic_string _selDirOfFilesFromDirDlg;
 	bool _isDirty;
-	DirectoryWatcher* _directoryWatcher;
+	DirectoryWatcher _directoryWatcher;
 
 	void initMenus();
 	void destroyMenus();

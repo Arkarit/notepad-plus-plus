@@ -106,7 +106,7 @@ class DirectoryWatcher
 	bool _watching;
 public:
 
-	DirectoryWatcher(HWND hWnd, DWORD updateFrequencyMs = 1000, bool hideEmptyDirs = true);
+	DirectoryWatcher(HWND hWnd = NULL, DWORD updateFrequencyMs = 1000, bool hideEmptyDirs = true);
 	virtual ~DirectoryWatcher();
 
 	// startThread() must be called manually after creation. Throws std::runtime_error if fails to create events/resources (not very likely)
@@ -118,8 +118,22 @@ public:
 	void removeDir(HTREEITEM treeItem);
 	void removeAllDirs();
 
-	bool getWatching() const { return _watching; }
-	void setWatching(bool val) { Yuni::MutexLocker lock(_lock); _watching = val; }
+	bool getWatching() const { 
+		return _watching; 
+	}
+
+	void setWatching(bool val) {
+		Yuni::MutexLocker lock(_lock);
+		_watching = val; 
+	}
+
+	HWND getWindow() const { 
+		return _hWnd; 
+	}
+
+	void setWindow(HWND _val) { 
+		_hWnd = _val; 
+	}
 
 	void update();
 
@@ -130,9 +144,8 @@ private:
 	void iterateDirs();
 	void updateDirs();
 
-	// noncopyable
-	DirectoryWatcher& operator= (const DirectoryWatcher&) {}
-	DirectoryWatcher(const DirectoryWatcher&) {}
+	DirectoryWatcher& operator= (const DirectoryWatcher&) = delete;
+	DirectoryWatcher(const DirectoryWatcher&) = delete;
 
 };
 

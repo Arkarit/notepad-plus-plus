@@ -94,8 +94,8 @@ INT_PTR CALLBACK ProjectPanel::run_dlgProc(UINT message, WPARAM wParam, LPARAM l
 			_treeView.init(_hInst, _hSelf, ID_PROJECTTREEVIEW);
 			_treeView.setListener(this);
 
-			_directoryWatcher = new DirectoryWatcher(_treeView.getHSelf());
-			_directoryWatcher->startThread();
+			_directoryWatcher.setWindow(_treeView.getHSelf());
+			_directoryWatcher.startThread();
 
 			setImageList(IDI_PROJECT_WORKSPACE, 
 			             IDI_PROJECT_WORKSPACEDIRTY, 
@@ -184,7 +184,8 @@ INT_PTR CALLBACK ProjectPanel::run_dlgProc(UINT message, WPARAM wParam, LPARAM l
 		case WM_DESTROY:
         {
 			_treeView.setListener(NULL);
-			_directoryWatcher->stopThread();
+			_directoryWatcher.stopThread();
+			_directoryWatcher.removeAllDirs();
 			_treeView.destroy();
 			destroyMenus();
 			::DestroyWindow(_hToolbarMenu);
@@ -913,7 +914,7 @@ void ProjectPanel::expandOrCollapseDirectory(bool expand, HTREEITEM hItem)
 		itemVisibilityChanges(hChildItem, expand);
 	}
 
-	_directoryWatcher->update();
+	_directoryWatcher.update();
 
 }
 

@@ -32,7 +32,6 @@
 #include "FileDialog.h"
 #include "localization.h"
 #include "Parameters.h"
-#include <sstream>
 
 #define CX_BITMAP         16
 #define CY_BITMAP         16
@@ -692,7 +691,7 @@ void ProjectPanel::rebuildDirectoryTree(HTREEITEM hParentItem, const ProjectPane
 	}
 
 	removeDummies(hParentItem);
-	ProjectPanelDirectory currDir( this, hParentItem );
+	TreeUpdaterDirectory currDir( this, hParentItem );
 	Directory newDir(projectPanelData._filePath, projectPanelData._filters);
 	currDir.synchronizeTo(newDir);
 
@@ -1926,7 +1925,7 @@ int FilterDlg::doDialog(bool isRTL /*= false*/)
 
 }
 
-ProjectPanelDirectory::ProjectPanelDirectory(ProjectPanel* projectPanel, HTREEITEM hItem) 
+ProjectPanel::TreeUpdaterDirectory::TreeUpdaterDirectory(ProjectPanel* projectPanel, HTREEITEM hItem) 
 	: Directory()
 	, _projectPanel(projectPanel)
 	, _treeView(&projectPanel->getTreeView())
@@ -1980,24 +1979,24 @@ ProjectPanelDirectory::ProjectPanelDirectory(ProjectPanel* projectPanel, HTREEIT
 }
 
 
-void ProjectPanelDirectory::onDirAdded(const generic_string& name)
+void ProjectPanel::TreeUpdaterDirectory::onDirAdded(const generic_string& name)
 {
 	_projectPanel->addDirectory(_hItem, name.c_str(), false, (_path + TEXT("\\") + name).c_str() );
 
 }
 
-void ProjectPanelDirectory::onDirRemoved(const generic_string& name)
+void ProjectPanel::TreeUpdaterDirectory::onDirRemoved(const generic_string& name)
 {
 	_treeView->removeItem(_dirMap[name]);
 }
 
-void ProjectPanelDirectory::onFileAdded(const generic_string& name)
+void ProjectPanel::TreeUpdaterDirectory::onFileAdded(const generic_string& name)
 {
 	_treeView->addItem(name.c_str(), _hItem, INDEX_LEAF_DIRFILE, new ProjectPanelData(_projectPanel->_directoryWatcher, name.c_str(), (_path + TEXT("\\") + name).c_str(), nodeType_dirFile ));
 
 }
 
-void ProjectPanelDirectory::onFileRemoved(const generic_string& name)
+void ProjectPanel::TreeUpdaterDirectory::onFileRemoved(const generic_string& name)
 {
 	_treeView->removeItem(_fileMap[name]);
 }
@@ -2018,7 +2017,7 @@ int CALLBACK compareFunc(LPARAM lhs, LPARAM rhs, LPARAM)
 	return lstrcmpi(dataL._name.c_str(),dataR._name.c_str());
 }
 
-void ProjectPanelDirectory::onEndSynchronize(const Directory& other)
+void ProjectPanel::TreeUpdaterDirectory::onEndSynchronize(const Directory& other)
 {
 	other;
 	_treeView->sort(_hItem, false, compareFunc);

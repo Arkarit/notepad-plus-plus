@@ -169,35 +169,31 @@ private:
 
 
 
-class ProjectPanel;
-
-class ProjectPanelDirectory : public Directory {
-protected:
-	ProjectPanel* _projectPanel;
-	TreeView* _treeView;
-	HTREEITEM _hItem;
-	std::map<generic_string,HTREEITEM> _dirMap;
-	std::map<generic_string,HTREEITEM> _fileMap;
-public:
-	ProjectPanelDirectory( ProjectPanel *projectPanel, HTREEITEM hItem );
-	virtual ~ProjectPanelDirectory() {}
-
-protected:
-
-	virtual void onDirAdded(const generic_string& name);
-	virtual void onDirRemoved(const generic_string& name);
-	virtual void onFileAdded(const generic_string& name);
-	virtual void onFileRemoved(const generic_string& name);
-	virtual void onEndSynchronize(const Directory& other);
-
-};
-
-
-
-
 class ProjectPanel : public DockingDlgInterface, public TreeViewListener {
-	friend class ProjectPanelDirectory;
-	friend int CALLBACK compareFunc(LPARAM lhs, LPARAM rhs, LPARAM);
+
+	// private class TreeUpdaterDirectory:
+	// constructs a directory by the current tree items, which are children of the supplied tree item.
+	// It can then be synchronized with a freshly read Directory by synchronizeTo()
+	// and updates the tree children according to this Directory.
+	class TreeUpdaterDirectory : public Directory {
+		ProjectPanel* _projectPanel;
+		TreeView* _treeView;
+		HTREEITEM _hItem;
+		std::map<generic_string,HTREEITEM> _dirMap;
+		std::map<generic_string,HTREEITEM> _fileMap;
+	public:
+		TreeUpdaterDirectory( ProjectPanel *projectPanel, HTREEITEM hItem );
+		virtual ~TreeUpdaterDirectory() {}
+
+	private:
+
+		virtual void onDirAdded(const generic_string& name);
+		virtual void onDirRemoved(const generic_string& name);
+		virtual void onFileAdded(const generic_string& name);
+		virtual void onFileRemoved(const generic_string& name);
+		virtual void onEndSynchronize(const Directory& other);
+
+	};
 	
 	generic_string _infotipStr;
 

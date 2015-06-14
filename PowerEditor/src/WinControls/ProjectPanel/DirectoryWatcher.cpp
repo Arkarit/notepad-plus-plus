@@ -30,7 +30,7 @@
 #include <assert.h>
 
 
-DirectoryWatcher::DirectoryWatcher(HWND hWnd, DWORD updateFrequencyMs, bool hideEmptyDirs, DWORD checkEmptyDirsEvery) 
+DirectoryWatcher::DirectoryWatcher(HWND hWnd, DWORD updateFrequencyMs, bool hideEmptyDirs, DWORD checkEmptyDirsEvery, bool manualMode) 
 	: _hWnd(hWnd)
 	, _hThread(NULL)
 	, _hRunningEvent(NULL)
@@ -38,11 +38,11 @@ DirectoryWatcher::DirectoryWatcher(HWND hWnd, DWORD updateFrequencyMs, bool hide
 	, _hUpdateEvent(NULL)
 	, _running(false)
 	, _updateFrequencyMs(updateFrequencyMs)
-	, _watching(true)
 	, _changeOccurred(false)
 	, _hideEmptyDirs(hideEmptyDirs)
 	, _checkEmptyDirsCount(0)
 	, _checkEmptyDirsEvery(checkEmptyDirsEvery)
+	, _manualMode(manualMode)
 {
 }
 
@@ -89,6 +89,19 @@ void DirectoryWatcher::removeAllDirs()
 	_dirItemsToRemove.clear();
 	_forcedUpdateToAdd.clear();
 	
+}
+
+void DirectoryWatcher::setManualMode(bool val)
+{
+
+	Yuni::MutexLocker lock(_lock);
+	if (_manualMode != val)
+	{
+		_manualMode = val;
+		// wake up thread if manual mode has been switched off
+		if (!_manualMode)
+			update();
+	}
 }
 
 void DirectoryWatcher::forceUpdate(HTREEITEM hItem)
@@ -186,9 +199,8 @@ int DirectoryWatcher::thread()
 	for(;;)
 	{
 		updateDirs();
-		if (_watching)
-			iterateDirs();
-		DWORD waitresult = WaitForMultipleObjects(2, events, FALSE, _updateFrequencyMs);
+		iterateDirs();
+		DWORD waitresult = WaitForMultipleObjects(2, events, FALSE, _manualMode ? INFINITE : _updateFrequencyMs);
 		switch (waitresult)
 		{
 			case WAIT_FAILED:			// error

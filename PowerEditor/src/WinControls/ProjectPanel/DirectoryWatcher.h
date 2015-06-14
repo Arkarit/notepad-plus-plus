@@ -105,10 +105,11 @@ class DirectoryWatcher
 	std::set<HTREEITEM> _dirItemsToRemove;
 	std::set<HTREEITEM> _forcedUpdateToAdd;
 
-	bool _watching;
+	bool _manualMode;
+
 public:
 
-	DirectoryWatcher(HWND hWnd = NULL, DWORD updateFrequencyMs = 1000, bool hideEmptyDirs = true, DWORD checkEmptyDirsEvery = 10);
+	DirectoryWatcher(HWND hWnd = NULL, DWORD updateFrequencyMs = 1000, bool hideEmptyDirs = true, DWORD checkEmptyDirsEvery = 10, bool manualMode = false);
 	virtual ~DirectoryWatcher();
 
 	// startThread() must be called manually after creation. Throws std::runtime_error if fails to create events/resources (not very likely)
@@ -120,14 +121,10 @@ public:
 	void removeDir(HTREEITEM treeItem);
 	void removeAllDirs();
 
-	bool getWatching() const { 
-		return _watching; 
+	bool getManualMode() const { 
+		return _manualMode; 
 	}
-
-	void setWatching(bool val) {
-		Yuni::MutexLocker lock(_lock);
-		_watching = val; 
-	}
+	void setManualMode(bool val);
 
 	HWND getWindow() const { 
 		return _hWnd; 

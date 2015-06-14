@@ -1816,6 +1816,10 @@ INT_PTR CALLBACK FilterDlg::run_dlgProc(UINT Message, WPARAM wParam, LPARAM)
 
 					_filters = stringSplit(tfilters, TEXT(";"), true);
 
+					// strange behaviour of stringSplit - it returns an array with a single empty string if it gets an empty string.
+					if (_filters.size() == 1 && _filters[0].empty())
+						_filters.clear();
+
 					NppParameters *nppParams = NppParameters::getInstance();
 					FindHistory & findHistory = nppParams->getFindHistory();
 					saveComboHistory(IDD_PROJECTPANEL_FILTERS_COMBO, findHistory._nbMaxFindHistoryFilter, findHistory._findHistoryFilters);

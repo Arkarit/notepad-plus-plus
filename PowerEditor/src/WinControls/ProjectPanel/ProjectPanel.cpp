@@ -252,6 +252,7 @@ void ProjectPanel::initMenus()
 	generic_string edit_addDirectory = pNativeSpeaker->getProjectPanelLangMenuStr("ProjectMenu", IDM_PROJECT_EDITADDDIRECTORY, PM_EDITADDDIRECTORY);
 	generic_string edit_remove = pNativeSpeaker->getProjectPanelLangMenuStr("ProjectMenu", IDM_PROJECT_DELETEFOLDER, PM_EDITREMOVE);
 	generic_string edit_setfilter = pNativeSpeaker->getProjectPanelLangMenuStr("ProjectMenu", IDM_PROJECT_SETFILTERS, PM_SETFILTERS);
+	generic_string edit_refresh = pNativeSpeaker->getProjectPanelLangMenuStr("ProjectMenu", IDM_PROJECT_REFRESH, PM_REFRESH);
 
 	_hProjectMenu = ::CreatePopupMenu();
 	::InsertMenu(_hProjectMenu, 0, MF_BYCOMMAND, IDM_PROJECT_MOVEUP, edit_moveup.c_str());
@@ -304,6 +305,7 @@ void ProjectPanel::initMenus()
 	::InsertMenu(_hDirectoryMenu, 0, MF_BYCOMMAND, IDM_PROJECT_DELETEFILE, edit_remove.c_str());
 	::InsertMenu(_hDirectoryMenu, 0, MF_BYCOMMAND, IDM_PROJECT_SETFILTERS, edit_setfilter.c_str());
 	::InsertMenu(_hDirectoryMenu, 0, MF_BYCOMMAND, IDM_PROJECT_RENAME, edit_rename.c_str());
+	::InsertMenu(_hDirectoryMenu, 0, MF_BYCOMMAND, IDM_PROJECT_REFRESH, edit_refresh.c_str());
 
 }
 
@@ -1416,6 +1418,10 @@ void ProjectPanel::popupMenuCmd(int cmdID)
 
 		case IDM_PROJECT_RENAME :
 			TreeView_EditLabel(_treeView.getHSelf(), hTreeItem);
+		break;
+
+		case IDM_PROJECT_REFRESH :
+			_directoryWatcher.forceUpdateAll();
 		break;
 
 		case IDM_PROJECT_NEWFOLDER :

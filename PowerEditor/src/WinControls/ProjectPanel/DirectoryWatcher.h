@@ -135,6 +135,8 @@ public:
 		_hWnd = _val; 
 	}
 
+	void forceUpdate(HTREEITEM hItem);
+	void forceUpdateAll();
 	void update();
 
 private:

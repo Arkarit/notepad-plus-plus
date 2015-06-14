@@ -61,6 +61,7 @@
 #define PM_EDITREMOVE              TEXT("Remove\tDEL")
 #define PM_EDITMODIFYFILE          TEXT("Modify File Path")
 #define PM_SETFILTERS              TEXT("Set Filters...")
+#define PM_REFRESH			       TEXT("Refresh")
 
 #define PM_WORKSPACEMENUENTRY      TEXT("Workspace")
 #define PM_EDITMENUENTRY           TEXT("Edit")

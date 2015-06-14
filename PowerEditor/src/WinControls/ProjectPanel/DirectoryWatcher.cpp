@@ -89,6 +89,27 @@ void DirectoryWatcher::removeAllDirs()
 	
 }
 
+void DirectoryWatcher::forceUpdate(HTREEITEM hItem)
+{
+	Yuni::MutexLocker lock(_lock);
+	assert( _dirItems.find(hItem) != _dirItems.end());
+	if( _dirItems.find(hItem) != _dirItems.end())
+	{
+		_forcedUpdateToAdd.insert(hItem);
+		update();
+	}
+}
+
+void DirectoryWatcher::forceUpdateAll()
+{
+	Yuni::MutexLocker lock(_lock);
+	for (auto it=_dirItems.begin(); it !=_dirItems.end(); ++it)
+	{
+		_forcedUpdateToAdd.insert(it->first);
+	}
+	update();
+}
+
 void DirectoryWatcher::update()
 {
 	::SetEvent(_hUpdateEvent);

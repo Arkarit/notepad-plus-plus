@@ -80,7 +80,7 @@ class ProjectPanelData : public TreeViewData {
 public:
 	generic_string _name;
 	generic_string _filePath;
-	generic_string _label;
+	generic_string _userLabel;
 	std::vector<generic_string> _filters;
 	NodeType _nodeType;
 	DirectoryWatcher* _directoryWatcher;
@@ -308,7 +308,7 @@ protected:
 
 	void removeDummies(HTREEITEM hTreeItem);
 
-	void treeItemChanged(HTREEITEM hItem,TreeViewData* data);
+	void treeItemChanged(HTREEITEM hItem,TreeViewData* tvdata);
 
 	static generic_string buildDirectoryName(const generic_string& filePath, const std::vector<generic_string>& filters = std::vector<generic_string>());
 
@@ -318,13 +318,6 @@ protected:
 	virtual void onTreeItemAdded(bool afterClone, HTREEITEM hItem, TreeViewData* newData);
 	virtual void onMessage(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 	//
-
-	static ProjectPanelData* getData(TreeViewData* data) {
-		return (ProjectPanelData*) data;
-	}
-	static const ProjectPanelData* getData( const TreeViewData* data ) {
-		return (ProjectPanelData*) data;
-	}
 
 };
 

@@ -27,6 +27,8 @@
 
 #include "Directory.h"
 #include <Shlwapi.h>
+#include <tchar.h>
+#include <assert.h>
 
 Directory::Directory(bool hideEmptyDirs)
 	: _exists(false)
@@ -50,12 +52,11 @@ Directory::Directory(const generic_string& path, const std::vector<generic_strin
 	_lastWriteTime.dwHighDateTime = 0;
 	enablePrivileges();
 	if (autoread)
-		read(path);
+		read();
 }
 
-bool Directory::read(const generic_string& path, const std::vector<generic_string>& filters)
+bool Directory::read()
 {
-	_path = path;
 	_exists = false;
 	_lastWriteTime.dwLowDateTime = 0;
 	_lastWriteTime.dwHighDateTime = 0;
@@ -63,25 +64,22 @@ bool Directory::read(const generic_string& path, const std::vector<generic_strin
 	_dirs.clear();
 	_invisibleDirs.clear();
 
-	if (&_filters != &filters)
-		_filters = filters;
-
 	// first, read directories, never filtered.
-	append(_path, TEXT("*.*"), true);
+	append(TEXT("*.*"), true);
 
 	// then read files, by each filter
 	if (_filters.empty())
 	{
-		append(_path, TEXT("*.*"), false);
+		append(TEXT("*.*"), false);
 	}
 	else
 	{
 		for (size_t i=0; i<_filters.size(); ++i)
-			append(_path, _filters[i], false);
+			append(_filters[i], false);
 	}
 
 
-	readLastWriteTime(_lastWriteTime);
+	readLastWriteTime(&_lastWriteTime);
 
 	_wasRead = true;
 
@@ -117,7 +115,7 @@ bool Directory::readIfChanged(bool respectEmptyDirs)
 	return false;
 }
 
-void Directory::append(const generic_string& path, const generic_string& filter, bool readDirs)
+void Directory::append(const generic_string& filter, bool readDirs)
 {
 	const bool readFiles = !readDirs;
 
@@ -132,50 +130,46 @@ void Directory::append(const generic_string& path, const generic_string& filter,
 
 	_exists = true;
 
-	while (hFind != INVALID_HANDLE_VALUE)
+	do
 	{
-		const generic_string file(fd.cFileName);
+		const bool isDir = (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+		const bool isFile = !isDir;
 
-		if ((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
+
+		if (readDirs && isDir 
+			&& _tcscmp(fd.cFileName, TEXT(".")) != 0 && _tcscmp(fd.cFileName, TEXT("..")))
 		{
-			if (file == TEXT(".") || file == TEXT(".."))
-			{
-				if (!FindNextFile(hFind, &fd))
-					break;
-				continue;
-			}
-			if (readDirs)
-			{
-				if (_hideEmptyDirs)
-				{
-					generic_string childPath = path + TEXT("\\") + file;
-					if (!containsData(childPath))
-					{
-						_invisibleDirs.push_back(file);
-						if (!FindNextFile(hFind, &fd))
-							break;
-						continue;
-					}
-				}
-				_dirs.insert(file);
-			}
+			insertDir(_path, generic_string(fd.cFileName));
 		}
-		else
+		else if (readFiles && isFile)
 		{
-			if (readFiles)
-				_files.insert(file);
+			_files.insert(generic_string(fd.cFileName));
 		}
 
-		if (!FindNextFile(hFind, &fd))
-			break;
+	} while( FindNextFile(hFind, &fd));
+
+	if (!FindClose(hFind))
+	{
+		// a FindClose fail should only happen when using a wrong handle, so assert 0 here.
+		assert(0);
 	}
-
-	if (hFind != INVALID_HANDLE_VALUE)
-		FindClose(hFind);
 
 
 }
 
+void Directory::insertDir(const generic_string& parentPath, const generic_string& filename)
+{
+	if (_hideEmptyDirs)
+	{
+		generic_string childPath = parentPath + TEXT("\\") + filename;
+		if (!containsData(childPath))
+		{
+			_invisibleDirs.emplace_back(filename);
+			return;
+		}
+	}
+	_dirs.insert(filename);
+}
 
 bool Directory::containsDataChanged() const
 {
@@ -200,7 +194,8 @@ bool Directory::containsData(const generic_string& path) const
 	if (_filters.empty())
 		return containsData(path, TEXT("*.*"));
 
-	for (size_t i=0; i<_filters.size(); ++i)
+	const size_t filtersSize = _filters.size();
+	for (size_t i=0; i<filtersSize; ++i)
 	{
 		if (containsData(path, _filters[i]))
 			return true;
@@ -297,7 +292,7 @@ bool Directory::writeTimeHasChanged() const
 	FILETIME newFiletime;
 
 	// if the new filetime can not be determined, return true for sure. The exact differences will be tested later.
-	if (!readLastWriteTime(newFiletime))
+	if (!readLastWriteTime(&newFiletime))
 		return true;
 
 	// we could successfully get the filetime, but before this it was 0 - definitely a change
@@ -323,18 +318,18 @@ void Directory::setFilters(const std::vector<generic_string>& filters, bool auto
 void Directory::synchronizeTo(const Directory& other)
 {
 	onBeginSynchronize(other);
-	for (auto it = _dirs.begin(); it != _dirs.end(); ++it)
-		if (other._dirs.find(*it) == other._dirs.end())
-			onDirRemoved(*it);
-	for (auto it = other._dirs.begin(); it != other._dirs.end(); ++it)
-		if (_dirs.find(*it) == _dirs.end())
-			onDirAdded(*it);
-	for (auto it = _files.begin(); it != _files.end(); ++it)
-		if (other._files.find(*it) == other._files.end())
-			onFileRemoved(*it);
-	for (auto it = other._files.begin(); it != other._files.end(); ++it)
-		if (_files.find(*it) == _files.end())
-			onFileAdded(*it);
+	for (auto &dir : _dirs)
+		if (other._dirs.find(dir) == other._dirs.end())
+			onDirRemoved(dir);
+	for (auto& dir : other._dirs)
+		if (_dirs.find(dir) == _dirs.end())
+			onDirAdded(dir);
+	for (auto& dir : _files)
+		if (other._files.find(dir) == other._files.end())
+			onFileRemoved(dir);
+	for (auto& dir : other._files)
+		if (_files.find(dir) == _files.end())
+			onFileAdded(dir);
 	onEndSynchronize(other);
 
 	*this = other;
@@ -353,12 +348,16 @@ void Directory::setHideEmptyDirs(bool hideEmptyDirs, bool autoread)
 
 // read last write time reads the last write time into "filetime".
 // Under some circumstances, it might happen that the file time can not be determined, in this case it returns false.
-bool Directory::readLastWriteTime(FILETIME& filetime) const
+bool Directory::readLastWriteTime(_Out_ FILETIME* filetime) const
 {
+	assert(filetime != NULL);
+	if (filetime == NULL)
+		return false;
+
 	if (_path.empty())
 	{
-		filetime.dwHighDateTime = 0;
-		filetime.dwLowDateTime = 0;
+		filetime->dwHighDateTime = 0;
+		filetime->dwLowDateTime = 0;
 		return true;
 	}
 
@@ -378,7 +377,7 @@ bool Directory::readLastWriteTime(FILETIME& filetime) const
 			CloseHandle(hDir);
 			if (fileTimeResult)
 			{
-				filetime = lastWriteTime;
+				*filetime = lastWriteTime;
 				return true;
 			}
 			
@@ -399,7 +398,7 @@ bool Directory::readLastWriteTime(FILETIME& filetime) const
 
 	FindClose(hFind);
 
-	filetime = fd.ftLastWriteTime;
+	*filetime = fd.ftLastWriteTime;
 	return true;
 
 }

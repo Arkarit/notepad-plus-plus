@@ -65,9 +65,7 @@ public:
 	const generic_string& getPath() const { return _path; }
 
 	// read the directory. Returns true, if the directory exists.
-	bool read(const generic_string& path, const std::vector<generic_string>& filters);
-	bool read(const generic_string& path) { return read(path,_filters); }
-	bool read() { return read(_path, _filters); }
+	bool read();
 
 	// re-read the current directory, but only if it was changed.
 	// returns true, if directory was re-read, false if directory has not changed.
@@ -113,11 +111,12 @@ private:
 
 	static void enablePrivileges();
 	static bool enablePrivilege(LPCTSTR privName);
-	void append(const generic_string& path, const generic_string& filter, bool readDirs);
+	void append(const generic_string& filter, bool readDirs);
+	void insertDir(const generic_string& parentPath, const generic_string& filename);
 	bool containsDataChanged() const;
 	bool containsData(const generic_string& path) const;
 	bool containsData(const generic_string& path, const generic_string& filter) const;
-	bool readLastWriteTime(FILETIME& filetime) const;
+	bool readLastWriteTime( _Out_ FILETIME* filetime) const;
 
 
 };

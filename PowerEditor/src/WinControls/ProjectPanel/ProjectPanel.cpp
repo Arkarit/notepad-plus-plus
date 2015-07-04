@@ -1091,7 +1091,7 @@ void ProjectPanel::notified(LPNMHDR notification)
 				}
 				else
 				{
-					_infotipStr = ((ProjectPanelData *)lpGetInfoTip->lParam)->_filePath;
+					_infotipStr = reinterpret_cast<ProjectPanelData *>(lpGetInfoTip->lParam)->_filePath;
 					if (_infotipStr.empty())
 						return;
 

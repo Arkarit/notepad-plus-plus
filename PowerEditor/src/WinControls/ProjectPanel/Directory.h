@@ -60,7 +60,7 @@ public:
 	// directory with path - is instantly read in ctor, if autoread==true
 	Directory(const generic_string& path, const std::vector<generic_string>& filters = std::vector<generic_string>(), bool hideEmptyDirs=true, bool autoread=true );
 
-	virtual ~Directory() {}
+	virtual ~Directory() = default;
 
 	const generic_string& getPath() const { return _path; }
 
@@ -89,7 +89,6 @@ public:
 
 	// empty directories can be hidden:
 	// "empty" means in this case, neither the directory itself nor its subdirectories contains any data, which match the filters
-	bool getHideEmptyDirs() const { return _hideEmptyDirs; }
 	void setHideEmptyDirs(bool hideEmptyDirs, bool autoread=true);
 
 	// synchronizeTo is basically like a copy constructor, with the difference, that it calls the
@@ -116,6 +115,8 @@ private:
 	bool containsDataChanged() const;
 	bool containsData(const generic_string& path) const;
 	bool containsData(const generic_string& path, const generic_string& filter) const;
+	
+	_Success_( return == true )
 	bool readLastWriteTime( _Out_ FILETIME* filetime) const;
 
 

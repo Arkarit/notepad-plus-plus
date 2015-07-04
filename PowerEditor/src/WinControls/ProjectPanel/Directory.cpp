@@ -255,8 +255,7 @@ bool Directory::containsData(const generic_string& path, const generic_string& f
 		}
 		else if (isFile)
 		{
-			// data was found - return true. This should never happen, because the files were already checked. Just to be safe.
-			assert(false);
+			// data was found - return true. This could happen in case a file was created between 1st and 2nd loop.
 			FindClose(hFind);
 			return true;
 		}
@@ -295,6 +294,7 @@ void Directory::setFilters(const std::vector<generic_string>& filters, bool auto
 {
 	if (autoread)
 	{
+		// autoread does an expensive read(), so we check equality first in this case.
 		if (_filters != filters)
 		{
 			_filters = filters;
@@ -362,18 +362,18 @@ bool Directory::readLastWriteTime(_Out_ FILETIME* filetime) const
 	if (PathIsRoot(_path.c_str()))
 	{
 		HANDLE hDir = CreateFile(_path.c_str(), FILE_LIST_DIRECTORY, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
-		if (hDir != INVALID_HANDLE_VALUE)
+		if (hDir == INVALID_HANDLE_VALUE)
+			return false;
+
+		FILETIME creationTime, lastAccessTime, lastWriteTime;
+		bool fileTimeResult = GetFileTime( hDir, &creationTime, &lastAccessTime, &lastWriteTime) != 0;
+		CloseHandle(hDir);
+		if (fileTimeResult)
 		{
-			FILETIME creationTime, lastAccessTime, lastWriteTime;
-			bool fileTimeResult = GetFileTime( hDir, &creationTime, &lastAccessTime, &lastWriteTime) != 0;
-			CloseHandle(hDir);
-			if (fileTimeResult)
-			{
-				*filetime = lastWriteTime;
-				return true;
-			}
-			
+			*filetime = lastWriteTime;
+			return true;
 		}
+			
 		return false;
 	}
 
@@ -429,17 +429,18 @@ bool Directory::enablePrivilege(LPCTSTR privilegeName)
 	bool result = false;
 	HANDLE hToken;
 
-	if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hToken))
-	{
-		TOKEN_PRIVILEGES tokenPrivileges = { 1 };
+	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hToken))
+		return false;
 
-		if (LookupPrivilegeValue(NULL, privilegeName, &tokenPrivileges.Privileges[0].Luid))
-		{
-			tokenPrivileges.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-			AdjustTokenPrivileges(hToken, FALSE, &tokenPrivileges, sizeof(tokenPrivileges), NULL, NULL);
-			result = (GetLastError() == ERROR_SUCCESS);
-		}
-		CloseHandle(hToken);
+	TOKEN_PRIVILEGES tokenPrivileges = { 1 };
+
+	if (LookupPrivilegeValue(NULL, privilegeName, &tokenPrivileges.Privileges[0].Luid))
+	{
+		tokenPrivileges.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+		AdjustTokenPrivileges(hToken, FALSE, &tokenPrivileges, sizeof(tokenPrivileges), NULL, NULL);
+		result = (GetLastError() == ERROR_SUCCESS);
 	}
-	return(result);
+	CloseHandle(hToken);
+
+	return result;
 }

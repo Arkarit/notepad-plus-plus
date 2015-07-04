@@ -135,7 +135,6 @@ void Directory::append(const generic_string& filter, bool readDirs)
 		const bool isDir = (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
 		const bool isFile = !isDir;
 
-
 		if (readDirs && isDir 
 			&& _tcscmp(fd.cFileName, TEXT(".")) != 0 && _tcscmp(fd.cFileName, TEXT("..")))
 		{
@@ -150,8 +149,8 @@ void Directory::append(const generic_string& filter, bool readDirs)
 
 	if (!FindClose(hFind))
 	{
-		// a FindClose fail should only happen when using a wrong handle, so assert 0 here.
-		assert(0);
+		// a FindClose fail should only happen when using a wrong handle
+		assert(false);
 	}
 
 
@@ -173,15 +172,15 @@ void Directory::insertDir(const generic_string& parentPath, const generic_string
 
 bool Directory::containsDataChanged() const
 {
-	for (auto it=_dirs.begin(); it != _dirs.end(); ++it)
+	for (auto& dir : _dirs)
 	{
-		generic_string childPath = _path + TEXT("\\") + *it;
+		generic_string childPath = _path + TEXT("\\") + dir;
 		if (!containsData(childPath))
 			return true;
 	}
-	for (auto it=_invisibleDirs.begin(); it != _invisibleDirs.end(); ++it)
+	for (auto& dir : _invisibleDirs)
 	{
-		generic_string childPath = _path + TEXT("\\") + *it;
+		generic_string childPath = _path + TEXT("\\") + dir;
 		if (containsData(childPath))
 			return true;
 	}
@@ -207,9 +206,6 @@ bool Directory::containsData(const generic_string& path) const
 bool Directory::containsData(const generic_string& path, const generic_string& filter) const
 {
 	generic_string searchPath = path + TEXT("\\") + filter;
-	generic_string childPath;
-	generic_string file;
-
 
 	// first step: check only files. If one is found, it contains data.
 	WIN32_FIND_DATA fd;
@@ -218,27 +214,23 @@ bool Directory::containsData(const generic_string& path, const generic_string& f
 	if (hFind == INVALID_HANDLE_VALUE)
 		return false;
 
-	while (hFind != INVALID_HANDLE_VALUE)
+	do
 	{
-
-		// a directory was found... skip it in this pass
-		if ((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
+		// check only files in this pass, ignore directories.
+		if ((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
 		{
-			if (!FindNextFile(hFind, &fd))
-				break;
-			continue;
-		}
-		else
-		{
-			// data was found - return true
+			// data was found - return true instantly.
 			FindClose(hFind);
 			return true;
 		}
 
-	}
+	} while (FindNextFile(hFind, &fd));
 
-	if (hFind != INVALID_HANDLE_VALUE)
-		FindClose(hFind);
+	if (!FindClose(hFind))
+	{
+		// a FindClose fail should only happen when using a wrong handle
+		assert(false);
+	}
 
 	// no file was found in this directory. Now check the sub directories.
 	hFind = FindFirstFileEx(searchPath.c_str(), FindExInfoBasic, &fd, FindExSearchLimitToDirectories, NULL, 0);
@@ -246,42 +238,36 @@ bool Directory::containsData(const generic_string& path, const generic_string& f
 	if (hFind == INVALID_HANDLE_VALUE)
 		return false;
 
-	while (hFind != INVALID_HANDLE_VALUE)
+	do
 	{
+		const bool isDir = (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+		const bool isFile = !isDir;
 
-		// a directory was found
-		if ((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
+		if (isDir && _tcscmp(fd.cFileName, TEXT(".")) != 0 && _tcscmp(fd.cFileName, TEXT("..")))
 		{
-			file = fd.cFileName;
-			// skip . and ..
-			if (file == TEXT(".") || file == TEXT(".."))
-			{
-				if (!FindNextFile(hFind, &fd))
-					break;
-				continue;
-			}
-
 			// check if this child directory contains data; if this is the case, return true
-			childPath = path + TEXT("\\") + file;
+			const generic_string childPath( path + TEXT("\\") + fd.cFileName);
 			if (containsData(childPath))
 			{
 				FindClose(hFind);
 				return true;
 			}
 		}
-		else
+		else if (isFile)
 		{
 			// data was found - return true. This should never happen, because the files were already checked. Just to be safe.
+			assert(false);
 			FindClose(hFind);
 			return true;
 		}
 
-		if (!FindNextFile(hFind, &fd))
-			break;
-	}
+	} while (FindNextFile(hFind, &fd));
 
-	if (hFind != INVALID_HANDLE_VALUE)
-		FindClose(hFind);
+	if (!FindClose(hFind))
+	{
+		// a FindClose fail should only happen when using a wrong handle
+		assert(false);
+	}
 
 	return false;
 
@@ -289,7 +275,7 @@ bool Directory::containsData(const generic_string& path, const generic_string& f
 
 bool Directory::writeTimeHasChanged() const
 {
-	FILETIME newFiletime;
+	FILETIME newFiletime = {0};
 
 	// if the new filetime can not be determined, return true for sure. The exact differences will be tested later.
 	if (!readLastWriteTime(&newFiletime))
@@ -300,18 +286,24 @@ bool Directory::writeTimeHasChanged() const
 		return true;
 
 	// compare file times
-	return _lastWriteTime.dwLowDateTime != newFiletime.dwLowDateTime
-		|| _lastWriteTime.dwHighDateTime != newFiletime.dwHighDateTime;
+	return (_lastWriteTime.dwLowDateTime != newFiletime.dwLowDateTime)
+		|| (_lastWriteTime.dwHighDateTime != newFiletime.dwHighDateTime);
 
 }
 
 void Directory::setFilters(const std::vector<generic_string>& filters, bool autoread)
 {
-	if (_filters != filters)
+	if (autoread)
+	{
+		if (_filters != filters)
+		{
+			_filters = filters;
+			read();
+		}
+	} 
+	else
 	{
 		_filters = filters;
-		if (autoread)
-			read();
 	}
 }
 

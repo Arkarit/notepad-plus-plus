@@ -100,20 +100,24 @@ INT_PTR CALLBACK ProjectPanel::run_dlgProc(UINT message, WPARAM wParam, LPARAM l
 			_directoryWatcher.setWindow(_treeView.getHSelf());
 			_directoryWatcher.startThread();
 
-			setImageList(IDI_PROJECT_WORKSPACE, 
-			             IDI_PROJECT_WORKSPACEDIRTY, 
-						 IDI_PROJECT_PROJECT, 
-						 IDI_PROJECT_FOLDEROPEN, 
-						 IDI_PROJECT_FOLDERCLOSE, 
-						 IDI_PROJECT_FILE, 
-						 IDI_PROJECT_FILEINVALID, 
-						 IDI_PROJECT_DIROPEN, 
-						 IDI_PROJECT_DIRCLOSE, 
-						 IDI_PROJECT_BASEDIROPEN, 
-						 IDI_PROJECT_BASEDIRCLOSE, 
-						 IDI_PROJECT_BASEDIROFFLINE, 
-						 IDI_PROJECT_DIRFILE
-						 );
+			const std::vector<int> imageIndices =
+			{ 
+				IDI_PROJECT_WORKSPACE, 
+			    IDI_PROJECT_WORKSPACEDIRTY, 
+				IDI_PROJECT_PROJECT, 
+				IDI_PROJECT_FOLDEROPEN, 
+				IDI_PROJECT_FOLDERCLOSE, 
+				IDI_PROJECT_FILE, 
+				IDI_PROJECT_FILEINVALID, 
+				IDI_PROJECT_DIROPEN, 
+				IDI_PROJECT_DIRCLOSE, 
+				IDI_PROJECT_BASEDIROPEN, 
+				IDI_PROJECT_BASEDIRCLOSE, 
+				IDI_PROJECT_BASEDIROFFLINE, 
+				IDI_PROJECT_DIRFILE,
+			};
+
+			setImageList(imageIndices);
 
 			_treeView.addCanNotDropInList(IndexLeaf);
 			_treeView.addCanNotDropInList(IndexLeafInvalid);
@@ -313,119 +317,45 @@ void ProjectPanel::initMenus()
 }
 
 
-BOOL ProjectPanel::setImageList(int root_clean_id, 
-                                int root_dirty_id, 
-								int project_id, 
-								int open_node_id, 
-								int closed_node_id, 
-								int leaf_id, 
-								int ivalid_leaf_id, 
-								int open_dir_id, 
-								int closed_dir_id, 
-								int open_basedir_id, 
-								int closed_basedir_id, 
-								int invalid_basedir_id, 
-								int leaf_dirfile_id
-								) 
+void ProjectPanel::setImageList(const std::vector<int>& imageIndices) 
 {
-	HBITMAP hbmp;
-	COLORREF maskColour = RGB(192, 192, 192);
-	const int nbBitmaps = 7;
+	const int nbBitmaps = imageIndices.size();
 
 	// Creation of image list
 	if ((_hImaLst = ImageList_Create(CX_BITMAP, CY_BITMAP, ILC_COLOR32 | ILC_MASK, nbBitmaps, 0)) == NULL) 
-		return FALSE;
+		throw std::runtime_error("ProjectPanel::setImageList : ImageList_Create() return NULL");
 
-	// Add the bmp in the list
-	hbmp = LoadBitmap(_hInst, MAKEINTRESOURCE(root_clean_id));
-	if (hbmp == NULL)
-		return FALSE;
-	ImageList_AddMasked(_hImaLst, hbmp, maskColour);
-	DeleteObject(hbmp);
+	for (auto& idx : imageIndices)
+		setImageListImage(idx);
 
-	hbmp = LoadBitmap(_hInst, MAKEINTRESOURCE(root_dirty_id));
-	if (hbmp == NULL)
-		return FALSE;
-	ImageList_AddMasked(_hImaLst, hbmp, maskColour);
-	DeleteObject(hbmp);
 
-	hbmp = LoadBitmap(_hInst, MAKEINTRESOURCE(project_id));
-	if (hbmp == NULL)
-		return FALSE;
-	ImageList_AddMasked(_hImaLst, hbmp, maskColour);
-	DeleteObject(hbmp);
-
-	hbmp = LoadBitmap(_hInst, MAKEINTRESOURCE(open_node_id));
-	if (hbmp == NULL)
-		return FALSE;
-	ImageList_AddMasked(_hImaLst, hbmp, maskColour);
-	DeleteObject(hbmp);
-
-	hbmp = LoadBitmap(_hInst, MAKEINTRESOURCE(closed_node_id));
-	if (hbmp == NULL)
-		return FALSE;
-	ImageList_AddMasked(_hImaLst, hbmp, maskColour);
-	DeleteObject(hbmp);
-
-	hbmp = LoadBitmap(_hInst, MAKEINTRESOURCE(leaf_id));
-	if (hbmp == NULL)
-		return FALSE;
-	ImageList_AddMasked(_hImaLst, hbmp, maskColour);
-	DeleteObject(hbmp);
-
-	hbmp = LoadBitmap(_hInst, MAKEINTRESOURCE(ivalid_leaf_id));
-	if (hbmp == NULL)
-		return FALSE;
-	ImageList_AddMasked(_hImaLst, hbmp, maskColour);
-	DeleteObject(hbmp);
-
-	hbmp = LoadBitmap(_hInst, MAKEINTRESOURCE(open_dir_id));
-	if (hbmp == NULL)
-		return FALSE;
-	ImageList_AddMasked(_hImaLst, hbmp, maskColour);
-	DeleteObject(hbmp);
-
-	hbmp = LoadBitmap(_hInst, MAKEINTRESOURCE(closed_dir_id));
-	if (hbmp == NULL)
-		return FALSE;
-	ImageList_AddMasked(_hImaLst, hbmp, maskColour);
-	DeleteObject(hbmp);
-
-	hbmp = LoadBitmap(_hInst, MAKEINTRESOURCE(open_basedir_id));
-	if (hbmp == NULL)
-		return FALSE;
-	ImageList_AddMasked(_hImaLst, hbmp, maskColour);
-	DeleteObject(hbmp);
-
-	hbmp = LoadBitmap(_hInst, MAKEINTRESOURCE(closed_basedir_id));
-	if (hbmp == NULL)
-		return FALSE;
-	ImageList_AddMasked(_hImaLst, hbmp, maskColour);
-	DeleteObject(hbmp);
-
-	hbmp = LoadBitmap(_hInst, MAKEINTRESOURCE(invalid_basedir_id));
-	if (hbmp == NULL)
-		return FALSE;
-	ImageList_AddMasked(_hImaLst, hbmp, maskColour);
-	DeleteObject(hbmp);
-
-	hbmp = LoadBitmap(_hInst, MAKEINTRESOURCE(leaf_dirfile_id));
-	if (hbmp == NULL)
-		return FALSE;
-	ImageList_AddMasked(_hImaLst, hbmp, maskColour);
-	DeleteObject(hbmp);
-
-	if (ImageList_GetImageCount(_hImaLst) < nbBitmaps)
-		return FALSE;
+	assert (ImageList_GetImageCount(_hImaLst) == nbBitmaps);
 
 	// Set image list to the tree view
 	TreeView_SetImageList(_treeView.getHSelf(), _hImaLst, TVSIL_NORMAL);
 
-	return TRUE;
 }
 
 
-void ProjectPanel::destroyMenus() 
+void ProjectPanel::setImageListImage(int idx)
+{
+	HBITMAP hbmp;
+	const COLORREF maskColour = RGB(192, 192, 192);
+
+	// Add the bmp to the list
+	hbmp = LoadBitmap(_hInst, MAKEINTRESOURCE(idx));
+	if (hbmp == NULL)
+		throw std::logic_error("ProjectPanel::setImageListImage :  LoadBitmap() returned NULL");
+
+	if (ImageList_AddMasked(_hImaLst, hbmp, maskColour) == -1)
+		throw std::runtime_error("ProjectPanel::setImageListImage :  ImageList_AddMasked() failed");
+
+	if (!DeleteObject(hbmp))
+		throw std::logic_error("ProjectPanel::setImageListImage :  DeleteObject() failed");
+
+}
+
+void ProjectPanel::destroyMenus()
 {
 	::DestroyMenu(_hWorkSpaceMenu);
 	::DestroyMenu(_hProjectMenu);

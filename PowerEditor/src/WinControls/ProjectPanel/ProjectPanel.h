@@ -265,20 +265,9 @@ protected:
 
 	void initMenus();
 	void destroyMenus();
-	BOOL setImageList( int root_clean_id, 
-	                   int root_dirty_id, 
-					   int project_id, 
-					   int open_node_id, 
-					   int closed_node_id, 
-					   int leaf_id, 
-					   int ivalid_leaf_id, 
-					   int open_dir_id, 
-					   int closed_dir_id, 
-					   int open_basedir_id, 
-					   int closed_basedir_id, 
-					   int invalid_basedir_id, 
-					   int leaf_dirfile_id
-					   );
+	void setImageList(const std::vector<int>& imageIndices);
+	void setImageListImage(int idx);
+
 	void addFiles(HTREEITEM hTreeItem);
 	void addFilesFromDirectory(HTREEITEM hTreeItem);
 	HTREEITEM addDirectory(HTREEITEM hTreeItem);

@@ -79,7 +79,6 @@ void DirectoryWatcher::removeAllDirs()
 	_watchdirs.clear();
 
 	_dirItems.clear();
-	_dirItemReferenceCount.clear();
 	_forcedUpdate.clear();
 
 	_dirItemsToAdd.clear();
@@ -313,14 +312,10 @@ void DirectoryWatcher::updateDirs()
 		std::shared_ptr<Directory> dir = itDir->second;
 		_dirItems.erase(hTreeItem);
 
-		// decrease the dirItem/reference counter
-		assert(_dirItemReferenceCount.find(dir) != _dirItemReferenceCount.end());
 
-		// if this was the last reference
-		if (--_dirItemReferenceCount[dir] <= 0)
+		// if this was the last reference (use_count() == 2: local var dir, _watchdirs)
+		if (dir.use_count() == 2)
 		{
-			// remove it from the reference count
-			_dirItemReferenceCount.erase(dir);
 
 			// get the directory watch matching to this path
 			auto itWatchdir = _watchdirs.find(dir);
@@ -366,14 +361,9 @@ void DirectoryWatcher::updateDirs()
 		}
 
 		// insert the tree item pointing to the watchdir
+		assert( currentWatchdir );
 		_dirItems[insertStruct._hTreeItem] = currentWatchdir;
 
-		// set the reference watch counter
-		auto itRefCount = _dirItemReferenceCount.find(currentWatchdir);
-		if (itRefCount == _dirItemReferenceCount.end())
-			_dirItemReferenceCount[currentWatchdir] = 1;
-		else
-			itRefCount->second += 1;
 	}
 	_dirItemsToAdd.clear();
 	

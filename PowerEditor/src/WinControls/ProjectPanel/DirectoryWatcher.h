@@ -94,7 +94,6 @@ class DirectoryWatcher
 
 	std::set<std::shared_ptr<Directory>> _watchdirs;
 	std::map<HTREEITEM, std::shared_ptr<Directory>> _dirItems;
-	std::map<std::shared_ptr<Directory>, int> _dirItemReferenceCount;
 	std::set<HTREEITEM> _forcedUpdate;
 
 	DWORD _updateFrequencyMs;

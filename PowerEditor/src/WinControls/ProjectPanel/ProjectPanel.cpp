@@ -560,12 +560,11 @@ bool ProjectPanel::buildTreeFrom(TiXmlNode *projectRoot, HTREEITEM hParentItem)
 			HTREEITEM hNewDirectory = addDirectory(hParentItem, newFolderLabel.c_str(), true, fullPath.c_str(), &filters);
 			if (strLabel)
 			{
-				TVITEM tvItem;
-				tvItem.mask = TVIF_PARAM;
-				tvItem.hItem = hNewDirectory;
-				::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0,reinterpret_cast<LPARAM>(&tvItem));
-				ProjectPanelData& data = *reinterpret_cast<ProjectPanelData*>(tvItem.lParam);
-				data._userLabel = strLabel;
+
+				ProjectPanelData* data = getData(hNewDirectory);
+				assert(data);
+				if (data)
+					data->_userLabel = strLabel;
 			}
 
 		}
@@ -583,10 +582,13 @@ bool ProjectPanel::buildTreeFrom(TiXmlNode *projectRoot, HTREEITEM hParentItem)
 
 void ProjectPanel::rebuildDirectoryTree(HTREEITEM hParentItem, const ProjectPanelData& data)
 {
-	TVITEM tvItem;
-	tvItem.mask = TVIF_PARAM;
-	tvItem.hItem = hParentItem;
-	::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0, reinterpret_cast<LPARAM>(&tvItem));
+
+	UINT state;
+	if (!getItemInfos(hParentItem, NULL, NULL, &state))
+	{
+		assert(false);
+		return;
+	}
 
 	int iImg;
 	if (data.isBaseDirectory())
@@ -598,7 +600,7 @@ void ProjectPanel::rebuildDirectoryTree(HTREEITEM hParentItem, const ProjectPane
 		}
 		else
 		{
-			iImg = (tvItem.state & TVIS_EXPANDED) ? IndexOpenBasedir : IndexClosedBasedir;
+			iImg = (state & TVIS_EXPANDED) ? IndexOpenBasedir : IndexClosedBasedir;
 		}
 	}
 	else if (data.isDirectory())
@@ -610,7 +612,7 @@ void ProjectPanel::rebuildDirectoryTree(HTREEITEM hParentItem, const ProjectPane
 		}
 		else
 		{
-			iImg = (tvItem.state & TVIS_EXPANDED) ? IndexOpenDir : IndexClosedDir;
+			iImg = (state & TVIS_EXPANDED) ? IndexOpenDir : IndexClosedDir;
 		}
 	}
 	else
@@ -642,29 +644,38 @@ generic_string ProjectPanel::getAbsoluteFilePath(const TCHAR * relativePath)
 
 void ProjectPanel::openSelectFile()
 {
-	TVITEM tvItem;
-	tvItem.mask = TVIF_PARAM;
-	tvItem.hItem = _treeView.getSelection();
-	::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0,reinterpret_cast<LPARAM>(&tvItem));
 
-	NodeType nType = getNodeType(tvItem.hItem);
-	ProjectPanelData& data = *reinterpret_cast<ProjectPanelData*>(tvItem.lParam);
-
-	if ((nType == nodeType_file || nType == nodeType_dirFile) && (data.isFile() || data.isDirectoryFile()))
+	const HTREEITEM hSelection = _treeView.getSelection();
+	if (!hSelection)
 	{
-		tvItem.mask = TVIF_IMAGE | TVIF_SELECTEDIMAGE;
-		if (::PathFileExists(data._filePath.c_str()))
+		assert(false);
+		return;
+	}
+	const ProjectPanelData* const data = getData(hSelection);
+	if (!data)
+	{
+		assert(false);
+		return;
+	}
+	NodeType nType = getNodeType(hSelection);
+
+	if ((nType == nodeType_file || nType == nodeType_dirFile) && (data->isFile() || data->isDirectoryFile()))
+	{
+		int image;
+		int selectedImage;
+
+		if (::PathFileExists(data->_filePath.c_str()))
 		{
-			::SendMessage(_hParent, NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(data._filePath.c_str()));
-			tvItem.iImage = data.isDirectoryFile() ? IndexLeafDirFile : IndexLeaf;
-			tvItem.iSelectedImage = data.isDirectoryFile() ? IndexLeafDirFile : IndexLeaf;
+			::SendMessage(_hParent, NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(data->_filePath.c_str()));
+			image = data->isDirectoryFile() ? IndexLeafDirFile : IndexLeaf;
+			selectedImage = data->isDirectoryFile() ? IndexLeafDirFile : IndexLeaf;
 		}
 		else
 		{
-			tvItem.iImage = IndexLeafInvalid;
-			tvItem.iSelectedImage = IndexLeafInvalid;
+			image = IndexLeafInvalid;
+			selectedImage = IndexLeafInvalid;
 		}
-		TreeView_SetItem(_treeView.getHSelf(), &tvItem);
+		_treeView.setItemImage(hSelection, image, selectedImage);
 	}
 }
 
@@ -702,20 +713,25 @@ void ProjectPanel::onTreeItemAdded(bool afterClone, HTREEITEM hItem, TreeViewDat
 void ProjectPanel::onMessage(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	wParam;
+	hwnd;
 
 	switch (message)
 	{
 		case DIRECTORYWATCHER_UPDATE:
 		{
-			HTREEITEM hItem = (HTREEITEM)lParam;
+			const HTREEITEM hItem = reinterpret_cast<const HTREEITEM>(lParam);
 			if (_treeView.itemValid(hItem))
 			{
+				ProjectPanelData* data;
+				UINT state;
 
-				TVITEM tvItem;
-				tvItem.hItem = hItem;
-				tvItem.mask = TVIF_PARAM;
-				SendMessage(hwnd, TVM_GETITEM, 0,reinterpret_cast<LPARAM>(&tvItem));
-				treeItemChanged(hItem, (TreeViewData*) tvItem.lParam);
+				if (!getItemInfos(hItem, NULL, &data, &state))
+				{
+					assert(false);
+					break;
+				}
+
+				treeItemChanged(hItem, *data, state);
 			}
 		}
 		break;
@@ -723,15 +739,8 @@ void ProjectPanel::onMessage(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
 
 }
 
-void ProjectPanel::treeItemChanged(HTREEITEM hTreeItem, TreeViewData* tvdata)
+void ProjectPanel::treeItemChanged(HTREEITEM hItem, const ProjectPanelData& data, UINT state)
 {
-
-	TVITEM tvItem;
-	tvItem.mask = TVIF_PARAM;
-	tvItem.hItem = hTreeItem;
-	::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0, reinterpret_cast<LPARAM>(&tvItem));
-
-	ProjectPanelData& data = *static_cast<ProjectPanelData*>(tvdata);
 	int iImg;
 	switch (data._nodeType)
 	{
@@ -742,7 +751,7 @@ void ProjectPanel::treeItemChanged(HTREEITEM hTreeItem, TreeViewData* tvdata)
 			iImg = IndexProject;
 			break;
 		case nodeType_folder:
-			iImg = (tvItem.state & TVIS_EXPANDED) ? IndexOpenNode : IndexClosedNode;
+			iImg = (state & TVIS_EXPANDED) ? IndexOpenNode : IndexClosedNode;
 			break;
 		case nodeType_file:
 			iImg = ::PathFileExists(data._filePath.c_str()) ? IndexLeaf : IndexLeafInvalid;
@@ -752,12 +761,12 @@ void ProjectPanel::treeItemChanged(HTREEITEM hTreeItem, TreeViewData* tvdata)
 			break;
 		case nodeType_baseDir:
 		case nodeType_dir:
-			rebuildDirectoryTree(hTreeItem, data);
+			rebuildDirectoryTree(hItem, data);
 			return;
 		default:
 			return;
 	}
-	_treeView.setItemImage(hTreeItem, iImg, iImg);
+	_treeView.setItemImage(hItem, iImg, iImg);
 
 }
 
@@ -789,18 +798,21 @@ generic_string ProjectPanel::buildDirectoryName(const generic_string& filePath, 
 
 void ProjectPanel::itemVisibilityChanges(HTREEITEM hItem, bool visible)
 {
-	TVITEM tvItem;
-	tvItem.mask = TVIF_PARAM;
-	tvItem.hItem = hItem;
-	::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0, reinterpret_cast<LPARAM>(&tvItem));
-	ProjectPanelData& data = *reinterpret_cast<ProjectPanelData*>(tvItem.lParam);
-	bool expanded = (tvItem.state & TVIS_EXPANDED) != 0;
-	if (data.isDirectory())
+	ProjectPanelData* data;
+	UINT state;
+	if (!getItemInfos(hItem, NULL, &data, &state))
+	{
+		assert(false);
+		return;
+	}
+
+	bool expanded = (state & TVIS_EXPANDED) != 0;
+	if (data->isDirectory())
 	{
 		if (visible && expanded)
-			data.watchDir(true);
+			data->watchDir(true);
 		if (!visible || !expanded)
-			data.watchDir(false);
+			data->watchDir(false);
 	}
 
 	for (HTREEITEM hChildItem = _treeView.getChildFrom(hItem);
@@ -817,32 +829,32 @@ ProjectPanel::ProjectPanelData* ProjectPanel::getData(HTREEITEM hItem) const
 	return reinterpret_cast<ProjectPanelData*> (_treeView.getData(hItem));
 }
 
-bool ProjectPanel::getItemInfos(_In_ HTREEITEM hItem, _Out_opt_ generic_string* text, _Out_opt_ ProjectPanelData** data) const
+bool ProjectPanel::getItemInfos(_In_ HTREEITEM hItem, _Out_opt_ generic_string* text, _Out_opt_ ProjectPanelData** data, _Out_opt_ UINT* state) const
 {
-	return _treeView.getItemInfos(hItem, text, reinterpret_cast<TreeViewData**>(data));
+	return _treeView.getItemInfos(hItem, text, reinterpret_cast<TreeViewData**>(data), state);
 }
 
 void ProjectPanel::expandOrCollapseDirectory(bool expand, HTREEITEM hItem)
 {
-
-	TVITEM tvItem;
-	tvItem.mask = TVIF_PARAM;
-	tvItem.hItem = hItem;
-	::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0, reinterpret_cast<LPARAM>(&tvItem));
-	ProjectPanelData& data = *reinterpret_cast<ProjectPanelData*>(tvItem.lParam);
-	if (!(data.isDirectory() || data.isBaseDirectory()) )
+	ProjectPanelData* data = getData(hItem);
+	if (!data)
+	{
+		assert(false);
+		return;
+	}
+	if (!(data->isDirectory() || data->isBaseDirectory()) )
 		return;
 
 	if (expand)
 	{
 		removeDummies(hItem);
-		if (data.isDirectory())
-			data.watchDir(true);
+		if (data->isDirectory())
+			data->watchDir(true);
 	}
 	else
 	{
-		if (data.isDirectory())
-			data.watchDir(false);
+		if (data->isDirectory())
+			data->watchDir(false);
 	}
 
 	for (HTREEITEM hChildItem = _treeView.getChildFrom(hItem);
@@ -858,23 +870,24 @@ void ProjectPanel::expandOrCollapseDirectory(bool expand, HTREEITEM hItem)
 
 bool ProjectPanel::setFilters(const std::vector<generic_string>& filters, HTREEITEM hItem)
 {
-	TVITEM tvItem;
-	tvItem.mask = TVIF_PARAM;
-	tvItem.hItem = hItem;
-	::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0, reinterpret_cast<LPARAM>(&tvItem));
-	ProjectPanelData& data = *reinterpret_cast<ProjectPanelData*>(tvItem.lParam);
-
-	if (data.isDirectory() || data.isBaseDirectory())
+	ProjectPanelData* data = getData(hItem);
+	if (!data)
 	{
-		if (data.isBaseDirectory() && data._filters == filters)
-			return false;
-
-		data._filters = filters;
+		assert(false);
+		return false;
 	}
 
-	if (data.isWatching())
+	if (data->isDirectory() || data->isBaseDirectory())
 	{
-		data.watchDir(true);
+		if (data->isBaseDirectory() && data->_filters == filters)
+			return false;
+
+		data->_filters = filters;
+	}
+
+	if (data->isWatching())
+	{
+		data->watchDir(true);
 	}
 
 	for (HTREEITEM hItemNode = _treeView.getChildFrom(hItem);
@@ -890,27 +903,25 @@ bool ProjectPanel::setFilters(const std::vector<generic_string>& filters, HTREEI
 
 void ProjectPanel::updateBaseDirName(HTREEITEM hItem)
 {
-	TCHAR textBuffer[MAX_PATH];
-	TVITEM tvItem;
-	tvItem.mask = TVIF_TEXT | TVIF_PARAM;
-	tvItem.pszText = textBuffer;
-	tvItem.cchTextMax = MAX_PATH;
-	tvItem.hItem = hItem;
-	::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0, reinterpret_cast<LPARAM>(&tvItem));
-	ProjectPanelData& data = *reinterpret_cast<ProjectPanelData*>(tvItem.lParam);
+	generic_string text;
+	ProjectPanelData* data;
+	if (!getItemInfos(hItem, &text, &data))
+	{
+		assert(false);
+		return;
+	}
 
-	if (data.isDirectory() || data.isDirectoryFile())
+
+	if (data->isDirectory() || data->isDirectoryFile())
 	{
 		updateBaseDirName(_treeView.getParent(hItem));
 	}
-	else if (data.isBaseDirectory())
+	else if (data->isBaseDirectory())
 	{
-		if (data._userLabel.empty())
+		if (data->_userLabel.empty())
 		{
-			generic_string newFolderLabel = buildDirectoryName(data._filePath, data._filters);
-			wcsncpy(tvItem.pszText,newFolderLabel.c_str(), MAX_PATH-1);
-			tvItem.mask = TVIF_TEXT;
-			::SendMessage(_treeView.getHSelf(), TVM_SETITEM, 0,reinterpret_cast<LPARAM>(&tvItem));
+			generic_string newFolderLabel = buildDirectoryName(data->_filePath, data->_filters);
+			_treeView.setItemText(hItem, newFolderLabel);
 		}
 	}
 }
@@ -921,13 +932,14 @@ void ProjectPanel::removeDummies(HTREEITEM hTreeItem)
 	if (hItemNode == NULL)
 		return;
 
-	TVITEM tvItem;
-	tvItem.mask = TVIF_PARAM;
-	tvItem.hItem = hItemNode;
-	::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0, reinterpret_cast<LPARAM>(&tvItem));
-	ProjectPanelData& data = *reinterpret_cast<ProjectPanelData*>(tvItem.lParam);
+	ProjectPanelData* data = getData(hItemNode);
+	if (!data)
+	{
+		assert(false);
+		return;
+	}
 
-	if (data.isDummy())
+	if (data->isDummy())
 		_treeView.removeAllChildren(hTreeItem);
 
 }

@@ -29,6 +29,7 @@
 
 #include "TreeView.h"
 #include <assert.h>
+#include <tchar.h>
 
 #define CY_ITEMHEIGHT     18
 
@@ -233,16 +234,18 @@ void TreeView::cleanSubEntries(HTREEITEM hTreeItem)
 	}
 }
 
-bool TreeView::getItemInfos(_In_ HTREEITEM hItem, _Out_opt_ generic_string* text, _Out_opt_ TreeViewData** data) const
+bool TreeView::getItemInfos(_In_ HTREEITEM hItem, _Out_opt_ generic_string* text, _Out_opt_ TreeViewData** data, _Out_opt_ UINT* state) const
 {
-	assert (text || data);
-	if (!text && !data)
+	assert (text || data || state);
+	if (!text && !data && !state)
 		return false;
+
 
 	TCHAR textBuffer[MAX_PATH];
 	TVITEM tvItem;
 	tvItem.hItem = hItem;
 	tvItem.mask = 0;
+
 
 	if (text != NULL)
 	{
@@ -252,15 +255,20 @@ bool TreeView::getItemInfos(_In_ HTREEITEM hItem, _Out_opt_ generic_string* text
 	}
 	if (data != NULL)
 		tvItem.mask |= TVIF_PARAM;
+	if (state != NULL)
+		tvItem.mask |= TVIF_STATE;
+
 
 	if (!SendMessage(_hSelf, TVM_GETITEM, 0,(LPARAM)&tvItem))
 		return false;
 
+
 	if (text)
 		*text = textBuffer;
-	
 	if (data)
 		*data = reinterpret_cast<TreeViewData*>(tvItem.lParam);
+	if (state)
+		*state = tvItem.state;
 
 	return true;
 
@@ -274,6 +282,22 @@ void TreeView::setItemImage(HTREEITEM hTreeItem, int iImage, int iSelectedImage)
 	tvItem.iImage = iImage;
 	tvItem.iSelectedImage = iSelectedImage;
 	TreeView_SetItem(_hSelf, &tvItem);
+}
+
+void TreeView::setItemText(HTREEITEM hTreeItem, const generic_string& text)
+{
+	assert(text.size() <= MAX_PATH); // only up to MAX_PATH allowed
+
+	TCHAR textBuffer[MAX_PATH];
+	TVITEM tvItem;
+	tvItem.hItem = hTreeItem;
+	tvItem.pszText = textBuffer;
+	tvItem.cchTextMax = MAX_PATH;
+	tvItem.mask = TVIF_TEXT;
+	_tcsncpy_s(tvItem.pszText, MAX_PATH-1, text.c_str(), _TRUNCATE);
+
+	TreeView_SetItem(_hSelf, &tvItem);
+
 }
 
 // pass LPARAM of WM_NOTIFY here after casted to NMTREEVIEW*

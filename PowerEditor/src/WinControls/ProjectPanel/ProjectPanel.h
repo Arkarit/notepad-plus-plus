@@ -298,7 +298,7 @@ protected:
 
 	void removeDummies(HTREEITEM hTreeItem);
 
-	void treeItemChanged(HTREEITEM hItem,TreeViewData* tvdata);
+	void treeItemChanged(HTREEITEM hItem, const ProjectPanelData& data, UINT state);
 
 	static generic_string buildDirectoryName(const generic_string& filePath, const std::vector<generic_string>& filters = std::vector<generic_string>());
 
@@ -306,7 +306,7 @@ protected:
 
 	ProjectPanelData* getData(HTREEITEM hItem) const;
 	_Success_( return == true )
-	bool getItemInfos(_In_ HTREEITEM hItem, _Out_opt_ generic_string* text, _Out_opt_ ProjectPanelData** data = NULL) const;
+	bool getItemInfos(_In_ HTREEITEM hItem, _Out_opt_ generic_string* text, _Out_opt_ ProjectPanelData** data = NULL, _Out_opt_ UINT* state = NULL) const;
 
 	// TreeViewListener
 	virtual void onTreeItemAdded(bool afterClone, HTREEITEM hItem, TreeViewData* newData) override;

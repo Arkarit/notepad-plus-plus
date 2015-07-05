@@ -37,7 +37,7 @@ using namespace std;
 
 #define INDEX_ROOT        0
 #define INDEX_NODE        1
-#define INDEX_LEAF        2
+#define IndexLeaf        2
 
 void FunctionListPanel::addEntry(const TCHAR *nodeName, const TCHAR *displayText, size_t pos)
 {
@@ -57,7 +57,7 @@ void FunctionListPanel::addEntry(const TCHAR *nodeName, const TCHAR *displayText
 	else
 		itemParent = root;
 
-	_treeView.addItem(displayText, itemParent, INDEX_LEAF,  new FunctionListPanelData(posStr));
+	_treeView.addItem(displayText, itemParent, IndexLeaf,  new FunctionListPanelData(posStr));
 }
 
 void FunctionListPanel::removeAllEntries()
@@ -215,7 +215,7 @@ void FunctionListPanel::sortOrUnsort()
 			_treeViewSearchResult.removeAllItems();
 			const TCHAR *fn = ((*_ppEditView)->getCurrentBuffer())->getFileName();
 			_treeViewSearchResult.addItem(fn, NULL, INDEX_ROOT, new FunctionListPanelData(TEXT("-1")));
-			_treeView.searchLeafAndBuildTree(_treeViewSearchResult, text2search, INDEX_LEAF);
+			_treeView.searchLeafAndBuildTree(_treeViewSearchResult, text2search, IndexLeaf);
 			_treeViewSearchResult.display(true);
 			_treeViewSearchResult.expand(_treeViewSearchResult.getRoot());
 			_treeView.display(false);
@@ -485,7 +485,7 @@ void FunctionListPanel::searchFuncAndSwitchView()
 		_treeViewSearchResult.removeAllItems();
 		const TCHAR *fn = ((*_ppEditView)->getCurrentBuffer())->getFileName();
 		_treeViewSearchResult.addItem(fn, NULL, INDEX_ROOT, new FunctionListPanelData(TEXT("-1")));
-		_treeView.searchLeafAndBuildTree(_treeViewSearchResult, text2search, INDEX_LEAF);
+		_treeView.searchLeafAndBuildTree(_treeViewSearchResult, text2search, IndexLeaf);
 		_treeViewSearchResult.display(true);
 		_treeViewSearchResult.expand(_treeViewSearchResult.getRoot());
 		_treeView.display(false);

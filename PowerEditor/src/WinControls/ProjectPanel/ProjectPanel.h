@@ -304,6 +304,10 @@ protected:
 
 	void itemVisibilityChanges(HTREEITEM hItem, bool visible);
 
+	ProjectPanelData* getData(HTREEITEM hItem) const;
+	_Success_( return == true )
+	bool getItemInfos(_In_ HTREEITEM hItem, _Out_opt_ generic_string* text, _Out_opt_ ProjectPanelData** data = NULL) const;
+
 	// TreeViewListener
 	virtual void onTreeItemAdded(bool afterClone, HTREEITEM hItem, TreeViewData* newData) override;
 	virtual void onMessage(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) override;

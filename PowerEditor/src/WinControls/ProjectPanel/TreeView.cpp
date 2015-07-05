@@ -233,6 +233,39 @@ void TreeView::cleanSubEntries(HTREEITEM hTreeItem)
 	}
 }
 
+bool TreeView::getItemInfos(_In_ HTREEITEM hItem, _Out_opt_ generic_string* text, _Out_opt_ TreeViewData** data) const
+{
+	assert (text || data);
+	if (!text && !data)
+		return false;
+
+	TCHAR textBuffer[MAX_PATH];
+	TVITEM tvItem;
+	tvItem.hItem = hItem;
+	tvItem.mask = 0;
+
+	if (text != NULL)
+	{
+		tvItem.pszText = textBuffer;
+		tvItem.cchTextMax = MAX_PATH;
+		tvItem.mask |= TVIF_TEXT;
+	}
+	if (data != NULL)
+		tvItem.mask |= TVIF_PARAM;
+
+	if (!SendMessage(_hSelf, TVM_GETITEM, 0,(LPARAM)&tvItem))
+		return false;
+
+	if (text)
+		*text = textBuffer;
+	
+	if (data)
+		*data = reinterpret_cast<TreeViewData*>(tvItem.lParam);
+
+	return true;
+
+}
+
 void TreeView::setItemImage(HTREEITEM hTreeItem, int iImage, int iSelectedImage)
 {
 	TVITEM tvItem;
@@ -666,12 +699,13 @@ void TreeView::sort(HTREEITEM hTreeItem, bool recursive, PFNTVCOMPARE compareFun
 
 }
 
-TreeViewData* TreeView::getData(HTREEITEM hItem)
+TreeViewData* TreeView::getData(HTREEITEM hItem) const
 {
 	TVITEM tvItem;
 	tvItem.mask = TVIF_PARAM;
 	tvItem.hItem = hItem;
-	SendMessage(_hSelf, TVM_GETITEM, 0,(LPARAM)&tvItem);
+	if (!SendMessage(_hSelf, TVM_GETITEM, 0,(LPARAM)&tvItem))
+		return NULL;
 	return (TreeViewData*) tvItem.lParam;
 
 }

@@ -434,27 +434,21 @@ bool ProjectPanel::writeWorkSpace(TCHAR *projectFileName)
 	TiXmlDocument projDoc(fn2write);
     TiXmlNode *root = projDoc.InsertEndChild(TiXmlElement(TEXT("NotepadPlus")));
 
-	TCHAR textBuffer[MAX_PATH];
-	TVITEM tvItem;
-    tvItem.mask = TVIF_TEXT;
-    tvItem.pszText = textBuffer;
-    tvItem.cchTextMax = MAX_PATH;
-
     //for each project, write <Project>
     HTREEITEM tvRoot = _treeView.getRoot();
     if (!tvRoot)
-      return false;
+		return false;
 
     for (HTREEITEM tvProj = _treeView.getChildFrom(tvRoot);
         tvProj != NULL;
         tvProj = _treeView.getNextSibling(tvProj))
     {        
-        tvItem.hItem = tvProj;
-        SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0,reinterpret_cast<LPARAM>(&tvItem));
-        //printStr(tvItem.pszText);
+		generic_string name;
+		if (!_treeView.getItemInfos(tvProj, &name))
+			return false;
 
 		TiXmlNode *projRoot = root->InsertEndChild(TiXmlElement(TEXT("Project")));
-		projRoot->ToElement()->SetAttribute(TEXT("name"), tvItem.pszText);
+		projRoot->ToElement()->SetAttribute(TEXT("name"), name);
 		buildProjectXml(projRoot, tvProj, fn2write);
     }
     projDoc.SaveFile();
@@ -463,41 +457,40 @@ bool ProjectPanel::writeWorkSpace(TCHAR *projectFileName)
 
 void ProjectPanel::buildProjectXml(TiXmlNode *node, HTREEITEM hItem, const TCHAR* fn2write)
 {
-	TCHAR textBuffer[MAX_PATH];
-	TVITEM tvItem;
-	tvItem.mask = TVIF_TEXT | TVIF_PARAM;
-	tvItem.pszText = textBuffer;
-	tvItem.cchTextMax = MAX_PATH;
 
     for (HTREEITEM hItemNode = _treeView.getChildFrom(hItem);
 		hItemNode != NULL;
 		hItemNode = _treeView.getNextSibling(hItemNode))
 	{
-		tvItem.hItem = hItemNode;
-		SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0,reinterpret_cast<LPARAM>(&tvItem));
-		ProjectPanelData& data = *reinterpret_cast<ProjectPanelData*>(tvItem.lParam);
-
-		if (data.isFile())
+		generic_string name;
+		ProjectPanelData* data;
+		if (!getItemInfos(hItemNode, &name, &data))
 		{
-			generic_string newFn = getRelativePath(data._filePath, fn2write);
+			assert(false);
+			continue;
+		}
+
+		if (data->isFile())
+		{
+			generic_string newFn = getRelativePath(data->_filePath, fn2write);
 			TiXmlNode *fileLeaf = node->InsertEndChild(TiXmlElement(TEXT("File")));
 			fileLeaf->ToElement()->SetAttribute(TEXT("name"), newFn.c_str());
 		}
-		else if (data.isBaseDirectory())
+		else if (data->isBaseDirectory())
 		{
-			generic_string newFn = getRelativePath(data._filePath, fn2write);
+			generic_string newFn = getRelativePath(data->_filePath, fn2write);
 			TiXmlNode *fileLeaf = node->InsertEndChild(TiXmlElement(TEXT("Directory")));
 			fileLeaf->ToElement()->SetAttribute(TEXT("name"), newFn.c_str());
-			generic_string filters = stringJoin(data._filters, TEXT(";"), true);
+			generic_string filters = stringJoin(data->_filters, TEXT(";"), true);
 			if (!filters.empty())
 				fileLeaf->ToElement()->SetAttribute(TEXT("filters"), filters.c_str());
-			if (!data._userLabel.empty())
-				fileLeaf->ToElement()->SetAttribute(TEXT("userLabel"), data._userLabel.c_str());
+			if (!data->_userLabel.empty())
+				fileLeaf->ToElement()->SetAttribute(TEXT("userLabel"), data->_userLabel.c_str());
 		}
 		else
 		{
 			TiXmlNode *folderNode = node->InsertEndChild(TiXmlElement(TEXT("Folder")));
-			folderNode->ToElement()->SetAttribute(TEXT("name"), tvItem.pszText);
+			folderNode->ToElement()->SetAttribute(TEXT("name"), name);
 			buildProjectXml(folderNode, hItemNode, fn2write);
 		}
 	}
@@ -817,6 +810,16 @@ void ProjectPanel::itemVisibilityChanges(HTREEITEM hItem, bool visible)
 		itemVisibilityChanges(hChildItem, visible);
 	}
 
+}
+
+ProjectPanel::ProjectPanelData* ProjectPanel::getData(HTREEITEM hItem) const
+{
+	return reinterpret_cast<ProjectPanelData*> (_treeView.getData(hItem));
+}
+
+bool ProjectPanel::getItemInfos(_In_ HTREEITEM hItem, _Out_opt_ generic_string* text, _Out_opt_ ProjectPanelData** data) const
+{
+	return _treeView.getItemInfos(hItem, text, reinterpret_cast<TreeViewData**>(data));
 }
 
 void ProjectPanel::expandOrCollapseDirectory(bool expand, HTREEITEM hItem)

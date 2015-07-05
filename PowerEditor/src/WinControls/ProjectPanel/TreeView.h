@@ -135,6 +135,7 @@ public:
 		return true;
 	}
 
+
 	void setItemImage(HTREEITEM hTreeItem, int iImage, int iSelectedImage);
 
 	// Drag and Drop operations
@@ -164,7 +165,10 @@ public:
 		return _validHandles.find(item) != _validHandles.end();
 	}
 
-	TreeViewData* getData(HTREEITEM item);
+	TreeViewData* getData(HTREEITEM item) const;
+
+	_Success_( return == true )
+	bool getItemInfos(_In_ HTREEITEM hItem, _Out_opt_ generic_string* text, _Out_opt_ TreeViewData** data = NULL) const;
 
 	void setListener(TreeViewListener* listener);
 

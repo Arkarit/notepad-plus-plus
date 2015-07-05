@@ -34,6 +34,7 @@
 
 #include <map>
 #include <set>
+#include <memory>
 
 #include "resource.h"
 #include "Directory.h"
@@ -91,9 +92,9 @@ class DirectoryWatcher
 	DWORD _checkEmptyDirsCount;
 
 
-	std::set<Directory*> _watchdirs;
-	std::map<HTREEITEM, Directory*> _dirItems;
-	std::map<Directory*, int> _dirItemReferenceCount;
+	std::set<std::shared_ptr<Directory>> _watchdirs;
+	std::map<HTREEITEM, std::shared_ptr<Directory>> _dirItems;
+	std::map<std::shared_ptr<Directory>, int> _dirItemReferenceCount;
 	std::set<HTREEITEM> _forcedUpdate;
 
 	DWORD _updateFrequencyMs;
@@ -101,7 +102,7 @@ class DirectoryWatcher
 
 	Yuni::Mutex _lock;
 
-	std::vector<InsertStruct*> _dirItemsToAdd;
+	std::vector<std::unique_ptr<InsertStruct>> _dirItemsToAdd;
 	std::set<HTREEITEM> _dirItemsToRemove;
 	std::set<HTREEITEM> _forcedUpdateToAdd;
 

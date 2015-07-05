@@ -63,7 +63,8 @@ void DirectoryWatcher::addOrChangeDir(const generic_string& path, HTREEITEM tree
 
 	// each newly added item gets a forced update message.
 	_forcedUpdateToAdd.insert(treeItem);
-	_dirItemsToAdd.emplace_back(new InsertStruct(path,treeItem,filters));
+
+	_dirItemsToAdd.emplace_back( std::make_unique<InsertStruct>(path,treeItem,filters));
 }
 
 void DirectoryWatcher::removeDir(HTREEITEM treeItem)
@@ -75,16 +76,12 @@ void DirectoryWatcher::removeDir(HTREEITEM treeItem)
 void DirectoryWatcher::removeAllDirs()
 {
 	Yuni::MutexLocker lock(_lock);
-	for (auto it=_watchdirs.begin(); it != _watchdirs.end(); ++it)
-		delete *it;
 	_watchdirs.clear();
 
 	_dirItems.clear();
 	_dirItemReferenceCount.clear();
 	_forcedUpdate.clear();
 
-	for (auto it=_dirItemsToAdd.begin(); it != _dirItemsToAdd.end(); ++it)
-		delete *it;
 	_dirItemsToAdd.clear();
 	_dirItemsToRemove.clear();
 	_forcedUpdateToAdd.clear();
@@ -245,7 +242,7 @@ bool DirectoryWatcher::post(HTREEITEM item, UINT message)
 void DirectoryWatcher::iterateDirs()
 {
 
-	std::map<Directory*,bool> changedMap;
+	std::map<std::shared_ptr<Directory>,bool> changedMap;
 
 	_changeOccurred = false;
 
@@ -264,7 +261,7 @@ void DirectoryWatcher::iterateDirs()
 	for (auto it=_dirItems.begin(); it!=_dirItems.end(); ++it)
 	{
 		HTREEITEM hTreeItem = it->first;
-		Directory* dir = it->second;
+		std::shared_ptr<Directory> dir = it->second;
 		bool forced = _forcedUpdate.find(hTreeItem) != _forcedUpdate.end();
 
 		auto itAlreadyChanged = changedMap.find(dir);
@@ -313,7 +310,7 @@ void DirectoryWatcher::updateDirs()
 		if (itDir == _dirItems.end())
 			continue;
 
-		Directory* dir = itDir->second;
+		std::shared_ptr<Directory> dir = itDir->second;
 		_dirItems.erase(hTreeItem);
 
 		// decrease the dirItem/reference counter
@@ -330,8 +327,6 @@ void DirectoryWatcher::updateDirs()
 			assert(itWatchdir != _watchdirs.end());
 			if (itWatchdir != _watchdirs.end())
 			{
-				// and delete it
-				delete *itWatchdir;
 				_watchdirs.erase(itWatchdir);
 			}
 		}
@@ -345,15 +340,15 @@ void DirectoryWatcher::updateDirs()
 	// last, enter the new items.
 	for (auto itToInsert = _dirItemsToAdd.begin(); itToInsert != _dirItemsToAdd.end(); ++itToInsert)
 	{
-		const InsertStruct* insertStruct = *itToInsert;
+		const InsertStruct& insertStruct = **itToInsert;
 	
 		// try to find an already existing watch dir, which matches this request.
-		Directory* currentWatchdir = NULL;
+		std::shared_ptr<Directory> currentWatchdir = NULL;
 
 		for (auto itWatchdir=_watchdirs.begin(); itWatchdir != _watchdirs.end(); ++itWatchdir)
 		{
-			Directory* dir = *itWatchdir;
-			if (dir->getPath() == insertStruct->_path && dir->getFilters() == insertStruct->_filters)
+			std::shared_ptr<Directory> dir = *itWatchdir;
+			if (dir->getPath() == insertStruct._path && dir->getFilters() == insertStruct._filters)
 			{
 				currentWatchdir = dir;
 				break;
@@ -366,12 +361,12 @@ void DirectoryWatcher::updateDirs()
 		// It is then read in the next directory iteration.
 		if (!currentWatchdir)
 		{
-			currentWatchdir = new Directory(insertStruct->_path, insertStruct->_filters, _hideEmptyDirs, false);
+			currentWatchdir = std::make_shared<Directory>(insertStruct._path, insertStruct._filters, _hideEmptyDirs, false);
 			_watchdirs.insert(currentWatchdir);
 		}
 
 		// insert the tree item pointing to the watchdir
-		_dirItems[insertStruct->_hTreeItem] = currentWatchdir;
+		_dirItems[insertStruct._hTreeItem] = currentWatchdir;
 
 		// set the reference watch counter
 		auto itRefCount = _dirItemReferenceCount.find(currentWatchdir);
@@ -379,8 +374,6 @@ void DirectoryWatcher::updateDirs()
 			_dirItemReferenceCount[currentWatchdir] = 1;
 		else
 			itRefCount->second += 1;
-
-		delete insertStruct;
 	}
 	_dirItemsToAdd.clear();
 	

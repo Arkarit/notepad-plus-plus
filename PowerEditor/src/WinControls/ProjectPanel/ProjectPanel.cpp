@@ -948,12 +948,6 @@ void ProjectPanel::notified(LPNMHDR notification)
 {
 	if ((notification->hwndFrom == _treeView.getHSelf()))
 	{
-		TCHAR textBuffer[MAX_PATH];
-		TVITEM tvItem;
-		tvItem.mask = TVIF_TEXT | TVIF_PARAM;
-		tvItem.pszText = textBuffer;
-		tvItem.cchTextMax = MAX_PATH;
-
 		switch (notification->code)
 		{
 			case NM_DBLCLK:
@@ -976,31 +970,42 @@ void ProjectPanel::notified(LPNMHDR notification)
 				if (nt == nodeType_file) 
 				{
 					// Get the old label
-					tvItem.hItem = _treeView.getSelection();
-					::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0,reinterpret_cast<LPARAM>(&tvItem));
-					size_t len = lstrlen(tvItem.pszText);
+					const HTREEITEM hSelection = _treeView.getSelection();
+					if (!hSelection)
+					{
+						assert(false);
+						return;
+					}
+					generic_string label;
+					if (!getItemInfos(hSelection, &label))
+					{
+						assert(false);
+						return;
+					}
+
+					const size_t len = label.size();
 
 					// Find the position of old label in File path
 					generic_string &filePath = data._filePath;
-					size_t found = filePath.rfind(tvItem.pszText);
+					size_t found = filePath.rfind(label);
 
 					// If found the old label, replace it with the modified one
 					if (found != generic_string::npos)
 						filePath.replace(found, len, tvnotif->item.pszText);
 
-					// Check the validity of modified file path
-					tvItem.mask = TVIF_IMAGE | TVIF_SELECTEDIMAGE;
+					// Check the validity of modified file path and set images accordingly
+					int image, selectedImage;
 					if (::PathFileExists(filePath.c_str()))
 					{
-						tvItem.iImage = data.isDirectoryFile() ? IndexLeafDirFile : IndexLeaf;
-						tvItem.iSelectedImage = data.isDirectoryFile() ? IndexLeafDirFile : IndexLeaf;
+						image = data.isDirectoryFile() ? IndexLeafDirFile : IndexLeaf;
+						selectedImage = data.isDirectoryFile() ? IndexLeafDirFile : IndexLeaf;
 					}
 					else
 					{
-						tvItem.iImage = IndexLeafInvalid;
-						tvItem.iSelectedImage = IndexLeafInvalid;
+						image = IndexLeafInvalid;
+						selectedImage = IndexLeafInvalid;
 					}
-					TreeView_SetItem(_treeView.getHSelf(), &tvItem);
+					_treeView.setItemImage(hSelection, image, selectedImage);
 				}
 				else if (nt == nodeType_baseDir)
 				{
@@ -1015,16 +1020,17 @@ void ProjectPanel::notified(LPNMHDR notification)
 					{
 						data._userLabel.clear();
 						generic_string newFolderLabel = buildDirectoryName(data._filePath, data._filters);
-						wcsncpy(tvItem.pszText,newFolderLabel.c_str(), MAX_PATH-1);
-						tvItem.hItem = tvnotif->item.hItem;
-						tvItem.mask = TVIF_TEXT;
-						::SendMessage(_treeView.getHSelf(), TVM_SETITEM, 0,reinterpret_cast<LPARAM>(&tvItem));
+						_treeView.setItemText(tvnotif->item.hItem, newFolderLabel);
 						break;
 					}
 				}
 
 				// For File, Folder and Project
-				::SendMessage(_treeView.getHSelf(), TVM_SETITEM, 0,reinterpret_cast<LPARAM>(&(tvnotif->item)));
+				if (!::SendMessage(_treeView.getHSelf(), TVM_SETITEM, 0,reinterpret_cast<LPARAM>(&(tvnotif->item))))
+				{
+					assert(false);
+					break;
+				}
 				setWorkSpaceDirty(true);
 			}
 			break;
@@ -1103,8 +1109,6 @@ void ProjectPanel::notified(LPNMHDR notification)
 			case TVN_ITEMEXPANDED:
 			{
 				LPNMTREEVIEW nmtv = (LPNMTREEVIEW)notification;
-				tvItem.hItem = nmtv->itemNew.hItem;
-				tvItem.mask = TVIF_IMAGE | TVIF_SELECTEDIMAGE;
 
 				if (getNodeType(nmtv->itemNew.hItem) == nodeType_folder)
 				{

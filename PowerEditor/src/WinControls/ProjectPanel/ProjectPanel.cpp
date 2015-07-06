@@ -1172,7 +1172,11 @@ ProjectPanel::NodeType ProjectPanel::getNodeType(HTREEITEM hItem) const
 	TVITEM tvItem;
 	tvItem.hItem = hItem;
 	tvItem.mask = TVIF_PARAM;
-	SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0,reinterpret_cast<LPARAM>(&tvItem));
+	if (!SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0,reinterpret_cast<LPARAM>(&tvItem)))
+	{
+		assert(false);
+		return nodeType_invalid;
+	}
 	ProjectPanelData& data = *reinterpret_cast<ProjectPanelData*>(tvItem.lParam);
 	return data._nodeType;
 }
@@ -1201,11 +1205,15 @@ void ProjectPanel::showContextMenu(int x, int y)
 	}
 }
 
-POINT ProjectPanel::getMenuDisplyPoint(int iButton)
+POINT ProjectPanel::getMenuDisplayPoint(int iButton)
 {
-	POINT p;
+	POINT p = {0};
 	RECT btnRect;
-	SendMessage(_hToolbarMenu, TB_GETITEMRECT, iButton, reinterpret_cast<LPARAM>(&btnRect));
+	if (!SendMessage(_hToolbarMenu, TB_GETITEMRECT, iButton, reinterpret_cast<LPARAM>(&btnRect)))
+	{
+		assert(false);
+		return p;
+	}
 
 	p.x = btnRect.left;
 	p.y = btnRect.top + btnRect.bottom;
@@ -1216,15 +1224,16 @@ POINT ProjectPanel::getMenuDisplyPoint(int iButton)
 
 const std::vector<generic_string>* ProjectPanel::getFilters(HTREEITEM hItem)
 {
-	TVITEM tvItem;
-	tvItem.mask = TVIF_PARAM;
-	tvItem.hItem = hItem;
-	::SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0, reinterpret_cast<LPARAM>(&tvItem));
-	ProjectPanelData& data = *reinterpret_cast<ProjectPanelData*>(tvItem.lParam);
+	ProjectPanelData* data = getData(hItem);
+	if (!data)
+	{
+		assert(0);
+		return NULL;
+	}
 
-	if (data.isBaseDirectory())
-		return &data._filters;
-	else if (data.isDirectory())
+	if (data->isBaseDirectory())
+		return &data->_filters;
+	else if (data->isDirectory())
 		return getFilters(_treeView.getParent(hItem));
 	else return NULL;
 }
@@ -1313,14 +1322,14 @@ void ProjectPanel::popupMenuCmd(int cmdID)
 		//
 		case IDB_PROJECT_BTN:
 		{
-		  POINT p = getMenuDisplyPoint(0);
+		  POINT p = getMenuDisplayPoint(0);
 		  TrackPopupMenu(_hWorkSpaceMenu, TPM_LEFTALIGN, p.x, p.y, 0, _hSelf, NULL);
 		}
 		break;
 
 		case IDB_EDIT_BTN:
 		{
-			POINT p = getMenuDisplyPoint(1);
+			POINT p = getMenuDisplayPoint(1);
 			HMENU hMenu = getContextMenu(hTreeItem);
 			if (hMenu)
 				TrackPopupMenu(hMenu, TPM_LEFTALIGN, p.x, p.y, 0, _hSelf, NULL);
@@ -1548,30 +1557,28 @@ void ProjectPanel::popupMenuCmd(int cmdID)
 			FileRelocalizerDlg fileRelocalizerDlg;
 			fileRelocalizerDlg.init(_hInst, _hParent);
 
-			TCHAR textBuffer[MAX_PATH];
-			TVITEM tvItem;
-			tvItem.hItem = hTreeItem;
-			tvItem.mask = TVIF_TEXT | TVIF_PARAM | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
-			tvItem.pszText = textBuffer;
-			tvItem.cchTextMax = MAX_PATH;
-			
-			SendMessage(_treeView.getHSelf(), TVM_GETITEM, 0,reinterpret_cast<LPARAM>(&tvItem));
-			ProjectPanelData& data = *reinterpret_cast<ProjectPanelData*>(tvItem.lParam);
-			if (!data.isFile())
+			ProjectPanelData* data = getData(hTreeItem);
+			if (!data)
+			{
+				assert(false);
+				return;
+			}
+			if (!data->isFile())
 				return;
 
-			if (fileRelocalizerDlg.doDialog(data._filePath.c_str()) == 0)
+			if (fileRelocalizerDlg.doDialog(data->_filePath.c_str()) == 0)
 			{
-				generic_string newValue = fileRelocalizerDlg.getFullFilePath();
-				if (data._filePath == newValue)
+				const generic_string newValue(fileRelocalizerDlg.getFullFilePath());
+				if (data->_filePath == newValue)
 					return;
 
-				data._filePath = newValue;
-				TCHAR *strValueLabel = ::PathFindFileName(data._filePath.c_str());
-				lstrcpy(textBuffer, strValueLabel);
-				int iImage = ::PathFileExists(data._filePath.c_str()) ? IndexLeaf : IndexLeafInvalid;
-				tvItem.iImage = tvItem.iSelectedImage = iImage;
-				SendMessage(_treeView.getHSelf(), TVM_SETITEM, 0,reinterpret_cast<LPARAM>(&tvItem));
+				data->_filePath = newValue;
+				const generic_string label(PathFindFileName(data->_filePath.c_str()));
+				const int image = ::PathFileExists(data->_filePath.c_str()) ? IndexLeaf : IndexLeafInvalid;
+
+				_treeView.setItemText(hTreeItem, label);
+				_treeView.setItemImage(hTreeItem, image, image);
+
 				setWorkSpaceDirty(true);
 			}
 		}

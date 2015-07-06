@@ -78,7 +78,18 @@ class ProjectPanel : public DockingDlgInterface, public TreeViewListener {
 
 	friend int CALLBACK compareFunc(LPARAM, LPARAM, LPARAM);
 
-	enum NodeType { nodeType_dummy = -1, nodeType_root = 0, nodeType_project = 1, nodeType_folder = 2, nodeType_file = 3, nodeType_baseDir = 4, nodeType_dir = 5, nodeType_dirFile = 6, };
+	enum NodeType 
+	{
+		nodeType_invalid = -1, 
+		nodeType_dummy, 
+		nodeType_root, 
+		nodeType_project, 
+		nodeType_folder, 
+		nodeType_file,
+		nodeType_baseDir, 
+		nodeType_dir, 
+		nodeType_dirFile, 
+	};
 
 	// private class ProjectPanelData is stored in the LPARAM of the tree nodes.
 	// The data it contains depends on the node type.
@@ -281,7 +292,7 @@ protected:
 	NodeType getNodeType(HTREEITEM hItem) const;
 	void setWorkSpaceDirty(bool isDirty);
 	void popupMenuCmd(int cmdID);
-	POINT getMenuDisplyPoint(int iButton);
+	POINT getMenuDisplayPoint(int iButton);
 	const std::vector<generic_string>* getFilters(HTREEITEM hItem);
 	virtual INT_PTR CALLBACK run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam) override;
 	bool buildTreeFrom(TiXmlNode *projectRoot, HTREEITEM hParentItem);
